@@ -5,7 +5,7 @@ import { apiDataManager } from '@/lib/apiDataManager';
 const NomeSistemaContext = createContext();
 
 export const NomeSistemaProvider = ({ children }) => {
-  const [nomeSistema, setNomeSistema] = useState('Jet Impre');
+  const [nomeSistema, setNomeSistema] = useState('Sistema Gráficas');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -16,7 +16,7 @@ export const NomeSistemaProvider = ({ children }) => {
         
         if (!token) {
           // Em rotas públicas, usar valor do localStorage ou padrão
-          const nomeSalvo = await apiDataManager.getItem('nomeSistema') || 'Jet Impre';
+          const nomeSalvo = await apiDataManager.getItem('nomeSistema') || 'Sistema Gráficas';
           setNomeSistema(nomeSalvo);
           setLoading(false);
           return;
@@ -24,7 +24,7 @@ export const NomeSistemaProvider = ({ children }) => {
 
         // Em rotas protegidas, carregar da API da empresa
         const response = await empresaService.get();
-        const nome = response.data.data?.nome_sistema || 'Jet Impre';
+        const nome = response.data.data?.nome_sistema || 'Sistema Gráficas';
         setNomeSistema(nome);
         
         // Salvar no localStorage para uso em rotas públicas (apenas a string, não o objeto)
@@ -32,7 +32,7 @@ export const NomeSistemaProvider = ({ children }) => {
       } catch (error) {
         console.error('❌ [useNomeSistema] Erro ao carregar nome do sistema:', error);
         // Em caso de erro, usar valor do localStorage ou padrão
-        const nomeSalvo = await apiDataManager.getItem('nomeSistema') || 'Jet Impre';
+        const nomeSalvo = await apiDataManager.getItem('nomeSistema') || 'Sistema Gráficas';
         setNomeSistema(nomeSalvo);
       } finally {
         setLoading(false);

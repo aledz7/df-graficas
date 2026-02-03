@@ -18,7 +18,7 @@ const CompartilharProdutoModal = ({ isOpen, onClose, produto }) => {
   useEffect(() => {
     if (produto && isOpen) {
       // Gerar link de compartilhamento usando o domínio de produção
-      const baseUrl = 'https://jet-impre.com';
+      const baseUrl = 'https://sistema-graficas.dfinformatica.net';
       const link = `${baseUrl}/catalogo-publico/produto/${produto.id}`;
       setLinkCompartilhamento(link);
       

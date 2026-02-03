@@ -1,6 +1,6 @@
 /**
  * Utilitário para gerenciar URLs da API de forma dinâmica
- * Suporta tanto jet-impre.com quanto www.jet-impre.com
+ * Suporta tanto sistema-graficas.dfinformatica.net quanto www.sistema-graficas.dfinformatica.net
  */
 
 // Função para determinar a URL base da API baseada no domínio atual
@@ -22,7 +22,7 @@ export const getApiBaseUrl = () => {
   const domain = currentHost;
   
   // Aceitar tanto com www quanto sem www
-  if (domain === 'jet-impre.com' || domain === 'www.jet-impre.com') {
+  if (domain === 'sistema-graficas.dfinformatica.net' || domain === 'www.sistema-graficas.dfinformatica.net') {
     return `${protocol}//${domain}/backend`;
   }
   
@@ -44,7 +44,7 @@ export const isProduction = () => {
   }
   
   const currentHost = window.location.hostname;
-  return currentHost === 'jet-impre.com' || currentHost === 'www.jet-impre.com';
+  return currentHost === 'sistema-graficas.dfinformatica.net' || currentHost === 'www.sistema-graficas.dfinformatica.net';
 };
 
 // Função para verificar se estamos em desenvolvimento

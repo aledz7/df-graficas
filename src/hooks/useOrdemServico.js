@@ -133,7 +133,7 @@ export const useOrdemServico = ({ vendedorAtual }) => {
             instagram: empresaData.instagram || '',
             site: empresaData.site || '',
             logoUrl: empresaData.logo_url || '',
-            nomeSistema: empresaData.nome_sistema || 'Jet Impre',
+            nomeSistema: empresaData.nome_sistema || 'Sistema Gráficas',
             mensagemPersonalizadaRodape: empresaData.mensagem_rodape || 'Obrigado pela preferência!',
             senhaSupervisor: empresaData.senha_supervisor || '',
             termosServico: empresaData.termos_servico || '',

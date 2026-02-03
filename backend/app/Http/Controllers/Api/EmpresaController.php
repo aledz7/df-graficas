@@ -41,7 +41,7 @@ class EmpresaController extends BaseController
                     'instagram' => '',
                     'site' => '',
                     'logo_url' => null,
-                    'nome_sistema' => 'Jet Impre',
+                    'nome_sistema' => 'Sistema Gráficas',
                     'mensagem_rodape' => 'Obrigado pela preferência!',
                     'senha_supervisor' => null,
                     'termos_servico' => 'Termos de serviço padrão da empresa...',
@@ -92,7 +92,7 @@ class EmpresaController extends BaseController
                 ['tenant_id' => auth()->user()->tenant_id],
                 [
                     'nome_fantasia' => 'Sua Empresa',
-                    'nome_sistema' => 'Jet Impre',
+                    'nome_sistema' => 'Sistema Gráficas',
                     'mensagem_rodape' => 'Obrigado pela preferência!',
                 ]
             );
@@ -135,7 +135,7 @@ class EmpresaController extends BaseController
                 ['tenant_id' => $tenant_id],
                 [
                     'nome_fantasia' => 'Sua Empresa',
-                    'nome_sistema' => 'Jet Impre',
+                    'nome_sistema' => 'Sistema Gráficas',
                     'mensagem_rodape' => 'Obrigado pela preferência!',
                 ]
             );

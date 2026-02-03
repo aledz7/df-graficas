@@ -73,7 +73,7 @@ export const initializeAppData = async (setters) => {
     instagram: '',
     site: '',
     mensagemPersonalizadaRodape: 'Obrigado pela preferência!',
-    nomeSistema: 'Jet Impre',
+    nomeSistema: 'Sistema Gráficas',
     supervisorPassword: '', 
   };
   const empresaSettingsData = loadAndInitialize('empresaSettings', defaultEmpresaSettings);

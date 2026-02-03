@@ -1,4 +1,4 @@
-# Correções de Agendamentos - Dashboard Jet Impre
+# Correções de Agendamentos - Dashboard Sistema Gráficas
 
 ## 🔍 **Problema Identificado**
 

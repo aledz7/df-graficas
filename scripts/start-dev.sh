@@ -3,7 +3,7 @@
 # Script para iniciar o ambiente de desenvolvimento
 # Este script inicia tanto o backend Laravel quanto o frontend Vite
 
-echo "🚀 Iniciando ambiente de desenvolvimento Jet Impre..."
+echo "🚀 Iniciando ambiente de desenvolvimento Sistema Gráficas..."
 
 # Verificar se o arquivo .env existe
 if [ ! -f ".env" ]; then

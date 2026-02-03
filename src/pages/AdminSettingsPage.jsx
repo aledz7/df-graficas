@@ -13,7 +13,7 @@ import SenhaMasterModal from '@/components/SenhaMasterModal';
 const AdminSettingsPage = () => {
   const { toast } = useToast();
   const [config, setConfig] = useState({
-    nome_sistema: 'Jet Impre',
+    nome_sistema: 'Sistema Gráficas',
   });
   const [empresaSettings, setEmpresaSettings] = useState({});
   const [senhaMaster, setSenhaMaster] = useState('');

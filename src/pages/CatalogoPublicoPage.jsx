@@ -1098,7 +1098,7 @@ const CatalogoPublicoPage = () => {
                             <div className="flex gap-2 mt-2">
                                 <Input
                                     id="link-pagina"
-                                    value={`https://jet-impre.com/catalogo-publico${tenantId ? `/${tenantId}` : ''}`}
+                                    value={`https://sistema-graficas.dfinformatica.net/catalogo-publico${tenantId ? `/${tenantId}` : ''}`}
                                     readOnly
                                     className="flex-1"
                                 />
@@ -1106,7 +1106,7 @@ const CatalogoPublicoPage = () => {
                                     variant="outline"
                                     size="sm"
                                     onClick={() => {
-                                        navigator.clipboard.writeText(`https://jet-impre.com/catalogo-publico${tenantId ? `/${tenantId}` : ''}`);
+                                        navigator.clipboard.writeText(`https://sistema-graficas.dfinformatica.net/catalogo-publico${tenantId ? `/${tenantId}` : ''}`);
                                         toast({
                                             title: 'Link copiado!',
                                             description: 'O link do catálogo foi copiado para a área de transferência.',
@@ -1123,7 +1123,7 @@ const CatalogoPublicoPage = () => {
                             <Textarea
                                 id="mensagem-pagina"
                                 placeholder="Adicione uma mensagem personalizada..."
-                                value={`Confira nosso catálogo de produtos: https://jet-impre.com/catalogo-publico${tenantId ? `/${tenantId}` : ''}`}
+                                value={`Confira nosso catálogo de produtos: https://sistema-graficas.dfinformatica.net/catalogo-publico${tenantId ? `/${tenantId}` : ''}`}
                                 onChange={(e) => {}}
                                 className="mt-2"
                                 rows={3}
@@ -1135,7 +1135,7 @@ const CatalogoPublicoPage = () => {
                                 variant="outline"
                                 className="flex-1"
                                 onClick={() => {
-                                    const url = `https://wa.me/?text=${encodeURIComponent(`Confira nosso catálogo de produtos: https://jet-impre.com/catalogo-publico${tenantId ? `/${tenantId}` : ''}`)}`;
+                                    const url = `https://wa.me/?text=${encodeURIComponent(`Confira nosso catálogo de produtos: https://sistema-graficas.dfinformatica.net/catalogo-publico${tenantId ? `/${tenantId}` : ''}`)}`;
                                     window.open(url, '_blank');
                                 }}
                             >
@@ -1146,7 +1146,7 @@ const CatalogoPublicoPage = () => {
                                 variant="outline"
                                 className="flex-1"
                                 onClick={() => {
-                                    const url = `https://t.me/share/url?url=${encodeURIComponent(`https://jet-impre.com/catalogo-publico${tenantId ? `/${tenantId}` : ''}`)}&text=${encodeURIComponent('Confira nosso catálogo de produtos!')}`;
+                                    const url = `https://t.me/share/url?url=${encodeURIComponent(`https://sistema-graficas.dfinformatica.net/catalogo-publico${tenantId ? `/${tenantId}` : ''}`)}&text=${encodeURIComponent('Confira nosso catálogo de produtos!')}`;
                                     window.open(url, '_blank');
                                 }}
                             >

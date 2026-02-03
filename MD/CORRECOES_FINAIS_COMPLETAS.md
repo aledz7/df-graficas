@@ -1,4 +1,4 @@
-# Correções Finais Completas - Dashboard Jet Impre
+# Correções Finais Completas - Dashboard Sistema Gráficas
 
 ## 🔍 **Problemas Identificados e Soluções**
 

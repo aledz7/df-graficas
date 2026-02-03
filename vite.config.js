@@ -218,8 +218,8 @@ export default defineConfig({
         ws: true,
         router: {
           // Configuração para aceitar múltiplos domínios
-          'https://jet-impre.com': 'https://jet-impre.com/backend',
-          'https://www.jet-impre.com': 'https://www.jet-impre.com/backend',
+          'https://sistema-graficas.dfinformatica.net': 'https://sistema-graficas.dfinformatica.net/backend',
+          'https://www.sistema-graficas.dfinformatica.net': 'https://www.sistema-graficas.dfinformatica.net/backend',
         }
       }
     }

@@ -60,7 +60,7 @@ function AppContent() {
   const [theme, setThemeState] = useState('light');
   const [logoUrl, setLogoUrl] = useState('');
   const [nomeEmpresa, setNomeEmpresa] = useState('Sua Empresa'); 
-  const [nomeSistema, setNomeSistema] = useState('Jet Impre');
+  const [nomeSistema, setNomeSistema] = useState('Sistema Gráficas');
   const [clientes, setClientes] = useState([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [vendedores, setVendedores] = useState([]);
@@ -219,7 +219,7 @@ function AppContent() {
         empresaData = response.data.data;
         if (empresaData) {
           setNomeEmpresa(empresaData.nome_fantasia || 'Sua Empresa');
-          setNomeSistema(empresaData.nome_sistema || 'Jet Impre');
+          setNomeSistema(empresaData.nome_sistema || 'Sistema Gráficas');
           setLogoUrl(empresaData.logo_url || '');
         }
       } catch (error) {
@@ -228,7 +228,7 @@ function AppContent() {
         const configEmpresa = await carregarConfiguracoesEmpresa();
         if (configEmpresa) {
           setNomeEmpresa(configEmpresa.nomeFantasia || 'Sua Empresa');
-          setNomeSistema(configEmpresa.nomeSistema || 'Jet Impre');
+          setNomeSistema(configEmpresa.nomeSistema || 'Sistema Gráficas');
           setLogoUrl(configEmpresa.logoUrl || '');
         }
       }

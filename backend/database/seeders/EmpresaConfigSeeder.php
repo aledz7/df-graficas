@@ -25,7 +25,7 @@ class EmpresaConfigSeeder extends Seeder
         $configuracoes = [
             [
                 'chave' => 'empresa_nome',
-                'valor' => 'Jet Impressões',
+                'valor' => 'Sistema Gráficasssões',
                 'tipo' => 'string',
                 'grupo' => 'empresa',
                 'nome' => 'Nome da Empresa',

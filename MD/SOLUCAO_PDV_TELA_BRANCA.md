@@ -5,7 +5,7 @@
 A página PDV está exibindo uma tela branca devido ao erro:
 ```
 Failed to load module script: Expected a JavaScript-or-Wasm module script but the server responded with a MIME type of "text/html".
-TypeError: Failed to fetch dynamically imported module: https://jet-impre.com/assets/PDVPage-47caf28f.js
+TypeError: Failed to fetch dynamically imported module: https://sistema-graficas.dfinformatica.net/assets/PDVPage-47caf28f.js
 ```
 
 ## Causa Raiz
@@ -39,7 +39,7 @@ Foi criado o arquivo `clear-cache.php` para:
 ## Passos para Resolver
 
 ### Passo 1: Acessar o Script de Verificação
-1. Acesse: `https://jet-impre.com/clear-cache.php`
+1. Acesse: `https://sistema-graficas.dfinformatica.net/clear-cache.php`
 2. Verifique se todos os arquivos estão sendo servidos com MIME type correto
 3. Execute o teste de carregamento de módulos
 
@@ -64,7 +64,7 @@ Se o problema persistir, verifique se o servidor está configurado corretamente:
 
 ```bash
 # Verificar MIME type do arquivo PDVPage
-curl -I https://jet-impre.com/assets/PDVPage-47caf28f.js
+curl -I https://sistema-graficas.dfinformatica.net/assets/PDVPage-47caf28f.js
 
 # Deve retornar:
 # Content-Type: application/javascript; charset=utf-8
@@ -85,7 +85,7 @@ npm run build
 
 Após seguir todos os passos:
 
-1. Acesse `https://jet-impre.com/operacional/pdv`
+1. Acesse `https://sistema-graficas.dfinformatica.net/operacional/pdv`
 2. A página deve carregar normalmente sem tela branca
 3. Verifique o console do navegador (F12) - não deve haver erros de MIME type
 

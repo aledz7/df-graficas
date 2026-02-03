@@ -1,4 +1,4 @@
-# Correções do Dashboard - Jet Impre
+# Correções do Dashboard - Sistema Gráficas
 
 ## Problemas Identificados e Soluções
 

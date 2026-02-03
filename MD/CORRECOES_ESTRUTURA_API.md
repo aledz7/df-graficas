@@ -1,4 +1,4 @@
-# Correções de Estrutura da API - Dashboard Jet Impre
+# Correções de Estrutura da API - Dashboard Sistema Gráficas
 
 ## 🔍 **Problemas Identificados**
 

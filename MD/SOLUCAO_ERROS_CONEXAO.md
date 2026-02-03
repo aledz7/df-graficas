@@ -57,7 +57,7 @@ Este script:
 ### Frontend (.env)
 ```env
 VITE_API_URL=http://localhost:8000
-VITE_APP_NAME="Jet Impre"
+VITE_APP_NAME="Sistema Gráficas"
 VITE_APP_ENV=development
 VITE_APP_DEBUG=true
 ```

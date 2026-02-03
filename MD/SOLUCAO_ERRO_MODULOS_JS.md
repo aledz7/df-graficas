@@ -29,7 +29,7 @@ Os arquivos JavaScript estão sendo servidos corretamente com o MIME type `appli
 - **Safari**: Cmd+Option+R
 
 ### 2. Testar Arquivo de Teste
-Acesse: `https://jet-impre.com/test-modules.html`
+Acesse: `https://sistema-graficas.dfinformatica.net/test-modules.html`
 
 Este arquivo testa:
 - Carregamento do módulo principal

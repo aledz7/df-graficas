@@ -1,4 +1,4 @@
-# Jet Impre
+# Sistema Gráficas
 
 Sistema de gestão para gráfica rápida desenvolvido com React + Vite no frontend e Laravel no backend.
 

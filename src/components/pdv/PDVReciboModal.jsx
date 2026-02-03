@@ -804,7 +804,7 @@ const PDVReciboModal = ({
       mensagemPersonalizadaRodape: 'Obrigado pela sua preferência!',
       termosCondicoesRecibo: '',
       informacoesPagamentoRecibo: '',
-      nomeSistema: 'Jet Impre'
+      nomeSistema: 'Sistema Gráficas'
   };
   
   const nomeEmpresaParaExibir = settings.nomeFantasia || appNomeEmpresa;

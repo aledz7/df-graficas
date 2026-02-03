@@ -1,4 +1,4 @@
-# Correções de Erro de Data Inválida - Dashboard Jet Impre
+# Correções de Erro de Data Inválida - Dashboard Sistema Gráficas
 
 ## 🔍 **Problema Identificado**
 

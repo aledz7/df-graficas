@@ -30,7 +30,7 @@ clearBrowserCache();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Limpeza de Cache - Jet Impre</title>
+    <title>Limpeza de Cache - Sistema Gráficas</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
         .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
@@ -48,7 +48,7 @@ clearBrowserCache();
 </head>
 <body>
     <div class="container">
-        <h1>🔧 Limpeza de Cache - Jet Impre</h1>
+        <h1>🔧 Limpeza de Cache - Sistema Gráficas</h1>
         
         <div class="status info">
             <strong>Instruções:</strong> Este script ajuda a limpar o cache e verificar se os arquivos JavaScript estão sendo servidos corretamente.

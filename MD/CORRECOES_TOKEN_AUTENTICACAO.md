@@ -1,4 +1,4 @@
-# Correções de Autenticação - Dashboard Jet Impre
+# Correções de Autenticação - Dashboard Sistema Gráficas
 
 ## 🔍 **Problema Identificado**
 

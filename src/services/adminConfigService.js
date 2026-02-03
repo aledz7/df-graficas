@@ -88,10 +88,10 @@ class AdminConfigService {
   async getNomeSistema() {
     try {
       const response = await this.getConfiguracoes();
-      return response.data?.nome_sistema || 'Jet Impre';
+      return response.data?.nome_sistema || 'Sistema Gráficas';
     } catch (error) {
       console.error('Erro ao buscar nome do sistema:', error);
-      return 'Jet Impre';
+      return 'Sistema Gráficas';
     }
   }
 

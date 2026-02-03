@@ -19,8 +19,8 @@ class Cors
             'http://127.0.0.1:5180',
             'http://localhost:8000',
             env('FRONTEND_URL', 'http://localhost:5173'),
-            'https://jet-impre.com',
-            'https://www.jet-impre.com',
+            'https://sistema-graficas.dfinformatica.net',
+            'https://www.sistema-graficas.dfinformatica.net',
         ];
 
         $origin = $request->headers->get('Origin');
