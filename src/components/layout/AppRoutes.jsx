@@ -13,6 +13,7 @@ const RelatoriosPage = lazy(() => import('@/pages/RelatoriosPage'));
 const ConfiguracoesPage = lazy(() => import('@/pages/ConfiguracoesPage'));
 const EmpresaSettingsPage = lazy(() => import('@/pages/EmpresaSettingsPage'));
 const AdminSettingsPage = lazy(() => import('@/pages/AdminSettingsPage'));
+const AdminTenantsPage = lazy(() => import('@/pages/AdminTenantsPage'));
 const CategoriasPage = lazy(() => import('@/pages/CategoriasPage'));
 const CoresPage = lazy(() => import('@/pages/CoresPage'));
 const TamanhosPage = lazy(() => import('@/pages/TamanhosPage'));
@@ -179,6 +180,7 @@ const AppRoutes = ({ logoUrl, nomeEmpresa, vendedorAtual, theme, setTheme, setAp
       <Route path="/configuracoes" element={<ConfiguracoesPage />} />
       <Route path="/configuracoes/empresa" element={<EmpresaSettingsPage logoUrl={logoUrl} setAppLogoUrl={setAppLogoUrl} setAppNomeEmpresa={setAppNomeEmpresa} setAppNomeSistema={setAppNomeSistema} />} />
       <Route path="/configuracoes/admin" element={<AdminSettingsPage setAppNomeSistema={setAppNomeSistema} />} />
+      <Route path="/configuracoes/tenants" element={<AdminTenantsPage />} />
       <Route path="/configuracoes/aparencia" element={<AparenciaSettingsPage theme={theme} setTheme={setTheme} />} />
       <Route path="/configuracoes/produtos-estoque" element={<ProdutoConfigPage />} />
       <Route path="/configuracoes/pontos" element={<ConfiguracaoPontosPage />} />

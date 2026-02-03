@@ -19,6 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'verificar.senha.master' => \App\Http\Middleware\VerificarSenhaMaster::class,
             'permission' => \App\Http\Middleware\CheckPermission::class,
             'funcionario' => \App\Http\Middleware\SetFuncionarioFromUser::class,
+            'ensure.admin' => \App\Http\Middleware\EnsureAdmin::class,
         ]);
         
         // Apply tenant middleware to all API routes

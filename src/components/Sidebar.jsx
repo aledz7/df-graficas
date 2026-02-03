@@ -5,7 +5,7 @@ import { useNomeSistema } from '@/hooks/useNomeSistema.jsx';
 import {
   LayoutDashboard, ShoppingCart, Package, Users, Truck, Banknote,
   Settings, BarChart3, FileText, SprayCan, Calculator,
-  Palette, Boxes, BookOpen, Wrench, HardHat, FileClock, CheckCircle2, History, SlidersHorizontal, Trash2, Barcode, Store, Activity, CalendarDays, FileSpreadsheet, Box, LogIn, LogOut, PackagePlus, ListChecks, Printer, DollarSign, ShieldAlert, Ruler, Star, TrendingUp
+  Palette, Boxes, BookOpen, Wrench, HardHat, FileClock, CheckCircle2, History, SlidersHorizontal, Trash2, Barcode, Store, Activity, CalendarDays, FileSpreadsheet, Box, LogIn, LogOut, PackagePlus, ListChecks, Printer, DollarSign, ShieldAlert, Ruler, Star, TrendingUp, Building2
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -65,6 +65,7 @@ const routePermissions = {
   '/operacional/gerador-etiquetas': 'gerar_etiquetas',
   '/ferramentas/lixeira': 'gerenciar_lixeira',
   '/configuracoes/admin': 'config_sistema',
+  '/configuracoes/tenants': 'config_sistema',
 };
 
 const menuItems = [
@@ -164,6 +165,7 @@ const menuItems = [
       { path: '/operacional/gerador-etiquetas', label: 'Gerador de Etiquetas', icon: Barcode },
       { path: '/ferramentas/lixeira', label: 'Lixeira', icon: Trash2 },
       { path: '/configuracoes/admin', label: 'Admin do Sistema', icon: ShieldAlert },
+      { path: '/configuracoes/tenants', label: 'Gerenciar Tenants', icon: Building2 },
     ]
   },
 ];
@@ -304,6 +306,9 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen }) => {
     if (item.subItems) {
       // Para itens com subitens, verifica se pelo menos um subitem tem permissão
       const visibleSubItems = item.subItems.filter(subItem => {
+        if (subItem.path === '/configuracoes/tenants') {
+          return !!user?.is_admin;
+        }
         const requiredPermission = routePermissions[subItem.path];
         const hasAccess = !requiredPermission || hasPermission(requiredPermission);
         

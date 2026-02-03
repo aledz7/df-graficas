@@ -50,6 +50,7 @@ use App\Http\Controllers\Api\ClientePontosController;
 use App\Http\Controllers\Api\AtendimentoController;
 use App\Http\Controllers\Api\EnvelopamentoPrecosController;
 use App\Http\Controllers\Api\ServicoAdicionalController;
+use App\Http\Controllers\Api\Admin\TenantManagerController;
 
 /*
 |--------------------------------------------------------------------------
@@ -545,4 +546,12 @@ Route::prefix('empresa')->group(function () {
     Route::patch('servicos-adicionais/{servicoAdicional}/toggle-status', [\App\Http\Controllers\Api\ServicoAdicionalController::class, 'toggleStatus']);
     Route::get('servicos-adicionais/categoria/{categoria}', [\App\Http\Controllers\Api\ServicoAdicionalController::class, 'getByCategory']);
     Route::get('servicos-adicionais/tipo/{tipo}', [\App\Http\Controllers\Api\ServicoAdicionalController::class, 'getByType']);
+
+    // Gerenciador de Tenants (apenas administradores)
+    Route::middleware(['ensure.admin'])->prefix('admin')->group(function () {
+        Route::get('tenants', [TenantManagerController::class, 'index']);
+        Route::get('tenants/{id}', [TenantManagerController::class, 'show']);
+        Route::put('tenants/{id}', [TenantManagerController::class, 'update']);
+        Route::post('tenants/{id}/toggle-ativo', [TenantManagerController::class, 'toggleAtivo']);
+    });
 });

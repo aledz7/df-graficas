@@ -126,6 +126,16 @@ class AuthController extends Controller
             ]);
         }
 
+        // Bloquear login se o tenant do usuário estiver inativo
+        if ($user->tenant_id) {
+            $tenant = Tenant::find($user->tenant_id);
+            if ($tenant && !$tenant->isActive()) {
+                throw ValidationException::withMessages([
+                    'email' => ['Acesso bloqueado. Entre em contato com o suporte.'],
+                ]);
+            }
+        }
+
         // Se o usuário tem 2FA ativado, enviar código e não criar token ainda
         if ($user->two_factor_enabled) {
             // Gerar e enviar código 2FA
@@ -481,6 +491,17 @@ class AuthController extends Controller
         }
 
         \Log::info('2FA code verified successfully', ['user_id' => $user->id]);
+
+        // Bloquear login se o tenant do usuário estiver inativo
+        if ($user->tenant_id) {
+            $tenant = Tenant::find($user->tenant_id);
+            if ($tenant && !$tenant->isActive()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Acesso bloqueado. Entre em contato com o suporte.'
+                ], 403);
+            }
+        }
 
         // Limpar o código após verificação bem-sucedida
         $user->update([
