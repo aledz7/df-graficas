@@ -102,129 +102,113 @@ export const usePDV = (vendedorAtualProp) => {
 
 
   useEffect(() => {
-        const loadData = async () => {
-            try {
-                // Buscar produtos - SEMPRE buscar da API para garantir estoque atualizado
-                try {
-                    let produtosArray = [];
-                    
-                    // Sempre buscar da API primeiro para ter dados atualizados
-                    try {
-                        const produtosResponse = await produtoService.getAll('?per_page=1000');
-                        const produtosData = produtosResponse.data?.data?.data || produtosResponse.data?.data || produtosResponse.data || [];
-                        produtosArray = Array.isArray(produtosData) ? produtosData : [];
-                        
-                        // Atualizar o cache com os dados mais recentes
-                        await apiDataManager.setItem('produtos', JSON.stringify(produtosArray));
-                    } catch (apiError) {
-                        console.warn('⚠️ Erro ao buscar produtos da API, tentando cache:', apiError);
-                        // Se falhar, usar cache como fallback
-                        produtosArray = await apiDataManager.getDataAsArray('produtos', []);
-                    }
-                    
-                    // Helper para verificar se produto está ativo (aceita diferentes formatos)
-                    const isProdutoAtivo = (p) => {
-                        if (p.status === true || p.status === 1) return true;
-                        if (p.status === false || p.status === 0) return false;
-                        if (typeof p.status === 'string') {
-                            const statusLower = p.status.toLowerCase().trim();
-                            return statusLower === 'ativo' || statusLower === 'true' || statusLower === '1';
-                        }
-                        // Se status não estiver definido, considerar como ativo por padrão
-                        return p.status !== false && p.status !== 0;
-                    };
-                    
-                    const produtosFiltrados = produtosArray.filter(p => isProdutoAtivo(p));
-                    setProdutos(produtosFiltrados);
-                } catch(error) {
-                    console.error('❌ Erro ao buscar produtos:', error);
-                    setProdutos([]);
-                }
-                
-                // Buscar clientes da API
-                try {
-                    const clientesResponse = await clienteService.getAll();
-                    
-                    // Corrigir estrutura de resposta se necessário
-                    const clientesData = clientesResponse.data?.data?.data || clientesResponse.data?.data || clientesResponse.data || clientesResponse || [];
-                    
-                    if (Array.isArray(clientesData)) {
-                        setClientes(clientesData);
-                    } else {
-                        console.warn('⚠️ Clientes não é um array:', clientesData);
-                        setClientes([]);
-                    }
-                } catch(error) {
-                    console.error('❌ Erro ao buscar clientes:', error);
-                    setClientes([]);
-                }
+        const isProdutoAtivo = (p) => {
+            if (p.status === true || p.status === 1) return true;
+            if (p.status === false || p.status === 0) return false;
+            if (typeof p.status === 'string') {
+                const statusLower = p.status.toLowerCase().trim();
+                return statusLower === 'ativo' || statusLower === 'true' || statusLower === '1';
+            }
+            return p.status !== false && p.status !== 0;
+        };
 
-                // Buscar funcionários através do apiDataManager (dados_usuario)
-                try {
-                    const funcionariosData = await apiDataManager.getData('funcionarios', []);
-                    
-                    if (Array.isArray(funcionariosData)) {
-                        setFuncionarios(funcionariosData);
-                    } else {
-                        console.warn('⚠️ Funcionários não é um array:', funcionariosData);
-                        // Dados padrão para funcionários
-                        const funcionariosPadrao = [
-                            { id: 'func1', nome: 'MASTER', cargo: 'Gerente', comissao: 5, login: 'MASTER', senha: '5CAS', permite_receber_comissao: true, salarioBase: '3000.00', vales: [], faltas: [], permite_desconto_consumo_interno: true, status: 'Ativo' }
-                        ];
-                        setFuncionarios(funcionariosPadrao);
-                    }
-                } catch(error) {
-                    console.error('❌ Erro ao buscar funcionários:', error);
-                    // Dados padrão para funcionários em caso de erro
-                    const funcionariosPadrao = [
-                        { id: 'func1', nome: 'MASTER', cargo: 'Gerente', comissao: 5, login: 'MASTER', senha: '5CAS', permite_receber_comissao: true, salarioBase: '3000.00', vales: [], faltas: [], permite_desconto_consumo_interno: true, status: 'Ativo' }
-                    ];
-                    setFuncionarios(funcionariosPadrao);
-                }
-                
-                // Buscar cores da API
-                try {
-                    const coresResponse = await corService.getAll();
-                    const coresData = coresResponse.data?.data?.data || coresResponse.data?.data || coresResponse.data || [];
-                    setProductColors(Array.isArray(coresData) ? coresData : []);
-                } catch(error) {
-                    console.error('Erro ao carregar cores:', error);
-                    setProductColors([]);
-                }
-                
-                // Buscar tamanhos da API
-                try {
-                    const tamanhosResponse = await tamanhoService.getAll();
-                    const tamanhosData = tamanhosResponse.data?.data?.data || tamanhosResponse.data?.data || tamanhosResponse.data || [];
-                    setProductSizes(Array.isArray(tamanhosData) ? tamanhosData : []);
-                } catch(error) {
-                    console.error('Erro ao carregar tamanhos:', error);
-                    setProductSizes([]);
-                }
-                
-                // Buscar categorias da API
-                try {
-                    const categoriasResponse = await categoriaService.getAll();
-                    const categoriasData = categoriasResponse.data?.data?.data || categoriasResponse.data?.data || categoriasResponse.data || [];
-                    setCategorias(Array.isArray(categoriasData) ? categoriasData : []);
-                } catch(error) {
-                    console.error('Erro ao carregar categorias:', error);
-                    setCategorias([]);
-                }
-            } catch(error) {
-                console.error('Erro ao carregar dados:', error);
-                toast({
-                    title: "Erro",
-                    description: "Erro ao carregar dados. Tente novamente.",
-                    variant: "destructive"
-                });
+        const loadFromCacheOnly = async () => {
+            try {
+                const [produtosCache, clientesCache, coresCache, tamanhosCache, categoriasCache] = await Promise.all([
+                    apiDataManager.getDataAsArray('produtos', []),
+                    apiDataManager.getDataAsArray('clientes', []),
+                    apiDataManager.getDataAsArray('productColors', []).catch(() => []),
+                    apiDataManager.getDataAsArray('productSizes', []).catch(() => []),
+                    apiDataManager.getDataAsArray('categorias', []).catch(() => []),
+                ]);
+                const produtosFiltrados = (Array.isArray(produtosCache) ? produtosCache : []).filter(p => isProdutoAtivo(p));
+                setProdutos(produtosFiltrados);
+                setClientes(Array.isArray(clientesCache) ? clientesCache : []);
+                setProductColors(Array.isArray(coresCache) ? coresCache : []);
+                setProductSizes(Array.isArray(tamanhosCache) ? tamanhosCache : []);
+                setCategorias(Array.isArray(categoriasCache) ? categoriasCache : []);
+            } catch (e) {
+                console.warn('Cache PDV:', e);
             } finally {
                 setIsLoading(false);
             }
         };
-        
-        loadData();
-    }, [vendedorAtualProp, toast]);
+
+        const fetchFromApiInBackground = async () => {
+            try {
+                const produtosResponse = await produtoService.getAll('?per_page=1000');
+                const produtosData = produtosResponse.data?.data?.data || produtosResponse.data?.data || produtosResponse.data || [];
+                const produtosArray = Array.isArray(produtosData) ? produtosData : [];
+                await apiDataManager.setItem('produtos', JSON.stringify(produtosArray));
+                setProdutos(produtosArray.filter(p => isProdutoAtivo(p)));
+            } catch (apiError) {
+                if (apiError?.response?.status !== 404) console.warn('Produtos API:', apiError?.response?.status || apiError.message);
+            }
+            try {
+                const clientesResponse = await clienteService.getAll();
+                const clientesData = clientesResponse.data?.data?.data || clientesResponse.data?.data || clientesResponse.data || clientesResponse || [];
+                if (Array.isArray(clientesData)) {
+                    await apiDataManager.setItem('clientes', JSON.stringify(clientesData));
+                    setClientes(clientesData);
+                }
+            } catch (apiError) {
+                if (apiError?.response?.status !== 404) console.warn('Clientes API:', apiError?.response?.status || apiError.message);
+            }
+            try {
+                const coresResponse = await corService.getAll();
+                const coresData = coresResponse.data?.data?.data || coresResponse.data?.data || coresResponse.data || [];
+                if (Array.isArray(coresData)) {
+                    await apiDataManager.setItem('productColors', JSON.stringify(coresData));
+                    setProductColors(coresData);
+                }
+            } catch (apiError) {
+                if (apiError?.response?.status !== 404) console.warn('Cores API:', apiError?.response?.status || apiError.message);
+            }
+            try {
+                const tamanhosResponse = await tamanhoService.getAll();
+                const tamanhosData = tamanhosResponse.data?.data?.data || tamanhosResponse.data?.data || tamanhosResponse.data || [];
+                if (Array.isArray(tamanhosData)) {
+                    await apiDataManager.setItem('productSizes', JSON.stringify(tamanhosData));
+                    setProductSizes(tamanhosData);
+                }
+            } catch (apiError) {
+                if (apiError?.response?.status !== 404) console.warn('Tamanhos API:', apiError?.response?.status || apiError.message);
+            }
+            try {
+                const categoriasResponse = await categoriaService.getAll();
+                const categoriasData = categoriasResponse.data?.data?.data || categoriasResponse.data?.data || categoriasResponse.data || [];
+                if (Array.isArray(categoriasData)) {
+                    await apiDataManager.setItem('categorias', JSON.stringify(categoriasData));
+                    setCategorias(categoriasData);
+                }
+            } catch (apiError) {
+                if (apiError?.response?.status !== 404) console.warn('Categorias API:', apiError?.response?.status || apiError.message);
+            }
+        };
+
+        (async () => {
+            await loadFromCacheOnly();
+            if (typeof requestIdleCallback !== 'undefined') {
+                requestIdleCallback(() => fetchFromApiInBackground(), { timeout: 3000 });
+            } else {
+                setTimeout(fetchFromApiInBackground, 1500);
+            }
+        })();
+
+        const loadFuncionarios = async () => {
+            try {
+                const funcionariosData = await apiDataManager.getData('funcionarios', []);
+                if (Array.isArray(funcionariosData)) {
+                    setFuncionarios(funcionariosData);
+                } else {
+                    setFuncionarios([{ id: 'func1', nome: 'MASTER', cargo: 'Gerente', comissao: 5, login: 'MASTER', senha: '5CAS', permite_receber_comissao: true, salarioBase: '3000.00', vales: [], faltas: [], permite_desconto_consumo_interno: true, status: 'Ativo' }]);
+                }
+            } catch (error) {
+                setFuncionarios([{ id: 'func1', nome: 'MASTER', cargo: 'Gerente', comissao: 5, login: 'MASTER', senha: '5CAS', permite_receber_comissao: true, salarioBase: '3000.00', vales: [], faltas: [], permite_desconto_consumo_interno: true, status: 'Ativo' }]);
+            }
+        };
+        loadFuncionarios();
+    }, [vendedorAtualProp]);
 
   useEffect(() => {
     calcularTotais();

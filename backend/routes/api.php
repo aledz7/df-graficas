@@ -453,12 +453,12 @@ Route::middleware(['api.auth'])->group(function () {
     // Máquinas
     Route::apiResource('maquinas', \App\Http\Controllers\Api\MaquinaController::class);
     
-    // Ordens de Serviço - Rotas específicas devem vir ANTES do apiResource
+    // Ordens de Serviço - Rotas literais ANTES do apiResource para não serem capturadas por {id}
     Route::get('ordens-servico/proximo-numero', [OrdemServicoController::class, 'getProximoNumero']);
+    Route::get('ordens-servico/em-producao', [OrdemServicoController::class, 'emProducao']);
+    Route::get('ordens-servico/a-serem-entregues', [OrdemServicoController::class, 'aSeremEntregues']);
 
     Route::prefix('ordens-servico')->group(function () {
-        Route::get('em-producao', [OrdemServicoController::class, 'emProducao']);
-        Route::get('a-serem-entregues', [OrdemServicoController::class, 'aSeremEntregues']);
         Route::get('entregues', [OrdemServicoController::class, 'entregues']);
         Route::put('{id}/status-producao', [OrdemServicoController::class, 'updateStatusProducao']);
         Route::post('{id}/anexos', [OrdemServicoController::class, 'uploadAnexos']);

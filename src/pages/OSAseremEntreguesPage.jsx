@@ -60,29 +60,14 @@ const OSAseremEntreguesPage = ({ logoUrl, nomeEmpresa }) => {
         }) : response.data;
         setTodasOS(osOrdenadas);
       } catch (apiError) {
-        console.error("Erro na API, usando dados locais:", apiError);
-        
-        // Fallback para dados locais
-        const todasOSSalvas = await apiDataManager.getDataAsArray('ordens_servico_salvas');
-        
-        const osParaEntregar = todasOSSalvas
-          .filter(os => {
-            // CRÍTICO: Excluir orçamentos - apenas OS finalizadas devem aparecer para entrega
-            const isOrcamento = os.status_os === 'Orçamento Salvo' || os.status_os === 'Orçamento Salvo (Editado)';
-            if (isOrcamento) return false;
-            
-            // Filtrar por status de produção "Pronto para Entrega" ou "Aguardando Entrega"
-            return os.dados_producao?.status_producao === 'Pronto para Entrega' || 
-                   os.dados_producao?.status_producao === 'Aguardando Entrega';
-          })
-          .sort((a, b) => {
-            // Ordenar pela data de finalização da OS (data_finalizacao_os) - mais recente primeiro
-            // Se não tiver data_finalizacao_os, usa data_criacao como fallback
-            const dateA = a.data_finalizacao_os ? new Date(a.data_finalizacao_os) : (a.data_criacao ? new Date(a.data_criacao) : new Date(0));
-            const dateB = b.data_finalizacao_os ? new Date(b.data_finalizacao_os) : (b.data_criacao ? new Date(b.data_criacao) : new Date(0));
-            return dateB - dateA;
-          });
-        setTodasOS(osParaEntregar);
+        setTodasOS([]);
+        toast({
+          title: 'Erro ao carregar',
+          description: apiError?.response?.status === 404
+            ? 'Rota da API não encontrada. Verifique a configuração do backend.'
+            : 'Não foi possível carregar as ordens de serviço da API.',
+          variant: 'destructive'
+        });
       }
     } catch (e) {
       console.error('Erro ao carregar OS:', e);

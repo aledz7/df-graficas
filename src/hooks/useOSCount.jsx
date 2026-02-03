@@ -1,78 +1,30 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { osService } from '@/services/api';
-import { apiDataManager } from '@/lib/apiDataManager';
 
+/**
+ * Contagem de OS "a serem entregues" para o badge no sidebar.
+ * Não chama a API em background para evitar 404 repetidos e requisições desnecessárias.
+ * A contagem é atualizada apenas quando refreshCount() é chamado explicitamente (ex.: ao sair da página de entregas).
+ */
 export const useOSCount = () => {
   const [count, setCount] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const fetchOSCount = useCallback(async () => {
+  const refreshCount = useCallback(async () => {
     try {
       setIsLoading(true);
-      
-      // Tentar usar a API primeiro
-      try {
-        const response = await osService.getASeremEntregues();
-        const osList = response.data || [];
-        setCount(osList.length);
-      } catch (apiError) {
-        console.error("Erro na API, usando dados locais:", apiError);
-        
-        // Fallback para dados locais
-        const todasOSSalvas = await apiDataManager.getDataAsArray('ordens_servico_salvas');
-        
-        const osParaEntregar = todasOSSalvas.filter(
-          os => os.dados_producao?.status_producao === 'Pronto para Entrega'
-        );
-        
-        setCount(osParaEntregar.length);
-      }
+      const response = await osService.getASeremEntregues();
+      const osList = response.data || [];
+      setCount(Array.isArray(osList) ? osList.length : 0);
     } catch (error) {
-      console.error('Erro ao buscar contagem de OS:', error);
+      if (error?.response?.status !== 404) {
+        console.error('Erro ao buscar contagem de OS a serem entregues:', error);
+      }
       setCount(0);
     } finally {
       setIsLoading(false);
     }
   }, []);
-
-  useEffect(() => {
-    // Carregar dados de forma lazy - aguardar página carregar primeiro
-    // Isso evita bloquear o carregamento inicial da página
-    const loadDataLazy = () => {
-      // Usar requestIdleCallback se disponível, senão usar setTimeout
-      if (window.requestIdleCallback) {
-        requestIdleCallback(() => {
-          fetchOSCount();
-        }, { timeout: 2000 });
-      } else {
-        setTimeout(() => {
-          fetchOSCount();
-        }, 2000);
-      }
-    };
-    
-    loadDataLazy();
-    
-    // Recarregar quando a janela ganha foco (para capturar mudanças de outras abas)
-    const handleFocus = () => {
-      fetchOSCount();
-    };
-    
-    window.addEventListener('focus', handleFocus);
-    
-    // Recarregar a cada 30 segundos para manter sincronizado
-    const interval = setInterval(fetchOSCount, 30000);
-    
-    return () => {
-      window.removeEventListener('focus', handleFocus);
-      clearInterval(interval);
-    };
-  }, [fetchOSCount]);
-
-  // Função para atualizar a contagem manualmente (útil quando sabemos que algo mudou)
-  const refreshCount = useCallback(() => {
-    fetchOSCount();
-  }, [fetchOSCount]);
 
   return {
     count,

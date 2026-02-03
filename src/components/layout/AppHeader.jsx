@@ -5,7 +5,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import ThemeToggle from '@/components/ThemeToggle';
 import AgendaAlerts from '@/components/dashboard/AgendaAlerts';
 import NotificationSystem from '@/components/NotificationSystem';
-import { Upload, Menu, User, LogOut, Settings, Bell } from 'lucide-react';
+import { Upload, Menu, User, LogOut, Settings, Bell, Bug } from 'lucide-react';
+
+const WHATSAPP_ERRO_URL = 'https://wa.me/556192109773?text=' + encodeURIComponent('Olá! Encontrei um erro no sistema e gostaria de reportar:\n\n');
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -80,6 +82,19 @@ const AppHeader = ({
             </span>
           )}
         </Button>
+
+        {/* Botão Informar Erro - abre WhatsApp */}
+        <Button
+          variant="ghost"
+          size="icon"
+          asChild
+          title="Informar Erro"
+        >
+          <a href={WHATSAPP_ERRO_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center">
+            <Bug className="h-5 w-5" />
+            <span className="sr-only">Informar Erro</span>
+          </a>
+        </Button>
         
         {/* Botão de Logout - Sempre Visível */}
         <Button 
@@ -121,6 +136,12 @@ const AppHeader = ({
             <DropdownMenuItem onClick={() => navigate('/configuracoes')} className="text-primary">
               <Settings className="mr-2 h-4 w-4" />
               <span>Configurações</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <a href={WHATSAPP_ERRO_URL} target="_blank" rel="noopener noreferrer" className="flex items-center cursor-pointer">
+                <Bug className="mr-2 h-4 w-4" />
+                <span>Informar Erro</span>
+              </a>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={logout} className="text-red-600 focus:text-red-600">

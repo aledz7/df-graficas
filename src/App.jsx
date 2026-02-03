@@ -158,21 +158,10 @@ function AppContent() {
       // O backend já retorna apenas os produtos com estoque baixo, então só precisamos contar
       setProdutosComEstoqueBaixo(response.data.length);
     } catch (error) {
-      console.error('Erro ao verificar produtos com estoque baixo:', error);
-      // Em caso de falha, definir como 0 para não mostrar notificações incorretas
-      // Não bloquear a aplicação por causa deste erro
       setProdutosComEstoqueBaixo(0);
-      
-      // Se for erro de autenticação, não tentar novamente
-      if (error.response?.status === 401 || error.response?.status === 403) {
-        console.log('Usuário não autenticado ou sem permissão para verificar estoque baixo');
-        return;
+      if (error.response?.status !== 404) {
+        console.error('Erro ao verificar produtos com estoque baixo:', error);
       }
-      
-      // Para outros erros, tentar novamente em 30 segundos
-      setTimeout(() => {
-        fetchProdutosComEstoqueBaixo();
-      }, 30000);
     }
   }, [isAuthenticated, token]);
 

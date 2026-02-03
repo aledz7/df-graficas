@@ -68,95 +68,17 @@ const OSEmProducaoPage = () => {
         setTodasOS(osParaProducao);
         
       } catch (apiError) {
-        console.error("Erro na API, usando dados locais:", apiError);
-        
-        // Debug: verificar se é erro de autenticação
-        if (apiError.response?.status === 401) {
+        if (apiError?.response?.status === 401) {
           console.error('Erro 401 - Token inválido ou expirado');
-          console.error('Headers da requisição:', apiError.config?.headers);
         }
-        
-        // Fallback para dados locais
-        const todasOSSalvas = safeJsonParse(await apiDataManager.getItem('ordens_servico_salvas'), []);
-        
-        // Garantir que todasOSSalvas seja sempre um array
-        const osArray = Array.isArray(todasOSSalvas) ? todasOSSalvas : [];
-        
-        // Filtrar OS que devem aparecer na produção
-        // EXCLUIR OS que estão "Pronto para Entrega" ou "Entregue"
-        const osParaProducao = osArray
-          .filter(os => {
-            // Verificar primeiro o status_producao nos dados_producao
-            const statusProducao = os.dados_producao?.status_producao;
-            const isOrcamento = os.status_os === 'Orçamento Salvo' || os.status_os === 'Orçamento Salvo (Editado)';
-            
-            // Se tem status de produção, usar ele
-            if (statusProducao) {
-              return statusProducao !== 'Pronto para Entrega' && 
-                     statusProducao !== 'Entregue' && 
-                     statusProducao !== 'entregue' && 
-                     !isOrcamento;
-            }
-            
-            // Se não tem status de produção, usar o status_os
-            const statusValidos = [
-              'Finalizada', 
-              'Em Produção', 
-              'Aguardando Produção',
-              'Aguardando Aprovação Cliente',
-              'Em Revisão'
-            ];
-            return statusValidos.includes(os.status_os) && os.status_os !== 'Entregue' && os.status_os !== 'entregue';
-          })
-          .map(os => {
-            // Criar dados_producao se não existir
-            const dadosProducao = os.dados_producao || {
-              prazo_estimado: '',
-              status_producao: os.status_os === 'Finalizada' ? 'Concluído' : 'Em Produção',
-              fotos_producao: [],
-              observacoes_internas: '',
-            };
-            
-            // Transferir automaticamente data_prevista_entrega para prazo_estimado se necessário
-            if (!dadosProducao.prazo_estimado && os.data_prevista_entrega) {
-              dadosProducao.prazo_estimado = os.data_prevista_entrega;
-              console.log('Transferindo data_prevista_entrega para prazo_estimado (local):', {
-                os_id: os.id_os,
-                data_prevista_entrega: os.data_prevista_entrega,
-                prazo_estimado: dadosProducao.prazo_estimado
-              });
-            }
-            
-            return {
-              ...os,
-              dados_producao: dadosProducao
-            };
-          })
-          .sort((a, b) => new Date(b.data_criacao || 0) - new Date(a.data_criacao || 0));
-        
-        
-        
-        // Manter apenas OS em produção (normalizando textos)
-        const somenteEmProducao = osParaProducao.filter(os => {
-          const statusProducao = (os?.dados_producao?.status_producao ?? '').toString().trim().toLowerCase();
-          const statusOS = (os?.status_os ?? '').toString().trim().toLowerCase();
-          
-          // Excluir OS entregues
-          if (statusProducao === 'entregue' || statusOS === 'entregue') {
-            return false;
-          }
-          
-          return statusProducao === 'em produção' || (!statusProducao && statusOS === 'em produção');
+        setTodasOS([]);
+        toast({
+          title: 'Erro ao carregar',
+          description: apiError?.response?.status === 404
+            ? 'Rota da API não encontrada. Verifique a configuração do backend.'
+            : 'Não foi possível carregar as ordens de serviço da API.',
+          variant: 'destructive'
         });
-        // Aplicar busca local por Nº OS ou Cliente, se houver termo
-        const lower = (searchTerm || '').toLowerCase();
-        const filtradas = lower
-          ? somenteEmProducao.filter(os =>
-              String(os.id_os || '').toLowerCase().includes(lower) ||
-              String(os.cliente?.nome || os.cliente?.nome_completo || os.cliente_info?.nome || '').toLowerCase().includes(lower)
-            )
-          : somenteEmProducao;
-        setTodasOS(filtradas);
       }
     } catch (error) {
       console.error('Erro geral ao carregar OS:', error);

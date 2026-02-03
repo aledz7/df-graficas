@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Tenant;
+use App\Models\Empresa;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
@@ -13,6 +14,40 @@ use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
+    /**
+     * Permissões completas para o dono da empresa nova (cadastro = empresa nova).
+     * Chaves devem coincidir com as usadas no frontend (usePermissions e routePermissions do Sidebar).
+     */
+    protected static function getAllPermissions(): array
+    {
+        return [
+            'acessar_dashboard' => true,
+            'acessar_agenda' => true,
+            'acessar_pdv' => true,
+            'acessar_marketplace' => true,
+            'acessar_calculadora' => true,
+            'acessar_os' => true,
+            'acessar_envelopamento' => true,
+            'acessar_feed' => true,
+            'acessar_entrada_estoque' => true,
+            'acessar_financeiro' => true,
+            'gerenciar_produtos' => true,
+            'gerenciar_clientes' => true,
+            'gerenciar_fornecedores' => true,
+            'gerenciar_funcionarios' => true,
+            'gerenciar_caixa' => true,
+            'gerenciar_lixeira' => true,
+            'ver_relatorios' => true,
+            'ver_auditoria' => true,
+            'config_sistema' => true,
+            'config_aparencia' => true,
+            'config_empresa' => true,
+            'config_precos_env' => true,
+            'config_acabamentos_os' => true,
+            'gerar_etiquetas' => true,
+        ];
+    }
+
     public function register(Request $request)
     {
         $validatedData = $request->validate([
@@ -20,29 +55,51 @@ class AuthController extends Controller
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8|confirmed',
         ]);
-        
-        // Verificar se existe um tenant, se não, criar um tenant padrão
-        $tenant = Tenant::first();
-        if (!$tenant) {
-            // Desativar temporariamente os eventos do modelo para evitar o erro com o campo 'dominio'
-            $tenant = new Tenant();
-            $tenant->nome = 'Nome da sua Empresa';
-            $tenant->razao_social = 'Nome da sua Empresa Ltda';
-            $tenant->email = 'contato@empresa.com';
-            $tenant->telefone = '(00) 0000-0000';
-            $tenant->ativo = true;
-            $tenant->tema = 'light';
-            $tenant->plano = 'gratuito';
-            $tenant->limite_usuarios = 1;
-            $tenant->limite_armazenamento_mb = 100;
-            $tenant->saveQuietly(); // Salva sem disparar eventos
-        }
+
+        // Cadastro é de uma EMPRESA NOVA: criar novo tenant e empresa com dados zerados
+        $tenant = new Tenant();
+        $tenant->nome = $validatedData['name'];
+        $tenant->razao_social = $validatedData['name'];
+        $tenant->email = $validatedData['email'];
+        $tenant->telefone = null;
+        $tenant->celular = null;
+        $tenant->ativo = true;
+        $tenant->tema = 'light';
+        $tenant->plano = 'gratuito';
+        $tenant->limite_usuarios = 1;
+        $tenant->limite_armazenamento_mb = 100;
+        $tenant->saveQuietly();
 
         $user = User::create([
             'name' => $validatedData['name'],
             'email' => $validatedData['email'],
             'password' => Hash::make($validatedData['password']),
-            'tenant_id' => $tenant->id, // Usando o ID do tenant existente ou recém-criado
+            'tenant_id' => $tenant->id,
+            'is_admin' => false,
+            'ativo' => true,
+            'permissions' => self::getAllPermissions(),
+        ]);
+
+        // Criar registro na tabela empresas (dados zerados) para este tenant
+        Empresa::withoutTenant()->create([
+            'tenant_id' => $tenant->id,
+            'nome_fantasia' => $validatedData['name'],
+            'razao_social' => $validatedData['name'],
+            'cnpj' => null,
+            'inscricao_estadual' => null,
+            'inscricao_municipal' => null,
+            'email' => $validatedData['email'],
+            'telefone' => null,
+            'whatsapp' => null,
+            'endereco_completo' => null,
+            'instagram' => null,
+            'site' => null,
+            'logo_url' => null,
+            'nome_sistema' => 'Sistema Gráficas',
+            'mensagem_rodape' => 'Obrigado pela preferência!',
+            'senha_supervisor' => null,
+            'termos_servico' => 'Termos de serviço padrão da empresa...',
+            'politica_privacidade' => 'Política de privacidade padrão da empresa...',
         ]);
 
         $token = $user->createToken('auth_token')->plainTextToken;
