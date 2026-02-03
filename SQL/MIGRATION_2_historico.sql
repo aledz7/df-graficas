@@ -1,0 +1,21 @@
+CREATE TABLE IF NOT EXISTS `historico_fechamento_mes` (
+  `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `tenant_id` bigint(20) UNSIGNED NOT NULL,
+  `tipo` enum('fechamento','abertura','reabertura') NOT NULL DEFAULT 'fechamento',
+  `mes` int(11) NOT NULL,
+  `ano` int(11) NOT NULL,
+  `data_acao` timestamp NOT NULL,
+  `usuario_id` bigint(20) UNSIGNED DEFAULT NULL,
+  `automatico` tinyint(1) NOT NULL DEFAULT 0,
+  `quantidade_holerites` int(11) NOT NULL DEFAULT 0,
+  `observacoes` text DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `historico_fechamento_mes_tenant_id_index` (`tenant_id`),
+  KEY `historico_fechamento_mes_tipo_index` (`tipo`),
+  KEY `historico_fechamento_mes_mes_index` (`mes`,`ano`),
+  KEY `historico_fechamento_mes_data_acao_index` (`data_acao`),
+  CONSTRAINT `historico_fechamento_mes_tenant_id_foreign` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `historico_fechamento_mes_usuario_id_foreign` FOREIGN KEY (`usuario_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

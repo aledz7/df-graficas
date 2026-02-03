@@ -1,0 +1,22 @@
+RewriteEngine On
+
+# Teste do .htaccess
+RewriteRule ^test-htaccess$ test-htaccess.php [L]
+
+# Teste da API
+RewriteRule ^test-api$ test-api.php [L]
+
+# Teste da rota de login
+RewriteRule ^test-login$ test-login.php [L]
+
+# Verificar usuários no banco
+RewriteRule ^check-users$ check-users.php [L]
+
+# Redirecionar requisições da API para a API simulada (temporário)
+RewriteCond %{REQUEST_URI} ^/api/
+RewriteRule ^api/(.*)$ api-test.php [L]
+
+# Para todas as outras requisições, servir o frontend
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ dist/index.html [L] 

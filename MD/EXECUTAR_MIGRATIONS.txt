@@ -1,0 +1,62 @@
+================================================================================
+COMO EXECUTAR AS MIGRATIONS NO BANCO ONLINE
+================================================================================
+
+IMPORTANTE: Execute os arquivos SQL NA ORDEM ABAIXO, um por vez!
+
+--------------------------------------------------------------------------------
+ORDEM DE EXECUÇÃO:
+--------------------------------------------------------------------------------
+
+1. MIGRATION_1_configuracao.sql
+   - Cria a tabela de configuração de fechamento de mês
+
+2. MIGRATION_2_historico.sql
+   - Cria a tabela de histórico de fechamentos
+
+3. MIGRATION_3_consumo_interno.sql
+   - Adiciona a coluna total_consumo_interno na tabela holerites
+
+4. MIGRATION_4_dados_iniciais.sql
+   - Insere configurações padrão para cada tenant
+
+--------------------------------------------------------------------------------
+COMO EXECUTAR NO PHPMYADMIN:
+--------------------------------------------------------------------------------
+
+1. Acesse o phpMyAdmin do seu banco online
+2. Selecione o banco de dados do seu projeto
+3. Clique na aba "SQL" no topo
+4. Abra o arquivo MIGRATION_1_configuracao.sql
+5. Copie todo o conteúdo
+6. Cole na área de texto do phpMyAdmin
+7. Clique em "Executar" ou "Go"
+8. Repita os passos 4-7 para cada arquivo, NA ORDEM
+
+--------------------------------------------------------------------------------
+SE DER ERRO "Duplicate column" na MIGRATION 3:
+--------------------------------------------------------------------------------
+
+Isso significa que a coluna já existe. Pode ignorar esse erro e continuar.
+
+--------------------------------------------------------------------------------
+VERIFICAÇÃO:
+--------------------------------------------------------------------------------
+
+Após executar todos os scripts, execute este SQL para verificar:
+
+SHOW TABLES LIKE '%fechamento%';
+
+Você deve ver 2 tabelas:
+- configuracao_fechamento_mes
+- historico_fechamento_mes
+
+Para verificar a coluna em holerites:
+
+DESCRIBE holerites;
+
+Você deve ver a coluna 'total_consumo_interno' na lista.
+
+================================================================================
+FIM
+================================================================================

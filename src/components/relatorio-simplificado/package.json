@@ -1,0 +1,6 @@
+{
+  "name": "@components/relatorio-simplificado",
+  "private": true,
+  "version": "0.0.0",
+  "main": "./RelatorioSimplificado.jsx"
+}

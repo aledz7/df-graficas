@@ -1,0 +1,47 @@
+# Configuração adicional para corrigir problemas de cache e MIME type
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    
+    # Forçar limpeza de cache para arquivos de build
+    RewriteCond %{REQUEST_URI} \.(js|css)$
+    RewriteRule ^(.*)$ - [E=no-cache:1]
+</IfModule>
+
+<IfModule mod_headers.c>
+    # Configurações específicas para arquivos JavaScript
+    <FilesMatch "\.js$">
+        Header always set Content-Type "application/javascript; charset=utf-8"
+        Header always set Cache-Control "no-cache, no-store, must-revalidate"
+        Header always set Pragma "no-cache"
+        Header always set Expires "0"
+        Header always unset X-Content-Type-Options
+    </FilesMatch>
+    
+    # Configurações específicas para arquivos CSS
+    <FilesMatch "\.css$">
+        Header always set Content-Type "text/css; charset=utf-8"
+        Header always set Cache-Control "no-cache, no-store, must-revalidate"
+        Header always set Pragma "no-cache"
+        Header always set Expires "0"
+    </FilesMatch>
+    
+    # Configurações para arquivos de módulos ES6
+    <FilesMatch "\.mjs$">
+        Header always set Content-Type "application/javascript; charset=utf-8"
+        Header always set Cache-Control "no-cache, no-store, must-revalidate"
+        Header always set Pragma "no-cache"
+        Header always set Expires "0"
+    </FilesMatch>
+</IfModule>
+
+# Configurações de MIME type adicionais
+<IfModule mod_mime.c>
+    # Garantir que arquivos .js sejam servidos como JavaScript
+    AddType application/javascript .js
+    AddType application/javascript .mjs
+    AddType text/css .css
+    
+    # Remover configurações conflitantes
+    RemoveType .js
+    AddType application/javascript .js
+</IfModule>
