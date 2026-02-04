@@ -132,6 +132,15 @@ const VendasFeed = ({ showValues = true, title = "Feed de Vendas", defaultDateTo
         return statusVariants[status] || 'secondary';
     };
 
+    const handleAbrirVenda = (item) => {
+        if (!item?.rawId) return;
+        if (item.type === 'PDV') {
+            navigate(`/pdv/recibo/${item.rawId}`);
+        } else if (item.type === 'Marketplace') {
+            navigate('/marketplace/vendas', { state: { highlightVendaId: item.rawId } });
+        }
+    };
+
     const handleExportPdf = () => {
         const doc = new jsPDF();
         
