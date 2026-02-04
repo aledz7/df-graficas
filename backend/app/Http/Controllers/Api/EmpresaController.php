@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class EmpresaController extends BaseController
 {
@@ -67,6 +68,12 @@ class EmpresaController extends BaseController
     public function update(Request $request): JsonResponse
     {
         try {
+            $mensagens = [
+                'nome_fantasia.required' => 'O nome fantasia é obrigatório.',
+                'email.email' => 'Informe um e-mail válido.',
+                'site.url' => 'O campo Site deve ser uma URL válida. Informe o endereço completo começando com http:// ou https:// (ex: https://www.suaempresa.com.br).',
+            ];
+
             $dados = $request->validate([
                 'nome_fantasia' => 'required|string|max:255',
                 'razao_social' => 'nullable|string|max:255',
@@ -85,7 +92,7 @@ class EmpresaController extends BaseController
                 'senha_supervisor' => 'nullable|string|max:255',
                 'termos_servico' => 'nullable|string',
                 'politica_privacidade' => 'nullable|string',
-            ]);
+            ], $mensagens);
 
             // Buscar ou criar a empresa atual
             $empresa = Empresa::firstOrCreate(
@@ -101,6 +108,14 @@ class EmpresaController extends BaseController
             $empresa->update($dados);
 
             return $this->success($empresa, 'Dados da empresa atualizados com sucesso');
+        } catch (ValidationException $e) {
+            $errors = $e->errors();
+            $mensagem = 'Não foi possível salvar. ';
+            foreach ($errors as $campo => $msgs) {
+                $mensagem .= is_array($msgs) ? implode(' ', $msgs) : $msgs;
+                break;
+            }
+            return $this->error($mensagem);
         } catch (\Exception $e) {
             return $this->error('Erro ao atualizar dados da empresa: ' . $e->getMessage());
         }

@@ -347,9 +347,12 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen }) => {
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
-        <div className="flex items-center gap-2 justify-center p-4 border-b h-16">
-          {logoUrl && <img src={getImageUrlEmpresa(logoUrl)} alt="Logo" className="h-8 w-auto object-contain" />}
-          <h1 className="text-lg font-bold text-primary truncate">{nomeSistema}</h1>
+        <div className="flex items-center justify-center p-4 border-b h-16">
+          {logoUrl ? (
+            <img src={getImageUrlEmpresa(logoUrl)} alt="Logo" className="h-8 w-auto object-contain max-w-full" />
+          ) : (
+            <h1 className="text-lg font-bold text-primary truncate text-center">{nomeSistema}</h1>
+          )}
         </div>
         <ScrollArea className="flex-1">
           <nav className="p-4 space-y-2 flex flex-col h-full">

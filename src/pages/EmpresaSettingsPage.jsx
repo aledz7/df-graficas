@@ -219,9 +219,10 @@ const EmpresaSettingsPage = ({ logoUrl: appLogoUrl, setAppLogoUrl, setAppNomeEmp
       });
     } catch (error) {
       console.error('Erro ao salvar dados da empresa:', error);
+      const mensagem = error.response?.data?.message ?? error.message ?? 'Não foi possível salvar as configurações no servidor. Tente novamente.';
       toast({
         title: 'Erro ao Salvar',
-        description: 'Não foi possível salvar as configurações no servidor. Tente novamente.',
+        description: mensagem,
         variant: 'destructive',
       });
     }
@@ -335,8 +336,9 @@ const EmpresaSettingsPage = ({ logoUrl: appLogoUrl, setAppLogoUrl, setAppNomeEmp
                   <Label htmlFor="site" className="text-md font-medium">Site</Label>
                   <div className="relative">
                     <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                    <Input id="site" name="site" value={settings.site} onChange={handleInputChange} placeholder="www.suaempresa.com" className="pl-10"/>
+                    <Input id="site" name="site" value={settings.site} onChange={handleInputChange} placeholder="https://www.suaempresa.com.br" className="pl-10"/>
                   </div>
+                  <p className="text-xs text-muted-foreground">Obrigatório incluir <strong>http://</strong> ou <strong>https://</strong> no início da URL.</p>
                 </div>
               </div>
             </TabsContent>
