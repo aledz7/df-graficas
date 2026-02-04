@@ -109,6 +109,11 @@ class ClienteController extends ResourceController
         // Garantir que o tenant_id seja definido
         $data['tenant_id'] = auth()->user()->tenant_id;
 
+        // Manter coluna nome em sincronia com nome_completo
+        if (array_key_exists('nome_completo', $data)) {
+            $data['nome'] = $data['nome_completo'];
+        }
+
         // Limpar CPF/CNPJ (remover caracteres especiais) apenas se existir e não for vazio
         $cpfCnpj = $request->input('cpf_cnpj');
         if ($cpfCnpj !== null && trim($cpfCnpj) !== '') {
@@ -171,6 +176,11 @@ class ClienteController extends ResourceController
         }
 
         $data = $request->all();
+
+        // Manter coluna nome em sincronia com nome_completo (o front envia apenas nome_completo)
+        if (array_key_exists('nome_completo', $data)) {
+            $data['nome'] = $data['nome_completo'];
+        }
 
         // Limpar CPF/CNPJ se fornecido e não vazio
         if (isset($data['cpf_cnpj']) && !empty(trim($data['cpf_cnpj']))) {
