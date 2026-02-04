@@ -21,7 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'funcionario' => \App\Http\Middleware\SetFuncionarioFromUser::class,
             'ensure.admin' => \App\Http\Middleware\EnsureAdmin::class,
         ]);
-        
+
         // Apply tenant middleware to all API routes
         $middleware->appendToGroup('api', \App\Http\Middleware\SetTenantFromUser::class);
         
