@@ -171,7 +171,7 @@ export const useOSLifecycleHandlers = (
     }
   };
 
-  const handleConfirmarPagamentoOS = async (pagamentosRecebidos, dadosPontos = null) => {
+  const handleConfirmarPagamentoOS = async (pagamentosRecebidos, dadosPontos = null, opcoes = {}) => {
     console.log('🔍 OS - Iniciando finalização:', {
       id_os: ordemServico.id_os,
       status_os: ordemServico.status_os,
@@ -201,11 +201,11 @@ export const useOSLifecycleHandlers = (
     }
 
     const totalPago = pagamentosRecebidos.reduce((acc, p) => acc + safeParseFloat(p.valorFinal || p.valor), 0);
+    const pagamentoTotal = totalPago >= totalCalculadoOS - 0.009;
+    const evoluirParaProducao = pagamentoTotal ? true : (opcoes.evoluirParaProducao ?? true);
 
-    if (totalPago < totalCalculadoOS && Math.abs(totalCalculadoOS - totalPago) > 0.009) {
-        toast({ title: "Pagamento Incompleto", description: `Valor pago (R$ ${totalPago.toFixed(2)}) é menor que o total da OS (R$ ${totalCalculadoOS.toFixed(2)}).`, variant: "destructive" });
-        return;
-    }
+    // Permite pagamento parcial: não bloqueia mais quando totalPago < totalCalculadoOS
+    // O backend criará conta a receber para o saldo pendente.
     
     setIsSaving(true);
     try {
@@ -232,7 +232,7 @@ export const useOSLifecycleHandlers = (
       const osFinalizada = {
         ...ordemServico,
         status_os: 'Finalizada',
-        status_pagamento: 'Pago',
+        status_pagamento: pagamentoTotal ? 'Pago' : 'Parcial',
         data_finalizacao_os: formatDateForBackend(),
         data_ultima_modificacao: formatDateForBackend(),
         pagamentos: pagamentosRecebidos.map(p => ({
@@ -247,6 +247,8 @@ export const useOSLifecycleHandlers = (
         desconto_terceirizado_percentual: String(safeParseFloat(ordemServico.desconto_terceirizado_percentual, 0)),
         desconto_geral_tipo: ordemServico.desconto_geral_tipo || 'percentual',
         desconto_geral_valor: String(safeParseFloat(ordemServico.desconto_geral_valor, 0)),
+        // Pagamento parcial: informar ao backend se deve evoluir para produção
+        evoluir_para_producao: evoluirParaProducao,
         // Campos de consumo de material (se houver)
         tipo_origem: tipoOrigem,
         dados_consumo_material: dadosConsumoMaterial,
@@ -354,8 +356,8 @@ export const useOSLifecycleHandlers = (
         console.error('Erro ao atualizar pontos do cliente na finalização da OS:', e);
       }
 
-      // Mover automaticamente para produção após finalizar (apenas se a OS foi salva com sucesso e tem ID)
-      if (osSalva && osSalva.id_os && (osSalva.id || osSalva.id_os !== 'Novo')) {
+      // Mover para produção apenas se evoluirParaProducao for true (100% pago sempre move; parcial só se usuário escolheu)
+      if (evoluirParaProducao && osSalva && osSalva.id_os && (osSalva.id || osSalva.id_os !== 'Novo')) {
         try {
           await osService.updateStatusProducao(osSalva.id_os, {
             status_producao: 'Em Produção'
@@ -365,13 +367,16 @@ export const useOSLifecycleHandlers = (
           console.warn('⚠️ Erro ao mover OS para produção automaticamente:', productionError);
           // Não interromper o fluxo por causa deste erro
         }
+      } else if (!evoluirParaProducao) {
+        console.log('ℹ️ Pagamento parcial: OS não foi movida para produção (usuário optou por não evoluir).');
       } else {
         console.warn('⚠️ OS não foi salva com sucesso ou não tem ID válido, pulando movimento para produção');
       }
 
+      const textoProducao = evoluirParaProducao ? "\n\n✅ OS movida automaticamente para produção." : (pagamentoTotal ? "" : "\n\nℹ️ OS não foi movida para produção (pagamento parcial).");
       toast({ 
-        title: "OS Finalizada!", 
-        description: mensagemFinal + "\n\n✅ OS movida automaticamente para produção.",
+        title: pagamentoTotal ? "OS Finalizada!" : "Pagamento parcial registrado!", 
+        description: mensagemFinal + textoProducao,
         duration: 6000
       });
       

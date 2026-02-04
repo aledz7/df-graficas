@@ -790,6 +790,28 @@ const OSHistoricoPage = ({ vendedorAtual }) => {
     }
   };
 
+  const getPagamentoCell = (os) => {
+    const status = os.status_os;
+    if (status !== 'Finalizada' && status !== 'Entregue') {
+      return <span className="text-gray-400 text-sm">—</span>;
+    }
+    const valorTotal = parseFloat(os.valor_total_os) || 0;
+    const pagamentos = os.pagamentos || [];
+    const totalPago = Array.isArray(pagamentos)
+      ? pagamentos.reduce((acc, p) => acc + (parseFloat(p.valorFinal ?? p.valor) || 0), 0)
+      : 0;
+    const faltando = Math.max(0, valorTotal - totalPago);
+    if (faltando <= 0.01) {
+      return <Badge variant="success" className="bg-green-500 hover:bg-green-600"><CheckCircle2 className="mr-1 h-3 w-3" /> Pago</Badge>;
+    }
+    return (
+      <Badge variant="destructive" className="bg-amber-600 hover:bg-amber-700">
+        <AlertTriangle className="mr-1 h-3 w-3" />
+        Falta concluir (R$ {faltando.toFixed(2)})
+      </Badge>
+    );
+  };
+
   const handleEditOS = (os) => {
     // Usar id_os se existir, senão usar id
     const osId = os.id_os || os.id;
@@ -1067,6 +1089,9 @@ const OSHistoricoPage = ({ vendedorAtual }) => {
                       <div className="flex flex-col gap-1 items-end">
                         {getStatusBadge(os.status_os, os.data_validade)}
                         {getStatusProducaoBadge(os.dados_producao?.status_producao, os.status_os)}
+                        {(os.status_os === 'Finalizada' || os.status_os === 'Entregue') && (
+                          <div className="mt-1">{getPagamentoCell(os)}</div>
+                        )}
                       </div>
                     </div>
 
@@ -1214,6 +1239,7 @@ const OSHistoricoPage = ({ vendedorAtual }) => {
                 <TableHead>Total</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Status Produção</TableHead>
+                <TableHead>Pagamento</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
@@ -1246,6 +1272,7 @@ const OSHistoricoPage = ({ vendedorAtual }) => {
                     <TableCell>R$ {(parseFloat(os.valor_total_os) || 0).toFixed(2)}</TableCell>
                     <TableCell>{getStatusBadge(os.status_os, os.data_validade)}</TableCell>
                     <TableCell>{getStatusProducaoBadge(os.dados_producao?.status_producao, os.status_os)}</TableCell>
+                    <TableCell>{getPagamentoCell(os)}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end space-x-1">
                         {(() => {

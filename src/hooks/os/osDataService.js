@@ -515,16 +515,16 @@ export const saveOSToAPI = async (osData, options = {}) => {
       vendedor_nome: cleanValue(osData.vendedor_nome || null),
       observacoes: cleanValue(osData.observacoes || null),
       // Para OS finalizadas, garantir que observacoes_gerais_os não seja null (pode ser string vazia)
-      observacoes_gerais_os: cleanValue((() => {
+      observacoes_gerais_os: (() => {
         if (osData.observacoes_gerais_os !== null && osData.observacoes_gerais_os !== undefined) {
-          return osData.observacoes_gerais_os;
+          return String(osData.observacoes_gerais_os);
         }
-        // Se for OS finalizada, retornar string vazia ao invés de null
+        // Backend exige string: para OS finalizada usar string vazia
         if (osData.status_os === 'Finalizada' || osData.status_os === 'Entregue') {
           return '';
         }
-        return null;
-      })()),
+        return '';
+      })(),
 
       desconto_terceirizado_percentual: parseFloat(sanitizeNumericValue(osData.desconto_terceirizado_percentual)) || 0,
       desconto_geral_tipo: cleanValue(osData.desconto_geral_tipo || 'percentual'),
@@ -535,13 +535,14 @@ export const saveOSToAPI = async (osData, options = {}) => {
       data_validade: cleanValue(osData.data_validade || null),
       // Campos de consumo de material
       tipo_origem: cleanValue(osData.tipo_origem || null),
-      dados_consumo_material: cleanValue(osData.dados_consumo_material || null)
+      dados_consumo_material: cleanValue(osData.dados_consumo_material || null),
+      evoluir_para_producao: osData.evoluir_para_producao
     };
     
-    // FILTRAR: Remover campos que NÃO estão no fillable do modelo
+    // FILTRAR: Remover campos que NÃO estão no fillable do modelo (manter itens e evoluir_para_producao)
     // Isso evita erros de "Column not found" no banco
     const camposEnviados = Object.keys(dataToSend);
-    const camposParaRemover = camposEnviados.filter(campo => !camposPermitidosOS.includes(campo) && campo !== 'itens');
+    const camposParaRemover = camposEnviados.filter(campo => !camposPermitidosOS.includes(campo) && campo !== 'itens' && campo !== 'evoluir_para_producao');
     
     if (camposParaRemover.length > 0) {
       console.warn('⚠️ [saveOSToAPI] Removendo campos que não existem no banco:', camposParaRemover);

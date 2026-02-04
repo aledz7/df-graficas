@@ -4,8 +4,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Trash2, PlusCircle, AlertTriangle, CreditCard, Smartphone, Coins, Landmark, Tag, CheckCircle2, Calendar, QrCode, Star, Gift, Info } from 'lucide-react';
+import { Trash2, PlusCircle, AlertTriangle, CreditCard, Smartphone, Coins, Landmark, Tag, CheckCircle2, Calendar, QrCode, Star, Gift, Info, Package } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { formatCurrency, safeJsonParse } from '@/lib/utils';
 import { contaBancariaService, vendaService, clienteService } from '@/services/api';
@@ -17,7 +18,7 @@ import { getImageUrl } from '@/lib/imageUtils';
 import { generatePixPayload } from '@/lib/pixGenerator';
 import { apiDataManager } from '@/lib/apiDataManager';
 
-const OSPagamentoModal = ({ open, onOpenChange, totalOS, totaisOS, onConfirmPagamento, osId, clienteId, vendedorAtual }) => {
+const OSPagamentoModal = ({ open, onOpenChange, totalOS, totaisOS, onConfirmPagamento, osId, clienteId, vendedorAtual, pagamentosExistentes }) => {
   const { toast } = useToast();
   
   const [pagamentosAdicionados, setPagamentosAdicionados] = useState([]);
@@ -64,6 +65,8 @@ const OSPagamentoModal = ({ open, onOpenChange, totalOS, totaisOS, onConfirmPaga
   const [historicoVendas, setHistoricoVendas] = useState([]);
   const [pontosAcumuladosAutomaticamente, setPontosAcumuladosAutomaticamente] = useState(0);
   const [descontoPontosAplicado, setDescontoPontosAplicado] = useState(0);
+  // Pagamento parcial: opção de evoluir para produção (só aparece quando há valor restante)
+  const [evoluirParaProducao, setEvoluirParaProducao] = useState(true);
 
   const calcularTotalPago = useCallback(() => {
     return pagamentosAdicionados.reduce((acc, p) => acc + parseFloat(p.valorFinal || p.valor || 0), 0);
@@ -242,6 +245,17 @@ const OSPagamentoModal = ({ open, onOpenChange, totalOS, totaisOS, onConfirmPaga
       }
     }
   }, [open, clienteId, totalOS]);
+
+  // Carregar pagamentos já registrados (ex.: OS finalizada com pagamento parcial reaberta para complementar)
+  useEffect(() => {
+    if (open && pagamentosExistentes && Array.isArray(pagamentosExistentes) && pagamentosExistentes.length > 0) {
+      setPagamentosAdicionados(pagamentosExistentes.map(p => ({
+        ...p,
+        valorFinal: p.valorFinal ?? p.valor,
+        valorOriginal: p.valorOriginal ?? p.valor,
+      })));
+    }
+  }, [open, pagamentosExistentes]);
 
   useEffect(() => {
     if (contasBancarias.length > 0) {
@@ -891,10 +905,8 @@ const OSPagamentoModal = ({ open, onOpenChange, totalOS, totaisOS, onConfirmPaga
     }
     
     const isCrediarioPresente = pagamentosAdicionados.some(p => p.metodo === 'Crediário');
-    if (restante > 0.009 && !isCrediarioPresente) { 
-        toast({ title: "Valor Pendente", description: `Ainda falta pagar ${formatCurrency(restante)}. Adicione mais pagamentos ou use Crediário.`, variant: "destructive" });
-        return;
-    }
+    // Permite pagamento parcial: não exige mais 100% ou Crediário; apenas exige pelo menos um pagamento
+    // (o restante será registrado como conta a receber no backend quando parcial)
     
     // Verificar se há pagamentos com Crediário e se o cliente está selecionado
     // Permitir clientes avulsos (IDs que começam com 'avulso-')
@@ -914,9 +926,11 @@ const OSPagamentoModal = ({ open, onOpenChange, totalOS, totaisOS, onConfirmPaga
       isPrimeiraVenda
     };
     
+    const pagamentoParcial = restante > 0.009 && !isCrediarioPresente;
+      const opcoes = { evoluirParaProducao: pagamentoParcial ? evoluirParaProducao : true };
     try {
       setIsFinalizandoPagamento(true);
-      const resultado = await onConfirmPagamento(pagamentosAdicionados, dadosPontos);
+      const resultado = await onConfirmPagamento(pagamentosAdicionados, dadosPontos, opcoes);
 
       if (resultado) {
         setPagamentosAdicionados([]);
@@ -938,7 +952,7 @@ const OSPagamentoModal = ({ open, onOpenChange, totalOS, totaisOS, onConfirmPaga
   const isConfirmButtonDisabled = () => {
     if (totalOS === 0) return false; // Se o total é zero, pode finalizar
     if (pagamentosAdicionados.length === 0) return true; // Se tem total e nenhum pagamento, desabilita
-    if (restante > 0.009 && !pagamentosAdicionados.some(p => p.metodo === 'Crediário')) return true; // Se tem restante e não é crediário, desabilita
+    // Permite pagamento parcial: não exige mais 100% ou Crediário
     
     // Para Crediário, verificar se tem cliente (incluindo clientes avulsos)
     const isCrediarioPresente = pagamentosAdicionados.some(p => p.metodo === 'Crediário');
@@ -978,6 +992,7 @@ const OSPagamentoModal = ({ open, onOpenChange, totalOS, totaisOS, onConfirmPaga
           setHistoricoVendas([]);
           setPontosAcumuladosAutomaticamente(0);
           setDescontoPontosAplicado(0);
+          setEvoluirParaProducao(true);
           setIsFinalizandoPagamento(false);
         }
         onOpenChange(isOpen);
@@ -1415,10 +1430,31 @@ const OSPagamentoModal = ({ open, onOpenChange, totalOS, totaisOS, onConfirmPaga
         </div>
         
         {restante > 0.009 && !pagamentosAdicionados.some(p => p.metodo === 'Crediário') && (
+            <>
             <div className="mt-2 p-3 border border-orange-400 bg-orange-50 dark:bg-orange-900/30 rounded-md text-sm text-orange-700 dark:text-orange-300 flex items-center">
                 <AlertTriangle size={20} className="mr-2 flex-shrink-0"/>
-                <span>O valor total dos pagamentos ainda não cobre o total do pedido. Adicione mais pagamentos ou use Crediário.</span>
+                <span>O valor total dos pagamentos ainda não cobre o total do pedido. Uma conta a receber será criada para o saldo restante de {formatCurrency(restante)}.</span>
             </div>
+            <div className="mt-3 p-3 border border-blue-400 bg-blue-50 dark:bg-blue-900/30 rounded-md">
+              <div className="flex items-center space-x-3">
+                <Checkbox 
+                  id="evoluirProducao"
+                  checked={evoluirParaProducao}
+                  onCheckedChange={(checked) => setEvoluirParaProducao(checked)}
+                />
+                <label 
+                  htmlFor="evoluirProducao" 
+                  className="flex items-center cursor-pointer text-sm text-blue-800 dark:text-blue-200"
+                >
+                  <Package size={18} className="mr-2" />
+                  Evoluir esta O.S para produção agora?
+                </label>
+              </div>
+              <p className="mt-2 text-xs text-blue-600 dark:text-blue-300 ml-6">
+                Se desmarcado, a O.S ficará como "Aguardando" até o pagamento ser concluído ou você avançar manualmente.
+              </p>
+            </div>
+            </>
         )}
 
         {metodoPagamento === 'Crediário' && (
@@ -1498,7 +1534,7 @@ const OSPagamentoModal = ({ open, onOpenChange, totalOS, totaisOS, onConfirmPaga
             disabled={isConfirmButtonDisabled() || isFinalizandoPagamento}
           >
             <CheckCircle2 size={18} className="mr-2"/>
-            {isFinalizandoPagamento ? 'Processando...' : 'Confirmar Pagamento e Finalizar'}
+            {isFinalizandoPagamento ? 'Processando...' : (restante > 0.009 && !pagamentosAdicionados.some(p => p.metodo === 'Crediário') ? 'Registrar pagamento parcial' : 'Confirmar Pagamento e Finalizar')}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -81,7 +81,7 @@ const FuncionarioDadosPessoais = ({ formData, setFormData }) => {
                     </div>
                     <div>
                         <Label htmlFor="data_nascimento">Data de Nascimento</Label>
-                        <Input id="data_nascimento" name="data_nascimento" type="date" value={formData.data_nascimento} onChange={handleInputChange} />
+                        <Input id="data_nascimento" name="data_nascimento" type="date" value={formData.data_nascimento || ""} onChange={handleInputChange} />
                     </div>
                      <div>
                         <Label htmlFor="cpf">CPF</Label>

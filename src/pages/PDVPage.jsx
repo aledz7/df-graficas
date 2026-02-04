@@ -428,36 +428,7 @@ const PDVPage = ({ vendedorAtual }) => {
             
             if (doc) {
                 console.log('✅ VENDA FINALIZADA COM SUCESSO:', doc.id);
-                
-                // Se foi uma edição de pré-venda, remover a pré-venda original
-                console.log('🔍 DEBUG REMOÇÃO PRÉ-VENDA:', {
-                    isEdicaoPreVenda,
-                    preVendaId,
-                    tipo: typeof preVendaId
-                });
-                
-                if (isEdicaoPreVenda && preVendaId) {
-                    try {
-                        console.log('🗑️ REMOVENDO PRÉ-VENDA ORIGINAL:', preVendaId);
-                        const response = await api.delete(`/api/vendas/${preVendaId}`);
-                        console.log('✅ Pré-venda removida com sucesso:', response.status);
-                    } catch (error) {
-                        console.error('❌ Erro ao remover pré-venda:', error);
-                        // Não interromper o fluxo por erro na remoção
-                        toast({
-                            title: "Aviso",
-                            description: "Venda finalizada, mas houve problema ao remover a pré-venda original.",
-                            variant: "default",
-                            duration: 3000,
-                        });
-                    }
-                } else {
-                    console.log('⚠️ NÃO REMOVENDO PRÉ-VENDA:', {
-                        isEdicaoPreVenda,
-                        preVendaId,
-                        motivo: !isEdicaoPreVenda ? 'não é edição' : 'sem preVendaId'
-                    });
-                }
+                // Pré-venda do catálogo: o registro foi atualizado no lugar (não criado outro), não é necessário deletar
                 
                 setIsPagamentoModalOpen(false);
                 limparCarrinhoEState();

@@ -341,9 +341,11 @@ const OrdensServicoPage = ({ vendedorAtual }) => {
                 totalOS={totaisOS().totalGeral}
                 totaisOS={totaisOS()}
                 onConfirmPagamento={handleConfirmarPagamentoOS}
+                osId={ordemServico?.id_os || ordemServico?.id}
                 clienteId={clienteSelecionado?.id}
                 vendedorAtual={vendedorAtual}
                 isSaving={isSaving}
+                pagamentosExistentes={ordemServico?.pagamentos}
             />
             {isDocumentModalOpen && ordemServico && (
                 <OSDocumentModal

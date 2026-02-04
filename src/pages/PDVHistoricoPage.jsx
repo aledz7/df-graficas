@@ -39,6 +39,7 @@ const PDVHistoricoPage = ({ logoUrl, nomeEmpresa, vendedorAtual }) => {
   const reciboRef = useRef(null);
   const [documentoToDelete, setDocumentoToDelete] = useState(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const lastFilteredDocumentosRef = useRef([]);
   const [dateRange, setDateRange] = useState({ from: startOfToday(), to: startOfToday() });
   const [empresaSettings, setEmpresaSettings] = useState({});
   const [produtos, setProdutos] = useState([]);
@@ -133,7 +134,8 @@ const PDVHistoricoPage = ({ logoUrl, nomeEmpresa, vendedorAtual }) => {
       setDocumentos(todosDocumentos);
     } catch (error) {
       console.error('Erro ao carregar documentos:', error);
-      setDocumentos([]);
+      // Não zerar a lista em caso de erro: evita que a tela "some" após exclusão ou falha de rede
+      // setDocumentos(prev => prev);
     }
   }, []);
 
@@ -170,14 +172,14 @@ const PDVHistoricoPage = ({ logoUrl, nomeEmpresa, vendedorAtual }) => {
     }
   }, [documentos, location.state?.openVendaId]);
 
-    // Recarregar documentos quando a página ganha foco (usuário volta de outra página)
+    // Recarregar documentos quando o usuário volta para a aba (visibilitychange), não no focus.
+    // O focus dispara ao clicar no botão de excluir (antes do click handler), causando GET /api/vendas à toa.
     useEffect(() => {
-        const handleFocus = () => {
-            loadDocumentos();
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') loadDocumentos();
         };
-        
-        window.addEventListener('focus', handleFocus);
-        return () => window.removeEventListener('focus', handleFocus);
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
     }, [loadDocumentos]);
 
   useEffect(() => {
@@ -230,8 +232,13 @@ const PDVHistoricoPage = ({ logoUrl, nomeEmpresa, vendedorAtual }) => {
         });
     }
     setFilteredDocumentos(results);
+    if (Array.isArray(results) && results.length > 0) lastFilteredDocumentosRef.current = results;
   }, [searchTerm, documentos, dateRange]);
-  
+
+  // Enquanto o modal de exclusão estiver aberto, não mostrar lista vazia: usar última lista conhecida
+  const documentosParaExibir = (isDeleteModalOpen && (Array.isArray(filteredDocumentos) ? filteredDocumentos : []).length === 0 && lastFilteredDocumentosRef.current.length > 0)
+    ? lastFilteredDocumentosRef.current
+    : (Array.isArray(filteredDocumentos) ? filteredDocumentos : []);
 
   const handleDeleteDocumento = (doc) => {
     if (doc && typeof doc === 'object') {
@@ -304,6 +311,11 @@ const PDVHistoricoPage = ({ logoUrl, nomeEmpresa, vendedorAtual }) => {
           // Mover para lixeira e atualizar no backend
           await moverParaLixeiraPDV(docCompleto, justificativa, vendedorAtual, null);
           
+          // Remover o documento da lista local imediatamente para a UI atualizar sem depender do reload
+          const idRemover = documentoToDelete.id;
+          const tipoRemover = documentoToDelete.tipo;
+          setDocumentos(prev => (Array.isArray(prev) ? prev : []).filter(doc => !(doc.id === idRemover && doc.tipo === tipoRemover)));
+          
           // Forçar atualização dos produtos no cache para refletir o estoque atualizado
           try {
             const produtosResponse = await produtoService.getAll('?per_page=1000');
@@ -315,7 +327,8 @@ const PDVHistoricoPage = ({ logoUrl, nomeEmpresa, vendedorAtual }) => {
             console.error('❌ Erro ao atualizar cache de produtos:', error);
           }
           
-          await loadDocumentos();
+          // Sincronizar lista com a API em background (não bloqueia a UI já atualizada)
+          loadDocumentos().catch(err => console.error('Erro ao recarregar lista após exclusão:', err));
           toast({ title: 'Documento Movido para Lixeira', description: `O documento ${documentoToDelete.id ? String(documentoToDelete.id).slice(-6) : 'N/A'} foi movido e o estoque foi atualizado.` });
         } catch (error) {
           console.error('Erro ao mover documento para lixeira:', error);
@@ -1056,8 +1069,8 @@ const PDVHistoricoPage = ({ logoUrl, nomeEmpresa, vendedorAtual }) => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {(Array.isArray(filteredDocumentos) ? filteredDocumentos : []).length > 0 ? (
-                (Array.isArray(filteredDocumentos) ? filteredDocumentos : []).map((doc) => (
+              {documentosParaExibir.length > 0 ? (
+                documentosParaExibir.map((doc) => (
                   <TableRow key={doc.id + doc.tipo} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                                                 <TableCell className="font-medium">{doc.id ? String(doc.id).slice(-6) : 'N/A'}</TableCell>
                     {/* <TableCell>

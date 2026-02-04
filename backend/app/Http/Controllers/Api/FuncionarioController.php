@@ -89,7 +89,7 @@ class FuncionarioController extends BaseController
     public function index(Request $request)
     {
         try {
-            $query = User::query();
+            $query = User::where('tenant_id', auth()->user()->tenant_id);
 
             // Filtros
             if ($request->has('search') && $request->search) {
@@ -144,6 +144,16 @@ class FuncionarioController extends BaseController
             DB::beginTransaction();
 
             $data = $request->all();
+
+            // Sempre criar no tenant do usuário logado
+            $data['tenant_id'] = auth()->user()->tenant_id;
+
+            // Normalizar data_nascimento (string vazia -> null para gravar corretamente)
+            if (array_key_exists('data_nascimento', $data)) {
+                $data['data_nascimento'] = $data['data_nascimento'] === '' || $data['data_nascimento'] === null
+                    ? null
+                    : $data['data_nascimento'];
+            }
             
             // Aplicar tema padrão 'light' caso não informado
             if (!isset($data['theme']) || empty($data['theme'])) {
@@ -197,7 +207,7 @@ class FuncionarioController extends BaseController
     public function show($id)
     {
         try {
-            $funcionario = User::findOrFail($id);
+            $funcionario = User::where('tenant_id', auth()->user()->tenant_id)->findOrFail($id);
             return $this->success($funcionario);
         } catch (\Exception $e) {
             return $this->error('Funcionário não encontrado');
@@ -221,8 +231,15 @@ class FuncionarioController extends BaseController
         try {
             DB::beginTransaction();
 
-            $funcionario = User::findOrFail($id);
+            $funcionario = User::where('tenant_id', auth()->user()->tenant_id)->findOrFail($id);
             $data = $request->all();
+
+            // Normalizar data_nascimento (string vazia -> null para gravar corretamente)
+            if (array_key_exists('data_nascimento', $data)) {
+                $data['data_nascimento'] = $data['data_nascimento'] === '' || $data['data_nascimento'] === null
+                    ? null
+                    : $data['data_nascimento'];
+            }
             
             // Não armazenar senha em texto puro no campo 'senha'
             if (isset($data['senha'])) {
@@ -301,7 +318,7 @@ class FuncionarioController extends BaseController
         try {
             DB::beginTransaction();
             
-            $funcionario = User::findOrFail($id);
+            $funcionario = User::where('tenant_id', auth()->user()->tenant_id)->findOrFail($id);
             $funcionario->delete();
 
             DB::commit();
@@ -328,7 +345,7 @@ class FuncionarioController extends BaseController
         }
 
         try {
-            $funcionario = User::findOrFail($id);
+            $funcionario = User::where('tenant_id', auth()->user()->tenant_id)->findOrFail($id);
             $funcionario->addVale(
                 $request->data,
                 $request->valor,
@@ -357,7 +374,7 @@ class FuncionarioController extends BaseController
         }
 
         try {
-            $funcionario = User::findOrFail($id);
+            $funcionario = User::where('tenant_id', auth()->user()->tenant_id)->findOrFail($id);
             $funcionario->addFalta(
                 $request->data,
                 $request->valorDesconto,
@@ -384,7 +401,7 @@ class FuncionarioController extends BaseController
         }
 
         try {
-            $funcionario = User::findOrFail($id);
+            $funcionario = User::where('tenant_id', auth()->user()->tenant_id)->findOrFail($id);
             $vales = is_array($funcionario->vales) ? $funcionario->vales : [];
             
             $vales = array_filter($vales, function ($vale) use ($request) {
@@ -414,7 +431,7 @@ class FuncionarioController extends BaseController
         }
 
         try {
-            $funcionario = User::findOrFail($id);
+            $funcionario = User::where('tenant_id', auth()->user()->tenant_id)->findOrFail($id);
             $faltas = is_array($funcionario->faltas) ? $funcionario->faltas : [];
             
             $faltas = array_filter($faltas, function ($falta) use ($request) {
@@ -436,7 +453,10 @@ class FuncionarioController extends BaseController
     public function ativos()
     {
         try {
-            $funcionarios = User::where('status', true)->orderBy('name')->get();
+            $funcionarios = User::where('tenant_id', auth()->user()->tenant_id)
+                ->where('status', true)
+                ->orderBy('name')
+                ->get();
             return $this->success($funcionarios);
         } catch (\Exception $e) {
             return $this->error('Erro ao buscar funcionários ativos: ' . $e->getMessage());
@@ -457,7 +477,8 @@ class FuncionarioController extends BaseController
         }
 
         try {
-            $funcionarios = User::where('cargo', $request->cargo)
+            $funcionarios = User::where('tenant_id', auth()->user()->tenant_id)
+                ->where('cargo', $request->cargo)
                 ->where('status', true)
                 ->orderBy('name')
                 ->get();
@@ -474,7 +495,8 @@ class FuncionarioController extends BaseController
     public function comComissao()
     {
         try {
-            $funcionarios = User::where('permite_receber_comissao', true)
+            $funcionarios = User::where('tenant_id', auth()->user()->tenant_id)
+                ->where('permite_receber_comissao', true)
                 ->where('status', true)
                 ->orderBy('name')
                 ->get();
@@ -1472,7 +1494,7 @@ class FuncionarioController extends BaseController
     public function hasCredentials($id)
     {
         try {
-            $funcionario = User::findOrFail($id);
+            $funcionario = User::where('tenant_id', auth()->user()->tenant_id)->findOrFail($id);
             
             return $this->success([
                 'has_credentials' => true, // Agora sempre tem credenciais
@@ -1491,7 +1513,7 @@ class FuncionarioController extends BaseController
     public function resetPassword($id)
     {
         try {
-            $funcionario = User::findOrFail($id);
+            $funcionario = User::where('tenant_id', auth()->user()->tenant_id)->findOrFail($id);
             
             // Gerar nova senha aleatória
             $newPassword = Str::random(8);
@@ -1530,7 +1552,7 @@ class FuncionarioController extends BaseController
                 ], 422);
             }
 
-            $funcionario = User::findOrFail($id);
+            $funcionario = User::where('tenant_id', auth()->user()->tenant_id)->findOrFail($id);
             
             // Normalizar data em formato YYYY-MM-DD
             try {
@@ -1618,7 +1640,7 @@ class FuncionarioController extends BaseController
 
             // Se não encontrou no histórico, buscar o salário atual
             if (!$salario) {
-                $funcionario = User::findOrFail($id);
+                $funcionario = User::where('tenant_id', auth()->user()->tenant_id)->findOrFail($id);
                 $salario = (object) [
                     'novo_salario' => $funcionario->salario_base ?? 0
                 ];
@@ -1667,7 +1689,7 @@ class FuncionarioController extends BaseController
 
             $mes = $request->input('mes') ?? $request->mes;
             $ano = $request->input('ano') ?? $request->ano;
-            $funcionarioUser = User::findOrFail($funcionario);
+            $funcionarioUser = User::where('tenant_id', auth()->user()->tenant_id)->findOrFail($funcionario);
             
             // Buscar o funcionário na tabela funcionarios pelo user_id
             $funcionarioModel = \App\Models\Funcionario::where('user_id', $funcionario)
@@ -2497,7 +2519,7 @@ class FuncionarioController extends BaseController
 
         // Se não encontrou no histórico, buscar o salário atual
         if (!$salario) {
-            $funcionario = User::findOrFail($funcionarioId);
+            $funcionario = User::where('tenant_id', auth()->user()->tenant_id)->findOrFail($funcionarioId);
             return $funcionario->salario_base ?? 0;
         }
 

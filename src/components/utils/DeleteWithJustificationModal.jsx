@@ -69,7 +69,7 @@ const DeleteWithJustificationModal = ({
     };
 
     return (
-        <Dialog open={isOpen} onOpenChange={onClose}>
+        <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
                     <DialogTitle className="flex items-center">
@@ -80,7 +80,7 @@ const DeleteWithJustificationModal = ({
                         {description || 'Esta ação é irreversível. Tem certeza que deseja prosseguir?'}
                     </DialogDescription>
                 </DialogHeader>
-                <div className="grid gap-4 py-4">
+                <form onSubmit={handleConfirm} className="grid gap-4 py-4">
                     {!isLixeiraAction && (
                         <div className="space-y-1">
                             <Label htmlFor="justificativa_exclusao">Justificativa <span className="text-red-500">*</span></Label>
@@ -108,6 +108,7 @@ const DeleteWithJustificationModal = ({
                                   onChange={(e) => setPassword(e.target.value)}
                                   placeholder={isLixeiraAction ? "Digite a senha master" : "Digite sua senha ou a senha master"}
                                   className="pl-10"
+                                  autoComplete="current-password"
                                 />
                                 <Button
                                     type="button"
@@ -121,17 +122,17 @@ const DeleteWithJustificationModal = ({
                             </div>
                         </div>
                     )}
-                </div>
-                <DialogFooter>
-                    <Button variant="outline" onClick={onClose}>Cancelar</Button>
-                    <Button 
-                        variant="destructive" 
-                        onClick={handleConfirm} 
-                        disabled={(!isLixeiraAction && !justificativa.trim()) || (requirePassword && !password.trim())}
-                    >
-                        Confirmar
-                    </Button>
-                </DialogFooter>
+                    <DialogFooter>
+                        <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
+                        <Button 
+                            type="submit"
+                            variant="destructive" 
+                            disabled={(!isLixeiraAction && !justificativa.trim()) || (requirePassword && !password.trim())}
+                        >
+                            Confirmar
+                        </Button>
+                    </DialogFooter>
+                </form>
             </DialogContent>
         </Dialog>
     );

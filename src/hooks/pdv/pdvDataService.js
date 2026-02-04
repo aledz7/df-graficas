@@ -27,13 +27,11 @@ export const salvarDocumentoPDV = async (documento, tipoDocumento, vendasSalvas,
         }
       }
 
-      // Para pré-vendas, sempre criar uma nova venda (não atualizar)
-      // A pré-venda original será removida posteriormente no PDVPage.jsx
-      console.log('🆕 CRIANDO NOVA VENDA (mesmo sendo edição de pré-venda):', {
-        isEdicao: documento.isEdicao,
-        preVendaId: documento.preVendaId,
-        motivo: 'Pré-vendas devem ser convertidas em novas vendas, não atualizadas'
-      });
+      // Se for conversão de pré-venda (catálogo), atualizar o registro existente para evitar duplicação
+      const isConversaoPreVenda = documento.preVendaId && documento.preVendaId.toString && !documento.preVendaId.toString().startsWith('local-');
+      if (isConversaoPreVenda) {
+        console.log('🔄 ATUALIZANDO PRÉ-VENDA EXISTENTE (evitar duplicar):', documento.preVendaId);
+      }
       
       // Validar se há cliente selecionado
       if (!documento.cliente?.id) {
@@ -105,10 +103,10 @@ export const salvarDocumentoPDV = async (documento, tipoDocumento, vendasSalvas,
         }
       }
       
-      // Preparar dados para a API de vendas
+      // Preparar dados para a API de vendas (só incluir funcionario_id se tiver valor; null falha em exists:users,id)
       const vendaData = {
         cliente_id: clienteIdNumerico,
-        funcionario_id: funcionarioIdParaAPI,
+        ...(funcionarioIdParaAPI != null && funcionarioIdParaAPI !== '' && { funcionario_id: funcionarioIdParaAPI }),
         cliente_nome: documento.cliente.nome || '',
         cliente_cpf_cnpj: documento.cliente.cpf_cnpj || '',
         cliente_telefone: documento.cliente.telefone || '',
@@ -170,8 +168,15 @@ export const salvarDocumentoPDV = async (documento, tipoDocumento, vendasSalvas,
         valor_total: vendaData.valor_total
       });
 
-      // Salvar na API de vendas
-      const response = await vendaService.create(vendaData);
+      // Salvar na API: se for conversão de pré-venda, atualizar o registro existente; senão criar novo
+      let response;
+      if (isConversaoPreVenda) {
+        response = await vendaService.update(documento.preVendaId, vendaData);
+        documento.venda_id = documento.preVendaId;
+        documento.id = documento.preVendaId;
+      } else {
+        response = await vendaService.create(vendaData);
+      }
       
       // Atualizar o documento com o ID da venda retornado pela API
       // A resposta do BaseController tem estrutura: { success: true, message: "...", data: {...} }
@@ -179,7 +184,8 @@ export const salvarDocumentoPDV = async (documento, tipoDocumento, vendasSalvas,
       if (vendaDataResponse && vendaDataResponse.id) {
         documento.venda_id = vendaDataResponse.id;
         documento.codigo_venda = vendaDataResponse.codigo;
-        console.log('✅ Venda salva na API com ID:', vendaDataResponse.id, 'Código:', vendaDataResponse.codigo);
+        if (!isConversaoPreVenda) documento.id = vendaDataResponse.id;
+        console.log(isConversaoPreVenda ? '✅ Pré-venda atualizada na API (mesmo ID):' : '✅ Venda salva na API com ID:', vendaDataResponse.id, 'Código:', vendaDataResponse.codigo);
       }
 
       // Registrar lançamentos de fluxo de caixa

@@ -824,6 +824,7 @@ class OrdemServicoController extends Controller
             'data_prevista_entrega' => 'nullable|date',
             'maquina_impressao_id' => 'nullable|integer',
             'observacoes_gerais_os' => 'nullable|string',
+            'evoluir_para_producao' => 'nullable|boolean',
         ];
         
         $messages = [
@@ -834,11 +835,11 @@ class OrdemServicoController extends Controller
             'observacoes_gerais_os.required' => 'As Observações Gerais da OS são obrigatórias.',
         ];
         
-        // Se não for um orçamento, tornar campos obrigatórios
+        // Se não for um orçamento, data e máquina e observacoes_gerais_os aceitam null (usa valor existente da OS)
         if ($request->status_os && !in_array($request->status_os, ['Orçamento Salvo', 'Orçamento Salvo (Editado)'])) {
-            $rules['data_prevista_entrega'] = 'required|date';
-            $rules['maquina_impressao_id'] = 'required|integer';
-            $rules['observacoes_gerais_os'] = 'required|string';
+            $rules['data_prevista_entrega'] = 'nullable|date';
+            $rules['maquina_impressao_id'] = 'nullable|integer';
+            $rules['observacoes_gerais_os'] = 'nullable|string';
         }
         
         $validator = Validator::make($request->all(), $rules, $messages);
@@ -938,13 +939,14 @@ class OrdemServicoController extends Controller
         if ($request->status_os && in_array($request->status_os, ['Finalizada', 'Entregue'])) {
             $os->vendedor_id = $user->id;
             $os->vendedor_nome = $user->name;
-            // Garantir que dados_producao exista e marque como Em Produção quando ainda não definido
+            // Garantir que dados_producao exista; respeitar evoluir_para_producao (pagamento parcial)
             $dadosProducao = $os->dados_producao ?: [];
             if (!is_array($dadosProducao)) {
                 $dadosProducao = [];
             }
+            $evoluirParaProducao = $request->boolean('evoluir_para_producao', true);
             if (!isset($dadosProducao['status_producao']) || $dadosProducao['status_producao'] === null) {
-                $dadosProducao['status_producao'] = 'Em Produção';
+                $dadosProducao['status_producao'] = $evoluirParaProducao ? 'Em Produção' : 'Aguardando';
             }
             if (!isset($dadosProducao['prazo_estimado'])) {
                 // Transferir automaticamente a data_prevista_entrega para prazo_estimado se disponível
@@ -1984,10 +1986,45 @@ class OrdemServicoController extends Controller
             });
 
             if ($pagamentosCrediario->isEmpty()) {
-                \Log::info("Nenhum pagamento com Crediário encontrado para esta OS", [
-                    'os_id' => $os->id,
-                    'pagamentos' => $pagamentos
-                ]);
+                // Pagamento parcial (sem Crediário): criar conta a receber para o saldo pendente
+                $valorTotalOS = floatval($os->valor_total_os);
+                $totalPago = 0;
+                foreach ($pagamentos as $pagamento) {
+                    $totalPago += floatval($pagamento['valorFinal'] ?? $pagamento['valor'] ?? 0);
+                }
+                $valorPendente = $valorTotalOS - $totalPago;
+                if ($valorPendente > 0.009 && $os->cliente_id) {
+                    $dataVencimento = now()->addDays(30);
+                    if ($os->data_finalizacao_os) {
+                        $dataVencimento = \Carbon\Carbon::parse($os->data_finalizacao_os)->addDays(30);
+                    }
+                    $observacoesCompletas = "OS {$os->id_os} - Saldo pendente (pagamento parcial)";
+                    if ($os->observacoes_gerais_os && trim($os->observacoes_gerais_os)) {
+                        $observacoesCompletas .= "\n\n" . $os->observacoes_gerais_os;
+                    }
+                    $dadosContaReceber = [
+                        'cliente_id' => $os->cliente_id,
+                        'os_id' => $os->id,
+                        'descricao' => "OS #{$os->id} - Saldo pendente",
+                        'valor_original' => $valorPendente,
+                        'valor_pendente' => $valorPendente,
+                        'data_vencimento' => $dataVencimento,
+                        'data_emissao' => now()->toDateString(),
+                        'status' => 'pendente',
+                        'juros_aplicados' => 0.00,
+                        'frequencia_juros' => 'unica',
+                        'total_aplicacoes_juros' => 0,
+                        'observacoes' => $observacoesCompletas,
+                        'tenant_id' => $os->tenant_id,
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ];
+                    ContaReceber::create($dadosContaReceber);
+                    \Log::info("Conta a receber criada para saldo pendente (pagamento parcial)", [
+                        'os_id' => $os->id,
+                        'valor_pendente' => $valorPendente
+                    ]);
+                }
                 return;
             }
 

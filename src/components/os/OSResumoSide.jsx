@@ -239,6 +239,12 @@ const OSResumoSide = ({
     const isEditMode = searchParams.get('edit') === 'true';
     const isStatusFinalizada = ['Finalizada', 'Entregue'].includes(ordemServico?.status_os);
 
+    // Saldo pendente para OS finalizada com pagamento parcial
+    const pagamentosOS = ordemServico?.pagamentos && Array.isArray(ordemServico.pagamentos) ? ordemServico.pagamentos : [];
+    const totalPagoOS = pagamentosOS.reduce((acc, p) => acc + (parseFloat(p.valorFinal ?? p.valor) || 0), 0);
+    const faltandoPagar = Math.max(0, totalFinalCalculado - totalPagoOS);
+    const temSaldoPendente = isStatusFinalizada && faltandoPagar > 0.01;
+
     // Validação de campos obrigatórios
     const validarCamposObrigatorios = () => {
         const camposFaltantes = [];
@@ -249,10 +255,6 @@ const OSResumoSide = ({
         
         if (!ordemServico.maquina_impressao_id) {
             camposFaltantes.push('Máquina de Impressão');
-        }
-        
-        if (!ordemServico.observacoes_gerais_os?.trim()) {
-            camposFaltantes.push('Observações Gerais da OS');
         }
         
         if (camposFaltantes.length > 0) {
@@ -521,7 +523,7 @@ const OSResumoSide = ({
                     </div>
                     <div>
                         <Label htmlFor="observacoes_gerais_os" className="flex items-center">
-                            Observações Gerais da OS <span className="text-red-500 ml-1">*</span>
+                            Observações Gerais da OS 
                         </Label>
                         <Textarea 
                             id="observacoes_gerais_os" 
@@ -530,7 +532,6 @@ const OSResumoSide = ({
                             onChange={handleInputChange} 
                             placeholder="Detalhes importantes para a produção ou cliente..." 
                             disabled={isOSFinalizada || isSaving || viewOnly}
-                            className={!ordemServico.observacoes_gerais_os?.trim() ? 'border-red-500' : ''}
                         />
                     </div>
                 </CardContent>
@@ -542,9 +543,16 @@ const OSResumoSide = ({
                 </CardHeader>
                 <CardContent className="space-y-2">
                     {isEditMode && isStatusFinalizada ? (
-                      <Button onClick={handleAtualizarComValidacao} variant="outline" className="w-full" disabled={isSaving || viewOnly}>
-                        <Save className="mr-2 h-4 w-4"/>{isSaving ? 'Atualizando...' : 'Atualizar Orçamento Finalizado'}
-                      </Button>
+                      <>
+                        {temSaldoPendente && (
+                          <Button onClick={onFinalizarOS} className="w-full bg-green-600 hover:bg-green-700" disabled={isSaving || viewOnly}>
+                            <DollarSign className="mr-2 h-4 w-4"/>{isSaving ? 'Abrindo...' : `Pagar restante (R$ ${faltandoPagar.toFixed(2)})`}
+                          </Button>
+                        )}
+                        <Button onClick={handleAtualizarComValidacao} variant="outline" className="w-full" disabled={isSaving || viewOnly}>
+                          <Save className="mr-2 h-4 w-4"/>{isSaving ? 'Atualizando...' : 'Atualizar Orçamento Finalizado'}
+                        </Button>
+                      </>
                     ) : (
                       <>
                         <Button onClick={handleSalvarComValidacao} variant="outline" className="w-full" disabled={isOSFinalizada || isSaving || viewOnly}>

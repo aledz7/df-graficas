@@ -74,7 +74,6 @@ const initialFuncionarioState = () => ({
   vales: [],
   faltas: [],
   permissions: {},
-  login: "",
   senha: "",
   is_admin: false,
 });
@@ -103,7 +102,11 @@ const FuncionarioFormModal = ({ isOpen, onClose, funcionario }) => {
               const mappedData = {
                 ...initialFuncionarioState(),
                 ...funcionarioData,
-                data_nascimento: funcionarioData.data_nascimento || "",
+                data_nascimento: funcionarioData.data_nascimento
+                  ? (String(funcionarioData.data_nascimento).includes("T")
+                      ? String(funcionarioData.data_nascimento).slice(0, 10)
+                      : funcionarioData.data_nascimento)
+                  : "",
                 emissor_rg: funcionarioData.emissor_rg || "",
                 comissao_dropshipping:
                   funcionarioData.comissao_dropshipping?.toString() || "0",
@@ -192,8 +195,6 @@ const FuncionarioFormModal = ({ isOpen, onClose, funcionario }) => {
             : {},
         // Mapear senha para password (campo esperado pelo backend)
         password: formData.senha || null,
-        // Definir tenant_id padrão (ID 1)
-        tenant_id: 1,
         // Garantir que foto_url seja incluído explicitamente
         foto_url: formData.foto_url || null,
         // Garantir tema padrão 'light' na criação

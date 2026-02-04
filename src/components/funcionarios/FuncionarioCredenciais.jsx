@@ -18,7 +18,7 @@ const FuncionarioCredenciais = ({ formData, setFormData }) => {
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const hasCredentials = formData.login || formData.senha || formData.email;
+    const hasCredentials = formData.senha || formData.email;
 
     return (
         <Card>
@@ -41,19 +41,6 @@ const FuncionarioCredenciais = ({ formData, setFormData }) => {
                     />
                     <p className="text-xs text-muted-foreground">
                         O email será usado como login no sistema. Se não informado, será gerado automaticamente.
-                    </p>
-                </div>
-                <div className="space-y-1">
-                    <Label htmlFor="login">Nome de Usuário (Opcional)</Label>
-                    <Input 
-                        id="login" 
-                        name="login" 
-                        value={formData.login || ''} 
-                        onChange={handleInputChange}
-                        placeholder="ex: joao.silva"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                        Nome de usuário personalizado. Se não informado, será gerado automaticamente.
                     </p>
                 </div>
                 <div className="space-y-1">
