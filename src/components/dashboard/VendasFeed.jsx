@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { motion } from 'framer-motion';
@@ -14,6 +15,7 @@ import { pdvService } from '@/services/pdvService';
 import api from '@/services/api';
 
 const VendasFeed = ({ showValues = true, title = "Feed de Vendas", defaultDateToday = true, onlyToday = true }) => {
+    const navigate = useNavigate();
     const [feedItems, setFeedItems] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [totalValor, setTotalValor] = useState(0);
@@ -59,29 +61,31 @@ const VendasFeed = ({ showValues = true, title = "Feed de Vendas", defaultDateTo
                     const isPreVenda = venda.pre_venda || venda.is_orcamento || venda.status === 'pre_venda' || venda.status === 'orcamento';
                     
                     return {
-                        id: `venda-${venda.id || 'unknown'}`, 
-                        type: 'PDV', 
-                        icon: ShoppingCart, 
-                        title: isPreVenda ? `Pré-Venda PDV #${venda.id || 'N/A'}` : `Venda PDV #${venda.id || 'N/A'}`, 
-                        client: venda.cliente_nome || venda.cliente?.nome || 'Consumidor Final', 
-                        value: parseFloat(venda.total || venda.valor_total || 0), 
-                        status: isPreVenda ? 'Pré-Venda' : 'Finalizado', 
-                        timestamp: parseISO(venda.data_emissao || venda.data_venda || new Date().toISOString()), 
-                        details: { itens: venda.itens, pagamentos: venda.pagamentos || venda.dados_pagamento, observacoes: venda.observacoes } 
+                        id: `venda-${venda.id || 'unknown'}`,
+                        rawId: venda.id,
+                        type: 'PDV',
+                        icon: ShoppingCart,
+                        title: isPreVenda ? `Pré-Venda PDV #${venda.id || 'N/A'}` : `Venda PDV #${venda.id || 'N/A'}`,
+                        client: venda.cliente_nome || venda.cliente?.nome || 'Consumidor Final',
+                        value: parseFloat(venda.total || venda.valor_total || 0),
+                        status: isPreVenda ? 'Pré-Venda' : 'Finalizado',
+                        timestamp: parseISO(venda.data_emissao || venda.data_venda || new Date().toISOString()),
+                        details: { itens: venda.itens, pagamentos: venda.pagamentos || venda.dados_pagamento, observacoes: venda.observacoes }
                     };
                 }));
 
                 // Processar vendas marketplace
-                allVendas.push(...vendasMarketplace.map(venda => ({ 
-                    id: `marketplace-${venda.id || 'unknown'}`, 
-                    type: 'Marketplace', 
-                    icon: Package, 
-                    title: `Venda Online #${venda.id ? String(venda.id).slice(-6) : 'N/A'}`, 
-                    client: venda.cliente_nome || 'Cliente Online', 
-                    value: parseFloat(venda.valor_total || 0), 
-                    status: venda.status_pedido || 'Status Desconhecido', 
-                    timestamp: parseISO(venda.data_venda || new Date().toISOString()), 
-                    details: { itens: venda.produtos, pagamentos: [{metodo: 'Online', valor: venda.valor_total || 0}], observacoes: venda.observacoes, rastreio: venda.codigo_rastreio } 
+                allVendas.push(...vendasMarketplace.map(venda => ({
+                    id: `marketplace-${venda.id || 'unknown'}`,
+                    rawId: venda.id,
+                    type: 'Marketplace',
+                    icon: Package,
+                    title: `Venda Online #${venda.id ? String(venda.id).slice(-6) : 'N/A'}`,
+                    client: venda.cliente_nome || 'Cliente Online',
+                    value: parseFloat(venda.valor_total || 0),
+                    status: venda.status_pedido || 'Status Desconhecido',
+                    timestamp: parseISO(venda.data_venda || new Date().toISOString()),
+                    details: { itens: venda.produtos, pagamentos: [{metodo: 'Online', valor: venda.valor_total || 0}], observacoes: venda.observacoes, rastreio: venda.codigo_rastreio }
                 })));
 
                 // Filtrar por data se especificado
@@ -177,8 +181,14 @@ const VendasFeed = ({ showValues = true, title = "Feed de Vendas", defaultDateTo
                 <ScrollArea className="h-full">
                     <div className="p-4 space-y-3">
                         {feedItems.length > 0 ? feedItems.map((item, index) => (
-                            <motion.div key={item.id} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, delay: index * 0.03 }} >
-                                <Card className="mb-4 overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200 dark:border-slate-700">
+                            <motion.div key={item.id} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, delay: index * 0.03 }}>
+                                <Card
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={() => handleAbrirVenda(item)}
+                                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleAbrirVenda(item); } }}
+                                    className="mb-4 overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200 dark:border-slate-700 cursor-pointer"
+                                >
                                     <CardHeader className="flex flex-row items-center justify-between p-3 bg-muted/30 dark:bg-slate-800/50">
                                         <div className="flex items-center gap-2">
                                             <div className="p-1.5 bg-primary/10 text-primary rounded-md">

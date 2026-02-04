@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useToast } from '@/components/ui/use-toast';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,6 +18,8 @@ import { empresaService } from '@/services/api';
 import { getApiBaseUrl } from '@/lib/apiUrlUtils';
 
 const MarketplaceHistoricoPage = ({ logoUrl: appLogoUrl, nomeEmpresa: appNomeEmpresa }) => {
+    const navigate = useNavigate();
+    const location = useLocation();
     const { toast } = useToast();
     const [vendas, setVendas] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
@@ -106,6 +109,18 @@ const MarketplaceHistoricoPage = ({ logoUrl: appLogoUrl, nomeEmpresa: appNomeEmp
         
         loadData();
     }, []);
+
+    // Abrir venda específica quando vier do Feed de Vendas (state.openVendaId)
+    useEffect(() => {
+        const openVendaId = location.state?.openVendaId;
+        if (openVendaId == null || !vendas.length) return;
+        const venda = vendas.find(v => String(v.id) === String(openVendaId));
+        if (venda) {
+            setVendaParaNotinha(venda);
+            setIsNotinhaModalOpen(true);
+            navigate(location.pathname, { replace: true, state: {} });
+        }
+    }, [vendas, location.state?.openVendaId]);
 
     const filteredVendas = useMemo(() => {
         return vendas.filter(v =>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -28,6 +28,7 @@ import { CreditCard, Smartphone } from 'lucide-react';
 
 const PDVHistoricoPage = ({ logoUrl, nomeEmpresa, vendedorAtual }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   
   const [documentos, setDocumentos] = useState([]);
@@ -147,7 +148,7 @@ const PDVHistoricoPage = ({ logoUrl, nomeEmpresa, vendedorAtual }) => {
   }, []);
 
   useEffect(() => {
-        const loadData = async () => {
+    const loadData = async () => {
     loadDocumentos();
     loadProdutos();
     const settings = safeJsonParse(await apiDataManager.getItem('empresaSettings') || '{}', {});
@@ -157,6 +158,17 @@ const PDVHistoricoPage = ({ logoUrl, nomeEmpresa, vendedorAtual }) => {
         
         loadData();
     }, [loadDocumentos, loadProdutos]);
+
+  // Abrir venda específica quando vier do Feed de Vendas (state.openVendaId)
+  useEffect(() => {
+    const openVendaId = location.state?.openVendaId;
+    if (openVendaId == null || !documentos.length) return;
+    const doc = documentos.find(d => String(d.id) === String(openVendaId));
+    if (doc) {
+      handleViewRecibo(doc);
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [documentos, location.state?.openVendaId]);
 
     // Recarregar documentos quando a página ganha foco (usuário volta de outra página)
     useEffect(() => {

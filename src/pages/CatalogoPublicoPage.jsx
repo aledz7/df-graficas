@@ -462,11 +462,13 @@ const CatalogoPublicoPage = () => {
                         {empresa.logoUrl ? (
                              <img src={getImageUrl(empresa.logoUrl)} alt={`Logo de ${empresa.nomeFantasia}`} className="h-12 w-auto object-contain" />
                         ) : (
-                            <div className="h-12 w-12 bg-primary/10 rounded-full flex items-center justify-center">
-                               <Package className="h-6 w-6 text-primary" />
-                            </div>
+                            <>
+                                <div className="h-12 w-12 bg-primary/10 rounded-full flex items-center justify-center">
+                                   <Package className="h-6 w-6 text-primary" />
+                                </div>
+                                <h1 className="text-2xl font-bold text-foreground">{empresa.nomeFantasia}</h1>
+                            </>
                         )}
-                        <h1 className="text-2xl font-bold text-foreground">{empresa.nomeFantasia}</h1>
                     </div>
                     {!produtoId && (
                         <div className="w-full sm:w-auto flex items-center space-x-4">
