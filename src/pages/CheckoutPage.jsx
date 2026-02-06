@@ -25,14 +25,35 @@ import {
     Smartphone,
     Banknote,
     MessageCircle,
-    Send
+    Send,
+    QrCode,
+    Wallet,
+    DollarSign,
+    Ticket,
+    X,
+    Loader2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { vendaPreVendaService, empresaService } from '@/services/api';
 import { notificacaoService } from '@/services/notificacaoService';
+import { formaPagamentoService } from '@/services/formaPagamentoService';
+import { cupomService } from '@/services/cupomService';
 import { useToast } from '@/components/ui/use-toast';
 import { Toaster } from '@/components/ui/toaster';
 import { getImageUrl } from '@/lib/imageUtils';
+
+// Função auxiliar para obter o ícone baseado no código
+const getIconByCode = (iconCode) => {
+    switch (iconCode) {
+        case 'credit-card': return CreditCard;
+        case 'smartphone': return Smartphone;
+        case 'banknote': return Banknote;
+        case 'qr-code': return QrCode;
+        case 'wallet': return Wallet;
+        case 'dollar-sign': return DollarSign;
+        default: return CreditCard;
+    }
+};
 
 const CheckoutPage = () => {
     const { tenantId } = useParams();
@@ -51,11 +72,161 @@ const CheckoutPage = () => {
         nome: '',
         email: '',
         telefone: '',
-        endereco: '',
+        cep: '',
+        rua: '',
+        numero: '',
+        bairro: '',
+        cidade: '',
+        estado: '',
+        complemento: '',
         formaPagamento: ''
     });
     const [isFinalizando, setIsFinalizando] = useState(false);
     const [isSucessoModalOpen, setIsSucessoModalOpen] = useState(false);
+    const [formasPagamento, setFormasPagamento] = useState([]);
+    const [isBuscandoCep, setIsBuscandoCep] = useState(false);
+    
+    // Estados do cupom
+    const [codigoCupom, setCodigoCupom] = useState('');
+    const [cupomAplicado, setCupomAplicado] = useState(null);
+    const [isValidandoCupom, setIsValidandoCupom] = useState(false);
+    const [erroCupom, setErroCupom] = useState('');
+
+    // Função para buscar CEP via ViaCEP
+    const buscarCep = async (cep) => {
+        const cepLimpo = cep.replace(/\D/g, '');
+        if (cepLimpo.length !== 8) return;
+
+        setIsBuscandoCep(true);
+        try {
+            const response = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`);
+            const data = await response.json();
+            
+            if (data.erro) {
+                toast({
+                    title: 'CEP não encontrado',
+                    description: 'Verifique o CEP informado.',
+                    variant: 'destructive'
+                });
+                return;
+            }
+
+            setDadosCliente(prev => ({
+                ...prev,
+                rua: data.logradouro || '',
+                bairro: data.bairro || '',
+                cidade: data.localidade || '',
+                estado: data.uf || ''
+            }));
+
+            toast({
+                title: 'Endereço encontrado',
+                description: 'Preencha o número e complemento.',
+            });
+        } catch (error) {
+            console.error('Erro ao buscar CEP:', error);
+            toast({
+                title: 'Erro ao buscar CEP',
+                description: 'Não foi possível consultar o CEP. Preencha manualmente.',
+                variant: 'destructive'
+            });
+        } finally {
+            setIsBuscandoCep(false);
+        }
+    };
+
+    // Formatar CEP enquanto digita
+    const formatarCep = (value) => {
+        const cepLimpo = value.replace(/\D/g, '');
+        if (cepLimpo.length <= 5) return cepLimpo;
+        return `${cepLimpo.slice(0, 5)}-${cepLimpo.slice(5, 8)}`;
+    };
+
+    const handleCepChange = (e) => {
+        const cepFormatado = formatarCep(e.target.value);
+        setDadosCliente(prev => ({ ...prev, cep: cepFormatado }));
+        
+        // Buscar CEP automaticamente quando tiver 8 dígitos
+        const cepLimpo = cepFormatado.replace(/\D/g, '');
+        if (cepLimpo.length === 8) {
+            buscarCep(cepLimpo);
+        }
+    };
+
+    // Função para formatar endereço completo
+    const formatarEnderecoCompleto = () => {
+        const partes = [];
+        if (dadosCliente.rua) partes.push(dadosCliente.rua);
+        if (dadosCliente.numero) partes.push(`Nº ${dadosCliente.numero}`);
+        if (dadosCliente.complemento) partes.push(dadosCliente.complemento);
+        if (dadosCliente.bairro) partes.push(dadosCliente.bairro);
+        if (dadosCliente.cidade) partes.push(dadosCliente.cidade);
+        if (dadosCliente.estado) partes.push(dadosCliente.estado);
+        if (dadosCliente.cep) partes.push(`CEP: ${dadosCliente.cep}`);
+        return partes.join(', ') || 'Não informado';
+    };
+
+    // Função para validar e aplicar cupom
+    const aplicarCupom = async () => {
+        if (!codigoCupom.trim()) {
+            setErroCupom('Digite o código do cupom');
+            return;
+        }
+
+        const tenantIdParaCupom = tenantId || (carrinho.length > 0 ? carrinho[0].tenant_id : null);
+        if (!tenantIdParaCupom) {
+            setErroCupom('Erro ao identificar a loja');
+            return;
+        }
+
+        setIsValidandoCupom(true);
+        setErroCupom('');
+
+        try {
+            const response = await cupomService.validarCupom(
+                tenantIdParaCupom, 
+                codigoCupom.trim().toUpperCase(), 
+                calcularTotal()
+            );
+
+            if (response.valido) {
+                setCupomAplicado(response.data);
+                setErroCupom('');
+                toast({
+                    title: 'Cupom aplicado!',
+                    description: `Desconto de ${response.data.tipo_desconto === 'percentual' 
+                        ? response.data.valor_desconto_original + '%' 
+                        : 'R$ ' + response.data.valor_desconto_calculado.toFixed(2)
+                    } aplicado ao seu pedido.`,
+                });
+            } else {
+                setErroCupom(response.message || 'Cupom inválido');
+                setCupomAplicado(null);
+            }
+        } catch (error) {
+            console.error('Erro ao validar cupom:', error);
+            setErroCupom('Erro ao validar cupom. Tente novamente.');
+            setCupomAplicado(null);
+        } finally {
+            setIsValidandoCupom(false);
+        }
+    };
+
+    // Função para remover cupom aplicado
+    const removerCupom = () => {
+        setCupomAplicado(null);
+        setCodigoCupom('');
+        setErroCupom('');
+    };
+
+    // Calcular total com desconto
+    const calcularTotalComDesconto = () => {
+        const subtotal = calcularTotal();
+        if (!cupomAplicado) return subtotal;
+        
+        const desconto = cupomAplicado.valor_desconto_calculado || 0;
+        return Math.max(0, subtotal - desconto);
+    };
 
     // Carregar dados do carrinho e empresa
     useEffect(() => {
@@ -120,6 +291,24 @@ const CheckoutPage = () => {
                 } catch (empresaError) {
                     console.warn('Erro ao carregar dados da empresa:', empresaError);
                     setEmpresa({ nomeFantasia: 'Minha Empresa', logoUrl: '', whatsapp: '' });
+                }
+
+                // Carregar formas de pagamento do tenant
+                try {
+                    if (tenantIdParaEmpresa) {
+                        const formasResponse = await formaPagamentoService.getByTenant(tenantIdParaEmpresa);
+                        const formasData = formasResponse.data || [];
+                        setFormasPagamento(formasData);
+                        console.log('Formas de pagamento carregadas:', formasData);
+                    }
+                } catch (formasError) {
+                    console.warn('Erro ao carregar formas de pagamento:', formasError);
+                    // Manter formas padrão como fallback
+                    setFormasPagamento([
+                        { id: 1, nome: 'Cartão na Entrega', codigo: 'cartao_entrega', icone: 'credit-card' },
+                        { id: 2, nome: 'PIX', codigo: 'pix', icone: 'smartphone' },
+                        { id: 3, nome: 'Dinheiro', codigo: 'dinheiro', icone: 'banknote' }
+                    ]);
                 }
 
             } catch (error) {
@@ -191,12 +380,14 @@ const CheckoutPage = () => {
                 `• Nome: ${dadosCliente.nome}\n` +
                 `• Telefone: ${dadosCliente.telefone}\n` +
                 `• Email: ${dadosCliente.email || 'Não informado'}\n` +
-                `• Endereço: ${dadosCliente.endereco || 'Não informado'}\n\n` +
+                `• Endereço: ${formatarEnderecoCompleto()}\n\n` +
                 `*Itens do meu pedido:*\n` +
                 carrinho.map(item => 
                     `• ${item.nome} (${item.quantidade}x) - R$ ${(item.preco * item.quantidade).toFixed(2)}`
                 ).join('\n') +
-                `\n\n*Valor total: R$ ${calcularTotal().toFixed(2)}*\n` +
+                (cupomAplicado 
+                    ? `\n\n*Subtotal: R$ ${calcularTotal().toFixed(2)}*\n*Cupom: ${cupomAplicado.codigo} (-R$ ${cupomAplicado.valor_desconto_calculado.toFixed(2)})*\n*Valor total: R$ ${calcularTotalComDesconto().toFixed(2)}*\n`
+                    : `\n\n*Valor total: R$ ${calcularTotal().toFixed(2)}*\n`) +
                 `*Forma de pagamento:* ${getFormaPagamentoLabel(dadosCliente.formaPagamento)}\n\n` +
                 `Por favor, me confirme se o pedido está correto e qual o prazo para entrega. Obrigado!`;
 
@@ -251,6 +442,17 @@ const CheckoutPage = () => {
             toast({
                 title: 'Dados obrigatórios',
                 description: 'Nome, telefone e forma de pagamento são obrigatórios para finalizar o pedido.',
+                variant: 'destructive'
+            });
+            return;
+        }
+
+        // Validar campos de endereço
+        if (!dadosCliente.cep || !dadosCliente.rua || !dadosCliente.numero || !dadosCliente.bairro || !dadosCliente.cidade) {
+            console.log('Endereço incompleto');
+            toast({
+                title: 'Endereço incompleto',
+                description: 'CEP, Rua, Número, Bairro e Cidade são obrigatórios.',
                 variant: 'destructive'
             });
             return;
@@ -318,7 +520,14 @@ const CheckoutPage = () => {
                     nome: dadosCliente.nome,
                     email: dadosCliente.email,
                     telefone: dadosCliente.telefone,
-                    endereco: dadosCliente.endereco,
+                    endereco: formatarEnderecoCompleto(),
+                    cep: dadosCliente.cep,
+                    rua: dadosCliente.rua,
+                    numero: dadosCliente.numero,
+                    bairro: dadosCliente.bairro,
+                    cidade: dadosCliente.cidade,
+                    estado: dadosCliente.estado,
+                    complemento: dadosCliente.complemento,
                     forma_pagamento: dadosCliente.formaPagamento
                 },
                 itens: carrinho.map(item => ({
@@ -328,10 +537,14 @@ const CheckoutPage = () => {
                     preco_unitario: item.preco,
                     preco_total: item.preco * item.quantidade
                 })),
-                total: calcularTotal(),
+                subtotal: calcularTotal(),
+                desconto: cupomAplicado ? cupomAplicado.valor_desconto_calculado : 0,
+                cupom_codigo: cupomAplicado ? cupomAplicado.codigo : null,
+                cupom_id: cupomAplicado ? cupomAplicado.cupom_id : null,
+                total: calcularTotalComDesconto(),
                 status: 'pendente',
                 origem: 'catalogo_publico',
-                observacoes: `Pedido realizado através do catálogo público da empresa ${empresa.nomeFantasia}`
+                observacoes: `Pedido realizado através do catálogo público da empresa ${empresa.nomeFantasia}${cupomAplicado ? ` - Cupom: ${cupomAplicado.codigo}` : ''}`
             };
             
             console.log('Dados do pedido preparados:', pedido);
@@ -350,12 +563,15 @@ const CheckoutPage = () => {
                 await notificacaoService.criarNotificacao(
                     'pedido_catalogo_publico',
                     'Novo Pedido do Catálogo Público',
-                    `Cliente ${dadosCliente.nome} fez um pedido de R$ ${calcularTotal().toFixed(2)} (${dadosCliente.formaPagamento}) através do catálogo público.`,
+                    `Cliente ${dadosCliente.nome} fez um pedido de R$ ${calcularTotalComDesconto().toFixed(2)} (${dadosCliente.formaPagamento}) através do catálogo público.${cupomAplicado ? ` Cupom: ${cupomAplicado.codigo}` : ''}`,
                     {
                         cliente: dadosCliente,
-                        total: calcularTotal(),
+                        subtotal: calcularTotal(),
+                        desconto: cupomAplicado ? cupomAplicado.valor_desconto_calculado : 0,
+                        total: calcularTotalComDesconto(),
                         itens: carrinho.length,
                         forma_pagamento: dadosCliente.formaPagamento,
+                        cupom: cupomAplicado ? cupomAplicado.codigo : null,
                         origem: 'catalogo_publico',
                         prioridade: 'alta'
                     }
@@ -372,14 +588,27 @@ const CheckoutPage = () => {
                 console.error('Erro ao enviar notificação WhatsApp:', whatsappError);
                 // Não falhar o pedido por causa do WhatsApp
             }
+
+            // Registrar uso do cupom
+            if (cupomAplicado) {
+                try {
+                    await cupomService.registrarUso(tenantIdParaPedido, cupomAplicado.cupom_id);
+                    console.log('Uso do cupom registrado');
+                } catch (cupomError) {
+                    console.error('Erro ao registrar uso do cupom:', cupomError);
+                    // Não falhar o pedido por causa do cupom
+                }
+            }
             
             console.log('Exibindo modal de sucesso');
             setIsSucessoModalOpen(true);
             console.log('Modal de sucesso aberto');
 
-            // Limpar carrinho
+            // Limpar carrinho e cupom
             setCarrinho([]);
             localStorage.removeItem('carrinho');
+            setCupomAplicado(null);
+            setCodigoCupom('');
             
         } catch (error) {
             console.error('Erro ao finalizar pedido:', error);
@@ -406,8 +635,15 @@ const CheckoutPage = () => {
         }
     };
 
-    const getFormaPagamentoLabel = (forma) => {
-        switch (forma) {
+    const getFormaPagamentoLabel = (codigo) => {
+        // Primeiro tentar encontrar nas formas de pagamento carregadas
+        const formaEncontrada = formasPagamento.find(f => f.codigo === codigo);
+        if (formaEncontrada) {
+            return formaEncontrada.nome;
+        }
+        
+        // Fallback para valores padrão
+        switch (codigo) {
             case 'cartao_entrega':
                 return 'Cartão na Entrega';
             case 'pix':
@@ -415,7 +651,7 @@ const CheckoutPage = () => {
             case 'dinheiro':
                 return 'Dinheiro';
             default:
-                return 'Não informado';
+                return codigo || 'Não informado';
         }
     };
 
@@ -549,18 +785,91 @@ const CheckoutPage = () => {
                                     />
                                 </div>
                                 
-                                <div>
-                                    <Label htmlFor="endereco" className="text-sm font-medium">
-                                        Endereço
-                                    </Label>
-                                    <Textarea
-                                        id="endereco"
-                                        value={dadosCliente.endereco}
-                                        onChange={(e) => setDadosCliente(prev => ({ ...prev, endereco: e.target.value }))}
-                                        placeholder="Rua, número, bairro, cidade, CEP"
-                                        className="mt-1"
-                                        rows={3}
-                                    />
+                                {/* Campos de Endereço */}
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div>
+                                        <Label htmlFor="cep" className="text-sm font-medium">
+                                            CEP *
+                                        </Label>
+                                        <div className="relative">
+                                            <Input
+                                                id="cep"
+                                                value={dadosCliente.cep}
+                                                onChange={handleCepChange}
+                                                placeholder="00000-000"
+                                                maxLength={9}
+                                                className="mt-1"
+                                            />
+                                            {isBuscandoCep && (
+                                                <div className="absolute right-3 top-1/2 transform -translate-y-1/2 mt-0.5">
+                                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="md:col-span-2">
+                                        <Label htmlFor="rua" className="text-sm font-medium">
+                                            Rua/Avenida *
+                                        </Label>
+                                        <Input
+                                            id="rua"
+                                            value={dadosCliente.rua}
+                                            onChange={(e) => setDadosCliente(prev => ({ ...prev, rua: e.target.value }))}
+                                            placeholder="Nome da rua ou avenida"
+                                            className="mt-1"
+                                        />
+                                    </div>
+                                </div>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                    <div>
+                                        <Label htmlFor="numero" className="text-sm font-medium">
+                                            Número *
+                                        </Label>
+                                        <Input
+                                            id="numero"
+                                            value={dadosCliente.numero}
+                                            onChange={(e) => setDadosCliente(prev => ({ ...prev, numero: e.target.value }))}
+                                            placeholder="Nº"
+                                            className="mt-1"
+                                        />
+                                    </div>
+                                    <div>
+                                        <Label htmlFor="complemento" className="text-sm font-medium">
+                                            Complemento
+                                        </Label>
+                                        <Input
+                                            id="complemento"
+                                            value={dadosCliente.complemento}
+                                            onChange={(e) => setDadosCliente(prev => ({ ...prev, complemento: e.target.value }))}
+                                            placeholder="Apto, Bloco..."
+                                            className="mt-1"
+                                        />
+                                    </div>
+                                    <div>
+                                        <Label htmlFor="bairro" className="text-sm font-medium">
+                                            Bairro *
+                                        </Label>
+                                        <Input
+                                            id="bairro"
+                                            value={dadosCliente.bairro}
+                                            onChange={(e) => setDadosCliente(prev => ({ ...prev, bairro: e.target.value }))}
+                                            placeholder="Bairro"
+                                            className="mt-1"
+                                        />
+                                    </div>
+                                    <div>
+                                        <Label htmlFor="cidade" className="text-sm font-medium">
+                                            Cidade *
+                                        </Label>
+                                        <Input
+                                            id="cidade"
+                                            value={dadosCliente.cidade}
+                                            onChange={(e) => setDadosCliente(prev => ({ ...prev, cidade: e.target.value }))}
+                                            placeholder="Cidade"
+                                            className="mt-1"
+                                        />
+                                    </div>
                                 </div>
                                 
                                 <div>
@@ -575,24 +884,40 @@ const CheckoutPage = () => {
                                             <SelectValue placeholder="Selecione a forma de pagamento" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="cartao_entrega">
-                                                <div className="flex items-center gap-2">
-                                                    <CreditCard className="h-4 w-4" />
-                                                    Cartão na Entrega
-                                                </div>
-                                            </SelectItem>
-                                            <SelectItem value="pix">
-                                                <div className="flex items-center gap-2">
-                                                    <Smartphone className="h-4 w-4" />
-                                                    PIX
-                                                </div>
-                                            </SelectItem>
-                                            <SelectItem value="dinheiro">
-                                                <div className="flex items-center gap-2">
-                                                    <Banknote className="h-4 w-4" />
-                                                    Dinheiro
-                                                </div>
-                                            </SelectItem>
+                                            {formasPagamento.length > 0 ? (
+                                                formasPagamento.map((forma) => {
+                                                    const IconComponent = getIconByCode(forma.icone);
+                                                    return (
+                                                        <SelectItem key={forma.id} value={forma.codigo}>
+                                                            <div className="flex items-center gap-2">
+                                                                <IconComponent className="h-4 w-4" />
+                                                                {forma.nome}
+                                                            </div>
+                                                        </SelectItem>
+                                                    );
+                                                })
+                                            ) : (
+                                                <>
+                                                    <SelectItem value="cartao_entrega">
+                                                        <div className="flex items-center gap-2">
+                                                            <CreditCard className="h-4 w-4" />
+                                                            Cartão na Entrega
+                                                        </div>
+                                                    </SelectItem>
+                                                    <SelectItem value="pix">
+                                                        <div className="flex items-center gap-2">
+                                                            <Smartphone className="h-4 w-4" />
+                                                            PIX
+                                                        </div>
+                                                    </SelectItem>
+                                                    <SelectItem value="dinheiro">
+                                                        <div className="flex items-center gap-2">
+                                                            <Banknote className="h-4 w-4" />
+                                                            Dinheiro
+                                                        </div>
+                                                    </SelectItem>
+                                                </>
+                                            )}
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -618,9 +943,9 @@ const CheckoutPage = () => {
                                                 initial={{ opacity: 0, y: 20 }}
                                                 animate={{ opacity: 1, y: 0 }}
                                                 exit={{ opacity: 0, y: -20 }}
-                                                className="flex items-center space-x-3 p-3 border rounded-lg bg-white"
+                                                className="flex items-center space-x-3 p-3 border rounded-lg bg-card"
                                             >
-                                                <div className="w-12 h-12 rounded overflow-hidden bg-gray-100 flex-shrink-0">
+                                                <div className="w-12 h-12 rounded overflow-hidden bg-muted flex-shrink-0">
                                                     {item.imagem ? (
                                                         <img 
                                                             src={getImageUrl(item.imagem)} 
@@ -632,12 +957,12 @@ const CheckoutPage = () => {
                                                             }}
                                                         />
                                                     ) : null}
-                                                    <div className="w-full h-full bg-gray-200 flex items-center justify-center" style={{display: item.imagem ? 'none' : 'flex'}}>
-                                                        <Package className="w-6 h-6 text-gray-400" />
+                                                    <div className="w-full h-full bg-muted flex items-center justify-center" style={{display: item.imagem ? 'none' : 'flex'}}>
+                                                        <Package className="w-6 h-6 text-muted-foreground" />
                                                     </div>
                                                 </div>
                                                 <div className="flex-1 min-w-0">
-                                                    <h4 className="font-medium text-sm truncate">{item.nome}</h4>
+                                                    <h4 className="font-medium text-sm truncate text-foreground">{item.nome}</h4>
                                                     <p className="text-sm text-muted-foreground">
                                                         R$ {parseFloat(item.preco || 0).toFixed(2)}
                                                     </p>
@@ -651,7 +976,7 @@ const CheckoutPage = () => {
                                                     >
                                                         <Minus className="h-3 w-3" />
                                                     </Button>
-                                                    <span className="text-sm font-medium w-8 text-center">
+                                                    <span className="text-sm font-medium w-8 text-center text-foreground">
                                                         {item.quantidade}
                                                     </span>
                                                     <Button
@@ -677,15 +1002,88 @@ const CheckoutPage = () => {
                                 </div>
                                 
                                 <Separator className="my-4" />
+
+                                {/* Campo de Cupom */}
+                                <div className="space-y-2 mb-4">
+                                    <Label className="text-sm font-medium flex items-center gap-2">
+                                        <Ticket className="h-4 w-4" />
+                                        Cupom de Desconto
+                                    </Label>
+                                    {cupomAplicado ? (
+                                        <div className="flex items-center justify-between p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
+                                            <div className="flex items-center gap-2">
+                                                <CheckCircle className="h-4 w-4 text-green-500" />
+                                                <span className="text-sm font-medium text-green-600 dark:text-green-400">
+                                                    {cupomAplicado.codigo}
+                                                </span>
+                                                <Badge variant="secondary" className="text-xs">
+                                                    {cupomAplicado.tipo_desconto === 'percentual' 
+                                                        ? `-${cupomAplicado.valor_desconto_original}%`
+                                                        : `-R$ ${cupomAplicado.valor_desconto_calculado.toFixed(2)}`
+                                                    }
+                                                </Badge>
+                                            </div>
+                                            <Button 
+                                                variant="ghost" 
+                                                size="sm"
+                                                onClick={removerCupom}
+                                                className="h-6 w-6 p-0 text-red-500 hover:text-red-600"
+                                            >
+                                                <X className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    ) : (
+                                        <div className="flex gap-2">
+                                            <Input
+                                                value={codigoCupom}
+                                                onChange={(e) => {
+                                                    setCodigoCupom(e.target.value.toUpperCase());
+                                                    setErroCupom('');
+                                                }}
+                                                placeholder="Digite o código"
+                                                className={`flex-1 font-mono ${erroCupom ? 'border-red-500' : ''}`}
+                                                onKeyPress={(e) => e.key === 'Enter' && aplicarCupom()}
+                                            />
+                                            <Button 
+                                                onClick={aplicarCupom}
+                                                disabled={isValidandoCupom || !codigoCupom.trim()}
+                                                variant="outline"
+                                                size="sm"
+                                            >
+                                                {isValidandoCupom ? (
+                                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                                ) : (
+                                                    'Aplicar'
+                                                )}
+                                            </Button>
+                                        </div>
+                                    )}
+                                    {erroCupom && (
+                                        <p className="text-xs text-red-500 flex items-center gap-1">
+                                            <AlertCircle className="h-3 w-3" />
+                                            {erroCupom}
+                                        </p>
+                                    )}
+                                </div>
+
+                                <Separator className="my-4" />
                                 
                                 <div className="space-y-2">
                                     <div className="flex justify-between text-sm">
                                         <span>Subtotal ({calcularTotalItens()} itens):</span>
                                         <span>R$ {calcularTotal().toFixed(2)}</span>
                                     </div>
+                                    
+                                    {cupomAplicado && (
+                                        <div className="flex justify-between text-sm text-green-600 dark:text-green-400">
+                                            <span>Desconto ({cupomAplicado.codigo}):</span>
+                                            <span>- R$ {cupomAplicado.valor_desconto_calculado.toFixed(2)}</span>
+                                        </div>
+                                    )}
+                                    
                                     <div className="flex justify-between text-lg font-bold">
                                         <span>Total:</span>
-                                        <span className="text-primary">R$ {calcularTotal().toFixed(2)}</span>
+                                        <span className="text-primary">R$ {calcularTotalComDesconto().toFixed(2)}</span>
                                     </div>
                                 </div>
                                 
@@ -700,7 +1098,7 @@ const CheckoutPage = () => {
                                     </Button>
                                     <Button 
                                         onClick={finalizarPedido}
-                                        disabled={isFinalizando || !dadosCliente.nome || !dadosCliente.telefone || !dadosCliente.formaPagamento}
+                                        disabled={isFinalizando || !dadosCliente.nome || !dadosCliente.telefone || !dadosCliente.formaPagamento || !dadosCliente.cep || !dadosCliente.rua || !dadosCliente.numero || !dadosCliente.bairro || !dadosCliente.cidade}
                                         className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
                                     >
                                         {isFinalizando ? (
@@ -721,27 +1119,33 @@ const CheckoutPage = () => {
 
             {/* Modal de sucesso */}
             <div className={`fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 ${isSucessoModalOpen ? 'block' : 'hidden'}`}>
-                <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+                <div className="bg-card rounded-lg p-6 max-w-md w-full mx-4">
                     <div className="text-center">
-                        <div className="mx-auto mb-4 w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
-                            <CheckCircle className="h-8 w-8 text-green-600" />
+                        <div className="mx-auto mb-4 w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center">
+                            <CheckCircle className="h-8 w-8 text-green-500" />
                         </div>
-                        <h3 className="text-2xl font-bold text-green-600 mb-2">
+                        <h3 className="text-2xl font-bold text-green-500 mb-2">
                             Pré-venda concluída! 🎉
                         </h3>
-                        <p className="text-gray-600 mb-4">
+                        <p className="text-muted-foreground mb-4">
                             Seu pedido foi enviado com sucesso! O WhatsApp foi aberto com uma mensagem pronta para você enviar para a empresa. Após o envio, nossa equipe entrará em contato para finalizar a compra.
                         </p>
                         
                         {/* Informações do pedido */}
-                        <div className="bg-gray-50 p-4 rounded-lg text-left mb-4">
-                            <h4 className="font-medium text-sm text-gray-700 mb-2">Resumo do Pedido</h4>
-                            <div className="space-y-1 text-sm">
+                        <div className="bg-muted p-4 rounded-lg text-left mb-4">
+                            <h4 className="font-medium text-sm text-foreground mb-2">Resumo do Pedido</h4>
+                            <div className="space-y-1 text-sm text-foreground">
                                 <p><strong>Cliente:</strong> {dadosCliente.nome}</p>
                                 <p><strong>Telefone:</strong> {dadosCliente.telefone}</p>
-                                <p><strong>Total:</strong> R$ {calcularTotal().toFixed(2)}</p>
+                                {cupomAplicado && (
+                                    <>
+                                        <p><strong>Subtotal:</strong> R$ {calcularTotal().toFixed(2)}</p>
+                                        <p className="text-green-600"><strong>Desconto ({cupomAplicado.codigo}):</strong> -R$ {cupomAplicado.valor_desconto_calculado.toFixed(2)}</p>
+                                    </>
+                                )}
+                                <p><strong>Total:</strong> R$ {calcularTotalComDesconto().toFixed(2)}</p>
                                 <p><strong>Forma de Pagamento:</strong> {getFormaPagamentoLabel(dadosCliente.formaPagamento)}</p>
-                                <p className="text-green-600"><strong>✓ WhatsApp aberto com mensagem pronta para envio</strong></p>
+                                <p className="text-green-500"><strong>✓ WhatsApp aberto com mensagem pronta para envio</strong></p>
                             </div>
                         </div>
                         
@@ -754,11 +1158,13 @@ const CheckoutPage = () => {
                                         `👤 Nome: ${dadosCliente.nome}\n` +
                                         `📞 Telefone: ${dadosCliente.telefone}\n` +
                                         `📧 Email: ${dadosCliente.email || 'Não informado'}\n` +
-                                        `📍 Endereço: ${dadosCliente.endereco || 'Não informado'}\n` +
+                                        `📍 Endereço: ${formatarEnderecoCompleto()}\n` +
                                         `💳 Forma de Pagamento: ${getFormaPagamentoLabel(dadosCliente.formaPagamento)}\n\n` +
                                         `🛒 *Itens do Pedido:*\n` +
                                         carrinho.map(item => `• ${item.nome} x${item.quantidade} - R$ ${(item.preco * item.quantidade).toFixed(2)}`).join('\n') +
-                                        `\n\n💰 *Total: R$ ${calcularTotal().toFixed(2)}*`;
+                                        (cupomAplicado 
+                                            ? `\n\n💵 Subtotal: R$ ${calcularTotal().toFixed(2)}\n🎟️ Cupom ${cupomAplicado.codigo}: -R$ ${cupomAplicado.valor_desconto_calculado.toFixed(2)}\n💰 *Total: R$ ${calcularTotalComDesconto().toFixed(2)}*`
+                                            : `\n\n💰 *Total: R$ ${calcularTotal().toFixed(2)}*`);
                                     
                                     // Codificar mensagem para URL
                                     const mensagemCodificada = encodeURIComponent(mensagem);

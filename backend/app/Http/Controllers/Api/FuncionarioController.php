@@ -42,6 +42,7 @@ class FuncionarioController extends BaseController
         'vales' => 'nullable|array',
         'faltas' => 'nullable|array',
         'permissions' => 'nullable|array',
+        'access_schedule' => 'nullable|array',
         'login' => 'nullable|string|max:255',
         'senha' => 'nullable|string|max:255',
         'status' => 'boolean',
@@ -75,6 +76,7 @@ class FuncionarioController extends BaseController
         'vales' => 'nullable|array',
         'faltas' => 'nullable|array',
         'permissions' => 'nullable|array',
+        'access_schedule' => 'nullable|array',
         'login' => 'nullable|string|max:255',
         'senha' => 'nullable|string|max:255',
         'status' => 'boolean',
@@ -181,6 +183,11 @@ class FuncionarioController extends BaseController
                 });
                 $data['permissions'] = $permissions;
             }
+            
+            // Processar access_schedule - manter como array de horários
+            if (isset($data['access_schedule']) && is_array($data['access_schedule'])) {
+                $data['access_schedule'] = array_values($data['access_schedule']);
+            }
 
             // Não armazenar senha em texto puro no campo 'senha'
             if (isset($data['senha'])) {
@@ -270,6 +277,11 @@ class FuncionarioController extends BaseController
                     return $value === true;
                 });
                 $data['permissions'] = $permissions;
+            }
+            
+            // Processar access_schedule - manter como array de horários
+            if (isset($data['access_schedule']) && is_array($data['access_schedule'])) {
+                $data['access_schedule'] = array_values($data['access_schedule']);
             }
 
             // Criptografar senha se fornecida

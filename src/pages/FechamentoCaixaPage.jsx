@@ -261,7 +261,7 @@ const FechamentoCaixaPage = () => {
 
     return (
         <div className="p-6 flex justify-center items-center h-full bg-gray-50 dark:bg-gray-900">
-            <Card className="w-full max-w-lg shadow-lg">
+            <Card className="w-full max-w-2xl shadow-lg">
                 <CardHeader>
                     <CardTitle className="flex items-center text-2xl">
                         <Lock className="mr-2 text-primary"/> Fechamento de Caixa
@@ -269,7 +269,7 @@ const FechamentoCaixaPage = () => {
                     <CardDescription>Confira os valores e informe o total em caixa para fechar.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4 p-4 border rounded-md bg-muted/50">
+                    <div className="grid grid-cols-3 gap-4 p-4 border rounded-md bg-muted/50">
                         <div>
                             <p className="text-sm text-muted-foreground">Abertura:</p>
                             <p className="font-semibold text-lg">R$ {parseFloat(caixaAtual.valor_abertura).toFixed(2)}</p>
@@ -281,10 +281,6 @@ const FechamentoCaixaPage = () => {
                         <div>
                             <p className="text-sm text-muted-foreground">Saídas (Sangrias/Despesas):</p>
                             <p className="font-semibold text-lg text-red-600">R$ {resumoCaixa.saidas.toFixed(2)}</p>
-                        </div>
-                        <div>
-                            <p className="text-sm text-muted-foreground">Saldo Esperado em Caixa:</p>
-                            <p className="font-bold text-xl text-blue-600">R$ {resumoCaixa.saldoEsperado.toFixed(2)}</p>
                         </div>
                     </div>
                     

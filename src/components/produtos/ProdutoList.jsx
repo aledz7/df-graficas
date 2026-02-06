@@ -38,7 +38,9 @@ const ProdutoList = ({
     onDelete, 
     onShare,
     selectedProdutos, 
-    setSelectedProdutos 
+    setSelectedProdutos,
+    canEdit = true,
+    canDelete = true
 }) => {
     const [produtoParaDeletar, setProdutoParaDeletar] = React.useState(null);
 
@@ -134,23 +136,27 @@ const ProdutoList = ({
                                                         <Share2 className="mr-2 h-4 w-4" />
                                                         Compartilhar
                                                     </Button>
-                                                    <Button 
-                                                        variant="outline" 
-                                                        size="sm" 
-                                                        onClick={() => onEdit(produto)}
-                                                        className="flex-1 text-green-600 hover:text-green-700 border-green-300 hover:border-green-400"
-                                                    >
-                                                        <Edit className="mr-2 h-4 w-4" />
-                                                        Editar
-                                                    </Button>
-                                                    <Button 
-                                                        variant="outline" 
-                                                        size="sm" 
-                                                        onClick={() => setProdutoParaDeletar(produto)}
-                                                        className="text-red-600 hover:text-red-700 border-red-300 hover:border-red-400"
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
+                                                    {canEdit && (
+                                                        <Button 
+                                                            variant="outline" 
+                                                            size="sm" 
+                                                            onClick={() => onEdit(produto)}
+                                                            className="flex-1 text-green-600 hover:text-green-700 border-green-300 hover:border-green-400"
+                                                        >
+                                                            <Edit className="mr-2 h-4 w-4" />
+                                                            Editar
+                                                        </Button>
+                                                    )}
+                                                    {canDelete && (
+                                                        <Button 
+                                                            variant="outline" 
+                                                            size="sm" 
+                                                            onClick={() => setProdutoParaDeletar(produto)}
+                                                            className="text-red-600 hover:text-red-700 border-red-300 hover:border-red-400"
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
@@ -229,13 +235,19 @@ const ProdutoList = ({
                                                     >
                                                         <Share2 className="h-4 w-4" />
                                                     </Button>
-                                                    <DropdownMenu>
-                                                        <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                                                        <DropdownMenuContent>
-                                                            <DropdownMenuItem onClick={() => onEdit(produto)}><Edit className="mr-2 h-4 w-4"/>Editar</DropdownMenuItem>
-                                                            <DropdownMenuItem className="text-red-500" onClick={() => setProdutoParaDeletar(produto)}><Trash2 className="mr-2 h-4 w-4"/>Deletar</DropdownMenuItem>
-                                                        </DropdownMenuContent>
-                                                    </DropdownMenu>
+                                                    {(canEdit || canDelete) && (
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                                                            <DropdownMenuContent>
+                                                                {canEdit && (
+                                                                    <DropdownMenuItem onClick={() => onEdit(produto)}><Edit className="mr-2 h-4 w-4"/>Editar</DropdownMenuItem>
+                                                                )}
+                                                                {canDelete && (
+                                                                    <DropdownMenuItem className="text-red-500" onClick={() => setProdutoParaDeletar(produto)}><Trash2 className="mr-2 h-4 w-4"/>Deletar</DropdownMenuItem>
+                                                                )}
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
+                                                    )}
                                                 </div>
                                             </TableCell>
                                         </TableRow>

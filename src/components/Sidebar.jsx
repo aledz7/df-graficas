@@ -5,67 +5,16 @@ import { useNomeSistema } from '@/hooks/useNomeSistema.jsx';
 import {
   LayoutDashboard, ShoppingCart, Package, Users, Truck, Banknote,
   Settings, BarChart3, FileText, SprayCan, Calculator,
-  Palette, Boxes, BookOpen, Wrench, HardHat, FileClock, CheckCircle2, History, SlidersHorizontal, Trash2, Barcode, Store, Activity, CalendarDays, FileSpreadsheet, Box, LogIn, LogOut, PackagePlus, ListChecks, Printer, DollarSign, ShieldAlert, Ruler, Star, TrendingUp
+  Palette, Boxes, BookOpen, Wrench, HardHat, FileClock, CheckCircle2, History, SlidersHorizontal, Trash2, Barcode, Store, Activity, CalendarDays, FileSpreadsheet, Box, LogIn, LogOut, PackagePlus, ListChecks, Printer, DollarSign, ShieldAlert, Ruler, Star, TrendingUp, CreditCard, Ticket
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
-import { usePermissions } from '@/hooks/usePermissions';
+import { usePermissions, routePermissions } from '@/hooks/usePermissions';
 import { useOSCountContext } from '@/contexts/OSCountContext';
 import { getImageUrlEmpresa } from '@/pages/EmpresaSettingsPage';
 import { empresaService } from '@/services/api';
-
-// Mapeamento de rotas para permissões
-const routePermissions = {
-  '/dashboard': 'acessar_dashboard',
-  '/ferramentas/agenda': 'acessar_agenda',
-  '/operacional/pdv': 'acessar_pdv',
-  '/operacional/pdv-historico': 'acessar_pdv',
-  '/marketplace/vendas': 'acessar_marketplace',
-  '/marketplace/historico': 'acessar_marketplace',
-  '/ferramentas/calculadora-metricas': 'acessar_calculadora',
-  '/ferramentas/calculadora-servicos': 'acessar_calculadora',
-  '/ferramentas/calculadora-historico': 'acessar_calculadora',
-  '/cadastros/produtos': 'gerenciar_produtos',
-  '/cadastros/categorias': 'gerenciar_produtos',
-  '/cadastros/cores': 'gerenciar_produtos',
-  '/cadastros/tamanhos': 'gerenciar_produtos',
-  '/cadastros/clientes': 'gerenciar_clientes',
-  '/cadastros/fornecedores': 'gerenciar_fornecedores',
-  '/cadastros/funcionarios': 'gerenciar_funcionarios',
-  '/cadastros/maquinas-equipamentos': 'config_sistema',
-  '/cadastros/maquinas-cartao': 'config_sistema',
-  '/cadastros/contas-bancarias': 'config_sistema',
-  '/operacional/entrada-estoque': 'acessar_entrada_estoque',
-  '/operacional/ordens-servico': 'acessar_os',
-  '/cadastros/acabamentos-servicos': 'config_acabamentos_os',
-  '/operacional/os-historico': 'acessar_os',
-  '/operacional/os-em-producao': 'acessar_os',
-  '/operacional/os-entregar': 'acessar_os',
-  '/operacional/os-entregues': 'acessar_os',
-  '/operacional/envelopamento': 'acessar_envelopamento',
-  '/operacional/orcamentos-envelopamento': 'acessar_envelopamento',
-  '/operacional/envelopamento/configuracao-precos': 'config_precos_env',
-  '/financeiro/contas-receber': 'acessar_financeiro',
-  '/financeiro/contas-pagar': 'acessar_financeiro',
-  '/financeiro/recebimento': 'acessar_financeiro',
-  '/financeiro/sangria-suprimento': 'acessar_financeiro',
-  '/caixa/fluxo-caixa': 'gerenciar_caixa',
-  '/caixa/abertura-caixa': 'gerenciar_caixa',
-  '/caixa/fechamento-caixa': 'gerenciar_caixa',
-  '/caixa/historico-caixa': 'gerenciar_caixa',
-  '/relatorios': 'ver_relatorios',
-  '/relatorio-simplificado': 'ver_relatorios',
-  '/ferramentas/feed-atividades': 'acessar_feed',
-  '/configuracoes/empresa': 'config_empresa',
-  '/configuracoes/aparencia': 'config_aparencia',
-  '/configuracoes/produtos-estoque': 'gerenciar_produtos',
-  '/configuracoes/pontos': 'config_sistema',
-  '/operacional/gerador-etiquetas': 'gerar_etiquetas',
-  '/ferramentas/lixeira': 'gerenciar_lixeira',
-  '/configuracoes/admin': 'config_sistema',
-};
 
 const menuItems = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -105,6 +54,8 @@ const menuItems = [
       { path: '/cadastros/maquinas-equipamentos', label: 'Máquinas', icon: Settings },
       { path: '/cadastros/maquinas-cartao', label: 'Máquinas de Cartão', icon: Settings },
       { path: '/cadastros/contas-bancarias', label: 'Contas Bancárias', icon: Banknote },
+      { path: '/cadastros/formas-pagamento', label: 'Formas de Pagamento', icon: CreditCard },
+      { path: '/cadastros/cupons', label: 'Cupons de Desconto', icon: Ticket },
       { path: '/operacional/entrada-estoque', label: 'Entrada de Estoque', icon: SlidersHorizontal },
     ]
   },
@@ -254,7 +205,7 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen }) => {
 
   const closeSidebar = () => setIsSidebarOpen(false);
   const { logout, user } = useAuth();
-  const { hasPermission } = usePermissions();
+  const { hasAnyPermission, isOwner } = usePermissions();
   const { count: osCount, productionCount } = useOSCountContext();
 
   // Buscar logo da empresa baseada no tenant_id do usuário
@@ -296,11 +247,15 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen }) => {
   });
 
   const filteredMenuItems = dynamicMenuItems.filter(item => {
+    // Donos têm acesso a tudo
+    if (isOwner) return true;
+    
     if (item.subItems) {
       // Para itens com subitens, verifica se pelo menos um subitem tem permissão
       const visibleSubItems = item.subItems.filter(subItem => {
-        const requiredPermission = routePermissions[subItem.path];
-        const hasAccess = !requiredPermission || hasPermission(requiredPermission);
+        const requiredPermissions = routePermissions[subItem.path];
+        // Sem restrição de permissão ou tem alguma das permissões necessárias
+        const hasAccess = !requiredPermissions || hasAnyPermission(requiredPermissions);
         return hasAccess;
       });
       
@@ -313,8 +268,8 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen }) => {
     }
     
     // Para itens simples, verifica a permissão
-    const requiredPermission = routePermissions[item.path];
-    return !requiredPermission || hasPermission(requiredPermission);
+    const requiredPermissions = routePermissions[item.path];
+    return !requiredPermissions || hasAnyPermission(requiredPermissions);
   });
 
   return (

@@ -22,11 +22,21 @@ import { Calendar } from "@/components/ui/calendar";
 import { format, parseISO, startOfDay, endOfDay, isBefore, isValid, startOfToday, endOfToday } from 'date-fns';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { formatarDadosConsumoMaterialParaDescricao } from '@/utils/consumoMaterialUtils';
+import { useActionPermissions } from '@/components/PermissionGate';
 
 const OSHistoricoPage = ({ vendedorAtual }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
+  
+  // Verificar permissões para ações específicas
+  const { canCreate, canEdit, canDelete, canCancel, canChangeStatus } = useActionPermissions('acessar_os', {
+    create: 'os_criar',
+    edit: 'os_editar',
+    delete: 'os_excluir',
+    cancel: 'os_cancelar',
+    changeStatus: 'os_alterar_status'
+  });
   
   const [ordensServico, setOrdensServico] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -1164,15 +1174,17 @@ const OSHistoricoPage = ({ vendedorAtual }) => {
                             </Button>
                           </>
                         )}
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={() => handleEditOS(os)} 
-                          className="flex-1"
-                        >
-                          <FileEdit className="mr-1 h-4 w-4" />
-                          Editar
-                        </Button>
+                        {canEdit && (
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => handleEditOS(os)} 
+                            className="flex-1"
+                          >
+                            <FileEdit className="mr-1 h-4 w-4" />
+                            Editar
+                          </Button>
+                        )}
                         <Button 
                           variant="outline" 
                           size="sm" 
@@ -1191,7 +1203,7 @@ const OSHistoricoPage = ({ vendedorAtual }) => {
                           <Printer className="mr-1 h-4 w-4" />
                           Imprimir
                         </Button>
-                        {os.status_os !== 'Finalizada' && os.status_os !== 'Entregue' && (
+                        {canChangeStatus && os.status_os !== 'Finalizada' && os.status_os !== 'Entregue' && (
                           <Button 
                             variant="outline" 
                             size="sm" 
@@ -1202,15 +1214,17 @@ const OSHistoricoPage = ({ vendedorAtual }) => {
                             Finalizar
                           </Button>
                         )}
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={(e) => handleDeleteOS(e, os)} 
-                          className="flex-1 text-red-500 hover:text-red-600 border-red-300 hover:border-red-400"
-                        >
-                          <Trash2 className="mr-1 h-4 w-4" />
-                          Excluir
-                        </Button>
+                        {canDelete && (
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={(e) => handleDeleteOS(e, os)} 
+                            className="flex-1 text-red-500 hover:text-red-600 border-red-300 hover:border-red-400"
+                          >
+                            <Trash2 className="mr-1 h-4 w-4" />
+                            Excluir
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1294,23 +1308,27 @@ const OSHistoricoPage = ({ vendedorAtual }) => {
                             </Button>
                           </>
                         )}
-                        <Button variant="ghost" size="icon" onClick={() => handleEditOS(os)} title="Editar OS">
-                          <FileEdit className="h-4 w-4" />
-                        </Button>
+                        {canEdit && (
+                          <Button variant="ghost" size="icon" onClick={() => handleEditOS(os)} title="Editar OS">
+                            <FileEdit className="h-4 w-4" />
+                          </Button>
+                        )}
                         <Button variant="ghost" size="icon" onClick={() => handleViewOS(os)} title="Visualizar OS">
                           <Eye className="h-4 w-4" />
                         </Button>
                         <Button variant="ghost" size="icon" onClick={() => handleOpenNotinhaModal(os)} title="Imprimir Notinha" className="text-blue-500 hover:text-blue-600">
                           <Printer className="h-4 w-4" />
                         </Button>
-                        {os.status_os !== 'Finalizada' && os.status_os !== 'Entregue' && (
+                        {canChangeStatus && os.status_os !== 'Finalizada' && os.status_os !== 'Entregue' && (
                           <Button variant="ghost" size="icon" onClick={() => handleFinalizeOS(os)} title="Finalizar OS" className="text-green-500 hover:text-green-600">
                              <CircleDollarSign className="h-4 w-4" />
                           </Button>
                         )}
+                        {canDelete && (
                           <Button variant="ghost" size="icon" onClick={(e) => handleDeleteOS(e, os)} title="Excluir" className="text-red-500 hover:text-red-600">
                             <Trash2 className="h-4 w-4" />
                           </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>

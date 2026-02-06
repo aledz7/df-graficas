@@ -41,6 +41,7 @@ class Funcionario extends Model
         'vales',
         'faltas',
         'permissions',
+        'access_schedule',
         'login',
         'senha',
         'status',
@@ -58,6 +59,7 @@ class Funcionario extends Model
         'vales' => 'array',
         'faltas' => 'array',
         'permissions' => 'array',
+        'access_schedule' => 'array',
         'status' => 'boolean',
     ];
 

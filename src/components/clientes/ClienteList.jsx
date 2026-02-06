@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Edit, Trash2, UserCheck, UserX, Eye, UserCircle2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-const ClienteList = ({ clientes, searchTerm, handleEditCliente, handleDeleteCliente }) => {
+const ClienteList = ({ clientes, searchTerm, handleEditCliente, handleDeleteCliente, canEdit = true, canDelete = true }) => {
   const filteredClientes = clientes.filter(c => {
     const term = searchTerm ? searchTerm.toLowerCase() : "";
     return (
@@ -62,10 +62,12 @@ const ClienteList = ({ clientes, searchTerm, handleEditCliente, handleDeleteClie
                   </div>
                 </div>
                 <div className="flex flex-col space-y-1 items-end shrink-0">
-                  <Button variant="outline" size="xs" onClick={() => handleEditCliente(cliente)} className="text-blue-600 border-blue-600 hover:bg-blue-600 hover:text-white">
-                    <Edit size={12} className="mr-1" /> Editar
-                  </Button>
-                  {cliente.id !== 'cli1' && (
+                  {canEdit && (
+                    <Button variant="outline" size="xs" onClick={() => handleEditCliente(cliente)} className="text-blue-600 border-blue-600 hover:bg-blue-600 hover:text-white">
+                      <Edit size={12} className="mr-1" /> Editar
+                    </Button>
+                  )}
+                  {canDelete && cliente.id !== 'cli1' && (
                     <Button variant="outline" size="xs" onClick={() => handleDeleteCliente(cliente.id)} className="text-red-600 border-red-600 hover:bg-red-600 hover:text-white">
                       <Trash2 size={12} className="mr-1" /> Excluir
                     </Button>

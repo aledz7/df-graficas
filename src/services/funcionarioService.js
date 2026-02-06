@@ -319,5 +319,62 @@ export const funcionarioService = {
       console.error('Erro ao executar fechamento automático:', error);
       throw error;
     }
+  },
+
+  // ========== Perfis de Permissões ==========
+  
+  // Buscar todos os perfis de permissões
+  getPermissionProfiles: async () => {
+    try {
+      const response = await api.get('/api/permission-profiles');
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao buscar perfis de permissões:', error);
+      throw error;
+    }
+  },
+
+  // Buscar perfil por ID
+  getPermissionProfileById: async (id) => {
+    try {
+      const response = await api.get(`/api/permission-profiles/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao buscar perfil de permissão:', error);
+      throw error;
+    }
+  },
+
+  // Criar novo perfil de permissões
+  createPermissionProfile: async (profileData) => {
+    try {
+      const response = await api.post('/api/permission-profiles', profileData);
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao criar perfil de permissão:', error);
+      throw error;
+    }
+  },
+
+  // Atualizar perfil de permissões
+  updatePermissionProfile: async (id, profileData) => {
+    try {
+      const response = await api.put(`/api/permission-profiles/${id}`, profileData);
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao atualizar perfil de permissão:', error);
+      throw error;
+    }
+  },
+
+  // Excluir perfil de permissões
+  deletePermissionProfile: async (id) => {
+    try {
+      const response = await api.delete(`/api/permission-profiles/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao excluir perfil de permissão:', error);
+      throw error;
+    }
   }
 };

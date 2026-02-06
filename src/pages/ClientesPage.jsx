@@ -10,6 +10,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { motion } from 'framer-motion';
 import { exportToExcel, importFromExcel } from '@/lib/utils';
 import { clienteService } from '@/services/api';
+import PermissionGate, { useActionPermissions } from '@/components/PermissionGate';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,6 +33,13 @@ const ClientesPage = ({ vendedorAtual }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [clienteParaDeletar, setClienteParaDeletar] = useState(null);
+  
+  // Verificar permissões para ações específicas
+  const { canCreate, canEdit, canDelete } = useActionPermissions('gerenciar_clientes', {
+    create: 'clientes_cadastrar',
+    edit: 'clientes_editar',
+    delete: 'clientes_excluir'
+  });
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -343,18 +351,22 @@ const ClientesPage = ({ vendedorAtual }) => {
             className="hidden"
             disabled={isLoading}
           />
-          <Button
-            variant="outline"
-            className="ml-2"
-            onClick={() => document.getElementById('import-file').click()}
-            disabled={isLoading}
-          >
-            <Upload className="mr-2 h-4 w-4" />
-            Importar
-          </Button>
-          <Button onClick={handleNovoCliente} className="bg-gradient-to-r from-green-500 to-teal-600 hover:from-green-600 hover:to-teal-700 text-white w-full md:w-auto">
-            <PlusCircle className="mr-2 h-5 w-5" /> Novo Cliente
-          </Button>
+          <PermissionGate permission="clientes_cadastrar">
+            <Button
+              variant="outline"
+              className="ml-2"
+              onClick={() => document.getElementById('import-file').click()}
+              disabled={isLoading}
+            >
+              <Upload className="mr-2 h-4 w-4" />
+              Importar
+            </Button>
+          </PermissionGate>
+          <PermissionGate permission="clientes_cadastrar">
+            <Button onClick={handleNovoCliente} className="bg-gradient-to-r from-green-500 to-teal-600 hover:from-green-600 hover:to-teal-700 text-white w-full md:w-auto">
+              <PlusCircle className="mr-2 h-5 w-5" /> Novo Cliente
+            </Button>
+          </PermissionGate>
         </div>
       </div>
       
@@ -368,6 +380,8 @@ const ClientesPage = ({ vendedorAtual }) => {
           searchTerm={searchTerm}
           handleEditCliente={handleEditCliente}
           handleDeleteCliente={handleDeleteCliente}
+          canEdit={canEdit}
+          canDelete={canDelete}
         />
       )}
 

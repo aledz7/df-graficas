@@ -23,11 +23,21 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import PermissionGate, { useActionPermissions } from '@/components/PermissionGate';
 
 const ProdutosPage = ({ vendedorAtual }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
+  
+  // Verificar permissões para ações específicas
+  const { canCreate, canEdit, canDelete, canChangePrice } = useActionPermissions('gerenciar_produtos', {
+    create: 'produtos_cadastrar',
+    edit: 'produtos_editar',
+    delete: 'produtos_excluir',
+    changePrice: 'produtos_alterar_preco'
+  });
+  
   const [produtos, setProdutos] = useState([]);
   const [categorias, setCategorias] = useState([]);
   const [produtoSelecionado, setProdutoSelecionado] = useState(null);
@@ -694,9 +704,11 @@ const ProdutosPage = ({ vendedorAtual }) => {
               }} className="hidden" />
             </label>
           </Button>
-          <Button onClick={handleNovoProduto} className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white w-full md:w-auto">
-            <PlusCircle className="mr-2 h-5 w-5" /> Novo Produto
-          </Button>
+          <PermissionGate permission="produtos_cadastrar">
+            <Button onClick={handleNovoProduto} className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white w-full md:w-auto">
+              <PlusCircle className="mr-2 h-5 w-5" /> Novo Produto
+            </Button>
+          </PermissionGate>
         </div>
       </div>
 
@@ -713,6 +725,8 @@ const ProdutosPage = ({ vendedorAtual }) => {
               onShare={handleShareProduto}
               selectedProdutos={selectedProdutosIds}
               setSelectedProdutos={setSelectedProdutosIds}
+              canEdit={canEdit}
+              canDelete={canDelete}
             />
             
             {/* Componente de Paginação */}

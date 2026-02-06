@@ -51,6 +51,9 @@ use App\Http\Controllers\Api\AtendimentoController;
 use App\Http\Controllers\Api\EnvelopamentoPrecosController;
 use App\Http\Controllers\Api\ServicoAdicionalController;
 use App\Http\Controllers\Api\Admin\TenantManagerController;
+use App\Http\Controllers\Api\PermissionProfileController;
+use App\Http\Controllers\Api\FormaPagamentoController;
+use App\Http\Controllers\Api\CupomController;
 
 /*
 |--------------------------------------------------------------------------
@@ -105,6 +108,9 @@ Route::prefix('public')->group(function () {
     Route::get('configuracoes/empresa/tenant/{tenantId}', [ConfiguracaoController::class, 'getEmpresaByTenant']);
     Route::get('empresa/tenant/{tenantId}', [EmpresaController::class, 'getByTenant']);
     Route::post('vendas-pre-venda/tenant/{tenantId}', [VendaPreVendaController::class, 'createForTenant']);
+    Route::get('formas-pagamento/tenant/{tenantId}', [FormaPagamentoController::class, 'getByTenant']);
+    Route::post('cupons/validar/{tenantId}', [CupomController::class, 'validarCupom']);
+    Route::post('cupons/registrar-uso/{tenantId}', [CupomController::class, 'registrarUso']);
 });
 
 // Webhook público para disparar fechamento automático de funcionários (aceita GET e POST)
@@ -333,6 +339,16 @@ Route::middleware(['api.auth'])->group(function () {
     
     // Funcionários (apiResource deve vir DEPOIS das rotas específicas)
     Route::apiResource('funcionarios', FuncionarioController::class);
+    
+    // Perfis de Permissões (templates de permissões para funcionários)
+    Route::apiResource('permission-profiles', PermissionProfileController::class);
+    
+    // Formas de Pagamento
+    Route::apiResource('formas-pagamento', FormaPagamentoController::class);
+    
+    // Cupons de Desconto
+    Route::get('cupons/gerar-codigo', [CupomController::class, 'gerarCodigo']);
+    Route::apiResource('cupons', CupomController::class);
     
     // Configuração de fechamento automático de mês
     Route::prefix('configuracao-fechamento-mes')->group(function () {

@@ -35,6 +35,8 @@ const LixeiraPage = lazy(() => import('@/pages/LixeiraPage'));
 const AuditoriaPage = lazy(() => import('@/pages/AuditoriaPage'));
 const ContasBancariasPage = lazy(() => import('@/pages/ContasBancariasPage'));
 const MaquinasCartaoPage = lazy(() => import('@/pages/MaquinasCartaoPage'));
+const FormasPagamentoPage = lazy(() => import('@/pages/FormasPagamentoPage'));
+const CuponsPage = lazy(() => import('@/pages/CuponsPage'));
 const PDVHistoricoPage = lazy(() => import('@/pages/PDVHistoricoPage'));
 const PDVReciboPage = lazy(() => import('@/pages/PDVReciboPage'));
 const OSReciboPage = lazy(() => import('@/pages/OSReciboPage'));
@@ -100,6 +102,8 @@ const AppRoutes = ({ logoUrl, nomeEmpresa, vendedorAtual, theme, setTheme, setAp
       <Route path="/cadastros/acabamentos-servicos" element={<ConfiguracaoAcabamentosPage />} />
       <Route path="/cadastros/contas-bancarias" element={<ContasBancariasPage />} />
       <Route path="/cadastros/maquinas-cartao" element={<MaquinasCartaoPage />} />
+      <Route path="/cadastros/formas-pagamento" element={<FormasPagamentoPage />} />
+      <Route path="/cadastros/cupons" element={<CuponsPage />} />
 
       {/* Operacional */}
       <Route path="/operacional/ordens-servico" element={<OrdensServicoPage logoUrl={logoUrl} nomeEmpresa={nomeEmpresa} vendedorAtual={vendedorAtual} />} />

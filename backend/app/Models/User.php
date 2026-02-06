@@ -61,6 +61,7 @@ class User extends Authenticatable
         'vales',
         'faltas',
         'permissions',
+        'access_schedule',
         'login',
         'senha',
         'status',
@@ -119,6 +120,7 @@ class User extends Authenticatable
             'vales' => 'array',
             'faltas' => 'array',
             'permissions' => 'array',
+            'access_schedule' => 'array',
             'status' => 'boolean',
         ];
     }

@@ -74,6 +74,7 @@ const initialFuncionarioState = () => ({
   vales: [],
   faltas: [],
   permissions: {},
+  access_schedule: [],
   senha: "",
 });
 
@@ -133,6 +134,9 @@ const FuncionarioFormModal = ({ isOpen, onClose, funcionario }) => {
                   funcionarioData.permissions !== null
                     ? funcionarioData.permissions
                     : {},
+                access_schedule: Array.isArray(funcionarioData.access_schedule)
+                  ? funcionarioData.access_schedule
+                  : [],
                 foto_url: funcionarioData.foto_url || null,
               };
 
@@ -193,6 +197,9 @@ const FuncionarioFormModal = ({ isOpen, onClose, funcionario }) => {
           formData.permissions !== null
             ? formData.permissions
             : {},
+        access_schedule: Array.isArray(formData.access_schedule)
+          ? formData.access_schedule
+          : [],
         // Mapear senha para password (campo esperado pelo backend)
         password: formData.senha || null,
         // Garantir que foto_url seja incluído explicitamente
