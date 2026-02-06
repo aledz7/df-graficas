@@ -7,7 +7,7 @@ import ProdutoFormTabs from './ProdutoFormTabs';
 import imageCompression from 'browser-image-compression';
 import { safeJsonParse } from '@/lib/utils';
 import { getImageUrl } from '@/lib/imageUtils';
-import { categoriaService, produtoService, corService, tamanhoService, uploadService } from '@/services/api';
+import { categoriaService, produtoService, corService, tamanhoService, uploadService, subcategoriaService } from '@/services/api';
 import { apiDataManager } from '@/lib/apiDataManager';
 
 const defaultProduto = {
@@ -311,6 +311,44 @@ const ProdutoForm = ({ isOpen, onClose, onSave, produtoEmEdicao, showSaveAndNewB
         };
         loadAllProducts();
     }, [isOpen]);
+
+    // Callback para quando uma nova categoria é criada
+    const handleCategoriaCreated = useCallback(async (novaCategoria) => {
+        try {
+            // Recarregar todas as categorias para ter a lista atualizada
+            const categoriesResponse = await categoriaService.getAll();
+            const categoriesData = categoriesResponse.data?.data?.data || categoriesResponse.data?.data || categoriesResponse.data || [];
+            const categoriesArray = Array.isArray(categoriesData) ? categoriesData : [];
+            setCategories(categoriesArray);
+            
+            // Retornar a categoria criada para seleção automática
+            return novaCategoria;
+        } catch (error) {
+            console.error('Erro ao recarregar categorias:', error);
+        }
+    }, []);
+
+    // Callback para quando uma nova subcategoria é criada
+    const handleSubcategoriaCreated = useCallback(async (novaSubcategoria) => {
+        try {
+            // Recarregar todas as categorias (que incluem subcategorias)
+            const categoriesResponse = await categoriaService.getAll();
+            const categoriesData = categoriesResponse.data?.data?.data || categoriesResponse.data?.data || categoriesResponse.data || [];
+            const categoriesArray = Array.isArray(categoriesData) ? categoriesData : [];
+            setCategories(categoriesArray);
+            
+            // Atualizar as subcategorias filtradas para a categoria atual
+            if (currentProduto.categoria) {
+                const selectedCategory = categoriesArray.find(cat => String(cat.id) === String(currentProduto.categoria));
+                const subcategoriasDaCategoria = selectedCategory?.subcategorias || [];
+                setFilteredSubcategories(subcategoriasDaCategoria);
+            }
+            
+            return novaSubcategoria;
+        } catch (error) {
+            console.error('Erro ao recarregar subcategorias:', error);
+        }
+    }, [currentProduto.categoria]);
 
     // Garantir que o preço do kit seja sempre a soma dos componentes
     useEffect(() => {
@@ -857,6 +895,8 @@ const ProdutoForm = ({ isOpen, onClose, onSave, produtoEmEdicao, showSaveAndNewB
                         addComponente={addComponente}
                         removeComponente={removeComponente}
                         updateComponenteQuantidade={updateComponenteQuantidade}
+                        onCategoriaCreated={handleCategoriaCreated}
+                        onSubcategoriaCreated={handleSubcategoriaCreated}
                     />
                 </div>
                 <DialogFooter className="pt-4 border-t">

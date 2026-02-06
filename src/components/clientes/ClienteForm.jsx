@@ -226,6 +226,77 @@ const ClienteForm = ({ isOpen, onClose, onSave, clienteEmEdicao, showSaveAndNewB
         }
     };
 
+    const [isBuscandoCnpj, setIsBuscandoCnpj] = useState(false);
+    
+    const handleBuscarCnpj = async () => {
+        const cnpj = currentCliente.cpf_cnpj?.replace(/\D/g, '');
+        
+        if (!cnpj || cnpj.length !== 14) {
+            toast({ 
+                title: "CNPJ inválido", 
+                description: "Por favor, insira um CNPJ válido com 14 dígitos.", 
+                variant: "destructive" 
+            });
+            return;
+        }
+        
+        setIsBuscandoCnpj(true);
+        
+        try {
+            const response = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`);
+            
+            if (!response.ok) {
+                if (response.status === 404) {
+                    throw new Error('CNPJ não encontrado na base da Receita Federal');
+                }
+                throw new Error('Falha ao buscar dados do CNPJ');
+            }
+            
+            const data = await response.json();
+            
+            // Formatar telefone se existir
+            let telefone = '';
+            if (data.ddd_telefone_1) {
+                const tel = data.ddd_telefone_1.replace(/\D/g, '');
+                if (tel.length >= 10) {
+                    telefone = `(${tel.substring(0, 2)}) ${tel.substring(2)}`;
+                }
+            }
+            
+            setCurrentCliente(prev => ({
+                ...prev,
+                nome_completo: data.razao_social || prev.nome_completo || '',
+                apelido_fantasia: data.nome_fantasia || prev.apelido_fantasia || '',
+                email: data.email || prev.email || '',
+                telefone_principal: telefone || prev.telefone_principal || '',
+                endereco: {
+                    ...prev.endereco,
+                    cep: data.cep ? data.cep.replace(/\D/g, '') : prev.endereco.cep || '',
+                    logradouro: data.logradouro || prev.endereco.logradouro || '',
+                    numero: data.numero || prev.endereco.numero || '',
+                    complemento: data.complemento || prev.endereco.complemento || '',
+                    bairro: data.bairro || prev.endereco.bairro || '',
+                    cidade: data.municipio || prev.endereco.cidade || '',
+                    estado: data.uf || prev.endereco.estado || '',
+                }
+            }));
+            
+            toast({ 
+                title: "Dados encontrados!", 
+                description: `Empresa: ${data.razao_social}` 
+            });
+            
+        } catch (error) {
+            toast({ 
+                title: "Erro ao buscar CNPJ", 
+                description: error.message, 
+                variant: "destructive" 
+            });
+        } finally {
+            setIsBuscandoCnpj(false);
+        }
+    };
+
 
 
     const handleSubmit = async (e, cadastrarOutro = false) => {
@@ -334,6 +405,8 @@ const ClienteForm = ({ isOpen, onClose, onSave, clienteEmEdicao, showSaveAndNewB
                                         handleLocateCep={handleLocateCep}
                                         handleFotoUpload={handleFotoChange}
                                         fotoPreview={fotoPreview}
+                                        handleBuscarCnpj={handleBuscarCnpj}
+                                        isBuscandoCnpj={isBuscandoCnpj}
                                     />
                                 </TabsContent>
                                  <TabsContent value="config" className="p-0 pt-2">

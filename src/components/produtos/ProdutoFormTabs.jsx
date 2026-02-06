@@ -35,6 +35,8 @@ const ProdutoFormTabs = ({
   addComponente,
   removeComponente,
   updateComponenteQuantidade,
+  onCategoriaCreated,
+  onSubcategoriaCreated,
 }) => {
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -192,6 +194,8 @@ const ProdutoFormTabs = ({
           handleSelectChange={handleSelectChange}
           categories={categories}
           subcategories={subcategories}
+          onCategoriaCreated={onCategoriaCreated}
+          onSubcategoriaCreated={onSubcategoriaCreated}
         />
       </TabsContent>
     </Tabs>

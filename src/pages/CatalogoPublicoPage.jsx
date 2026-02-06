@@ -647,6 +647,11 @@ const CatalogoPublicoPage = () => {
                                                 <CardContent className="p-4 flex-grow flex flex-col justify-between">
                                                    <div>
                                                         <CardTitle className={`${produtoId ? 'text-xl' : 'text-base'} font-bold truncate group-hover:text-primary leading-tight`} title={produto.nome}>{produto.nome}</CardTitle>
+                                                        {produto.descricao_curta && (
+                                                            <p className="text-xs text-muted-foreground mt-1 line-clamp-2" title={produto.descricao_curta}>
+                                                                {produto.descricao_curta}
+                                                            </p>
+                                                        )}
                                                         {temEstoqueDisponivel(produto) ? (
                                                             <p className="text-xs text-green-600 flex items-center mt-1"><CheckCircle size={12} className="mr-1"/> {getTextoDisponibilidadeEstoque(produto)}</p>
                                                         ) : (
@@ -783,54 +788,190 @@ const CatalogoPublicoPage = () => {
                 </ScrollArea>
             </main>
 
-            {/* Modal de Detalhes do Produto */}
-			<Dialog open={showProdutoModal} onOpenChange={setShowProdutoModal}>
-				<DialogContent className="max-w-2xl w-[90vw] sm:w-[800px] max-h-[90vh] overflow-y-auto">
+            {/* Modal de Detalhes do Produto - Layout Completo */}
+            <Dialog open={showProdutoModal} onOpenChange={setShowProdutoModal}>
+                <DialogContent className="max-w-4xl w-[95vw] max-h-[95vh] overflow-y-auto p-0">
                     {produtoSelecionado && (
-                        <>
-                            <DialogHeader>
-                                <DialogTitle className="text-xl font-bold">{produtoSelecionado.nome}</DialogTitle>
-                            </DialogHeader>
-                            <div className="space-y-4">
-                                {/* Imagem do produto */}
-                                <div className="aspect-square w-full max-w-[200px] sm:max-w-sm mx-auto overflow-hidden rounded-lg bg-muted">
-                                    {(variacaoSelecionada?.imagem || variacaoSelecionada?.imagem_url || variacaoSelecionada?.imagem_principal || produtoSelecionado.imagem_principal) ? (
-                                        <img 
-                                            src={getImageUrl(variacaoSelecionada?.imagem || variacaoSelecionada?.imagem_url || variacaoSelecionada?.imagem_principal || produtoSelecionado.imagem_principal)} 
-                                            alt={produtoSelecionado.nome} 
-                                            className="w-full h-full object-cover" 
-                                            onError={(e) => {
-                                                e.target.style.display = 'none';
-                                                e.target.parentElement.innerHTML = '<div class="w-full h-full flex items-center justify-center"><svg class="w-16 h-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg></div>';
-                                            }} 
-                                        />
-                                    ) : (
-                                        <div className="w-full h-full flex items-center justify-center">
-                                            <ImageIcon className="w-16 h-16 text-muted-foreground" />
+                        <div className="flex flex-col">
+                            {/* Breadcrumb / Categoria */}
+                            {(produtoSelecionado.categoria || produtoSelecionado.subcategoria) && (
+                                <div className="bg-gray-100 dark:bg-gray-800 px-6 py-2 text-xs text-muted-foreground uppercase tracking-wide border-b">
+                                    {produtoSelecionado.categoria?.nome}
+                                    {produtoSelecionado.subcategoria?.nome && (
+                                        <> » {produtoSelecionado.subcategoria.nome}</>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Conteúdo Principal */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
+                                {/* Coluna da Imagem */}
+                                <div className="space-y-3">
+                                    {/* Imagem Principal */}
+                                    <div className="aspect-square w-full overflow-hidden rounded-lg bg-muted border">
+                                        {(variacaoSelecionada?.imagem || variacaoSelecionada?.imagem_url || variacaoSelecionada?.imagem_principal || produtoSelecionado.imagem_principal) ? (
+                                            <img 
+                                                src={getImageUrl(variacaoSelecionada?.imagem || variacaoSelecionada?.imagem_url || variacaoSelecionada?.imagem_principal || produtoSelecionado.imagem_principal)} 
+                                                alt={produtoSelecionado.nome} 
+                                                className="w-full h-full object-contain bg-white" 
+                                                onError={(e) => {
+                                                    e.target.style.display = 'none';
+                                                    e.target.parentElement.innerHTML = '<div class="w-full h-full flex items-center justify-center bg-gray-50"><svg class="w-24 h-24 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg></div>';
+                                                }} 
+                                            />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center bg-gray-50">
+                                                <ImageIcon className="w-24 h-24 text-gray-300" />
+                                            </div>
+                                        )}
+                                    </div>
+                                    
+                                    {/* Galeria de Miniaturas */}
+                                    {produtoSelecionado.galeria_urls && Array.isArray(produtoSelecionado.galeria_urls) && produtoSelecionado.galeria_urls.length > 0 && (
+                                        <div className="flex gap-2 overflow-x-auto pb-2">
+                                            <button
+                                                onClick={() => setVariacaoSelecionada(null)}
+                                                className={`flex-shrink-0 w-16 h-16 rounded-md overflow-hidden border-2 transition-all ${
+                                                    !variacaoSelecionada ? 'border-primary ring-2 ring-primary/30' : 'border-gray-200 hover:border-gray-300'
+                                                }`}
+                                            >
+                                                <img 
+                                                    src={getImageUrl(produtoSelecionado.imagem_principal)} 
+                                                    alt="Principal"
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            </button>
+                                            {produtoSelecionado.galeria_urls.map((img, idx) => (
+                                                <button
+                                                    key={idx}
+                                                    className="flex-shrink-0 w-16 h-16 rounded-md overflow-hidden border-2 border-gray-200 hover:border-gray-300 transition-all"
+                                                >
+                                                    <img 
+                                                        src={getImageUrl(img)} 
+                                                        alt={`Galeria ${idx + 1}`}
+                                                        className="w-full h-full object-cover"
+                                                    />
+                                                </button>
+                                            ))}
                                         </div>
                                     )}
                                 </div>
 
-                                {/* Informações do produto */}
-                                <div className="space-y-3">
-                                    {/* Descrição */}
+                                {/* Coluna de Informações */}
+                                <div className="space-y-4">
+                                    {/* Nome do Produto */}
+                                    <h2 className="text-2xl font-bold text-foreground uppercase tracking-tight">
+                                        {produtoSelecionado.nome}
+                                    </h2>
+
+                                    {/* Informações Técnicas */}
+                                    <div className="space-y-2 text-sm">
+                                        {produtoSelecionado.codigo_produto && (
+                                            <div className="flex">
+                                                <span className="font-semibold text-muted-foreground w-32">Referência:</span>
+                                                <span className="text-foreground">{produtoSelecionado.codigo_produto}</span>
+                                            </div>
+                                        )}
+                                        
+                                        {produtoSelecionado.tipo_produto && (
+                                            <div className="flex">
+                                                <span className="font-semibold text-muted-foreground w-32">Tipo:</span>
+                                                <span className="text-foreground capitalize">{produtoSelecionado.tipo_produto}</span>
+                                            </div>
+                                        )}
+                                        
+                                        {produtoSelecionado.unidade_medida && (
+                                            <div className="flex">
+                                                <span className="font-semibold text-muted-foreground w-32">Unidade:</span>
+                                                <span className="text-foreground capitalize">{produtoSelecionado.unidade_medida}</span>
+                                            </div>
+                                        )}
+                                        
+                                        {(produtoSelecionado.medida_chapa_largura_cm || produtoSelecionado.medida_chapa_altura_cm) && (
+                                            <div className="flex">
+                                                <span className="font-semibold text-muted-foreground w-32">Tamanho:</span>
+                                                <span className="text-foreground">
+                                                    {produtoSelecionado.medida_chapa_largura_cm && produtoSelecionado.medida_chapa_altura_cm 
+                                                        ? `${parseFloat(produtoSelecionado.medida_chapa_largura_cm).toFixed(0)}x${parseFloat(produtoSelecionado.medida_chapa_altura_cm).toFixed(0)}cm`
+                                                        : produtoSelecionado.medida_chapa_largura_cm 
+                                                            ? `${parseFloat(produtoSelecionado.medida_chapa_largura_cm).toFixed(0)}cm`
+                                                            : `${parseFloat(produtoSelecionado.medida_chapa_altura_cm).toFixed(0)}cm`
+                                                    }
+                                                </span>
+                                            </div>
+                                        )}
+                                        
+                                        {produtoSelecionado.codigo_barras && (
+                                            <div className="flex">
+                                                <span className="font-semibold text-muted-foreground w-32">Código de Barras:</span>
+                                                <span className="text-foreground">{produtoSelecionado.codigo_barras}</span>
+                                            </div>
+                                        )}
+                                        
+                                        {produtoSelecionado.localizacao && (
+                                            <div className="flex">
+                                                <span className="font-semibold text-muted-foreground w-32">Localização:</span>
+                                                <span className="text-foreground">{produtoSelecionado.localizacao}</span>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Descrição Curta */}
                                     {produtoSelecionado.descricao_curta && (
-                                        <div>
-                                            <h4 className="font-medium text-sm text-muted-foreground mb-1">Descrição</h4>
-                                            <p className="text-sm">{produtoSelecionado.descricao_curta}</p>
-                                        </div>
+                                        <p className="text-sm text-muted-foreground leading-relaxed">
+                                            {produtoSelecionado.descricao_curta}
+                                        </p>
                                     )}
+
+                                    {/* Botões de Compartilhamento */}
+                                    <div className="flex items-center gap-2 pt-2">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => {
+                                                const produtoUrl = `${window.location.origin}/produto/${produtoSelecionado.id}`;
+                                                window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(produtoUrl)}`, '_blank');
+                                            }}
+                                            className="h-9 w-9 p-0 bg-[#1877F2] hover:bg-[#1877F2]/90 text-white border-0"
+                                            title="Compartilhar no Facebook"
+                                        >
+                                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => {
+                                                const produtoUrl = `${window.location.origin}/produto/${produtoSelecionado.id}`;
+                                                window.open(`https://twitter.com/intent/tweet?url=${encodeURIComponent(produtoUrl)}&text=${encodeURIComponent(produtoSelecionado.nome)}`, '_blank');
+                                            }}
+                                            className="h-9 w-9 p-0 bg-[#1DA1F2] hover:bg-[#1DA1F2]/90 text-white border-0"
+                                            title="Compartilhar no Twitter"
+                                        >
+                                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"/></svg>
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => {
+                                                const produtoUrl = `${window.location.origin}/produto/${produtoSelecionado.id}`;
+                                                window.open(`https://wa.me/?text=${encodeURIComponent(`${produtoSelecionado.nome}\n${produtoUrl}`)}`, '_blank');
+                                            }}
+                                            className="h-9 w-9 p-0 bg-[#25D366] hover:bg-[#25D366]/90 text-white border-0"
+                                            title="Compartilhar no WhatsApp"
+                                        >
+                                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                                        </Button>
+                                    </div>
 
                                     {/* Seção de Variações */}
                                     {produtoSelecionado?.variacoes_ativa && Array.isArray(produtoSelecionado.variacoes) && produtoSelecionado.variacoes.length > 0 && (
-                                        <div>
-                                            <h4 className="font-medium text-sm text-muted-foreground mb-2">Variações Disponíveis</h4>
-                                            <div className="grid grid-cols-1 gap-2 max-h-40 overflow-y-auto">
+                                        <div className="pt-2">
+                                            <h4 className="font-semibold text-sm text-foreground mb-2">Variações Disponíveis</h4>
+                                            <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto pr-2">
                                                 {produtoSelecionado.variacoes.map((variacao, index) => {
                                                     const corNome = getNomeVariacao(variacao.cor, 'cor');
                                                     const tamanhoNome = getNomeVariacao(variacao.tamanho, 'tamanho');
                                                     const estoqueVar = variacao.estoque_var || 0;
-                                                    // Se a variação tem preço específico, usar ele. Senão, usar o preço do produto (que já considera promoção)
                                                     const precoVar = parseFloat(
                                                         variacao.preco_var || 
                                                         (isPromocaoAtiva(produtoSelecionado) ? produtoSelecionado.preco_promocional : produtoSelecionado.preco_venda) || 0
@@ -845,15 +986,14 @@ const CatalogoPublicoPage = () => {
                                                             disabled={isOutOfStock}
                                                             className={`p-3 border rounded-lg text-left transition-all duration-200 ${
                                                                 isSelected 
-                                                                    ? 'border-blue-500 bg-blue-50 shadow-md' 
+                                                                    ? 'border-primary bg-primary/5 shadow-md ring-2 ring-primary/20' 
                                                                     : isOutOfStock 
-                                                                        ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
-                                                                        : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
+                                                                        ? 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed opacity-60'
+                                                                        : 'border-gray-200 hover:border-primary/50 hover:shadow-sm'
                                                             }`}
                                                         >
                                                             <div className="flex items-center gap-3">
-                                                                {/* Imagem da variação - sempre visível */}
-                                                                <div className="w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100 border border-gray-200">
+                                                                <div className="w-14 h-14 flex-shrink-0 rounded-md overflow-hidden bg-gray-100 border border-gray-200">
                                                                     {(variacao.imagem || variacao.imagem_url || variacao.imagem_principal) ? (
                                                                         <img 
                                                                             src={getImageUrl(variacao.imagem || variacao.imagem_url || variacao.imagem_principal)} 
@@ -861,27 +1001,25 @@ const CatalogoPublicoPage = () => {
                                                                             className="w-full h-full object-cover" 
                                                                             onError={(e) => { 
                                                                                 e.currentTarget.style.display = 'none';
-                                                                                e.currentTarget.parentElement.innerHTML = '<div class="w-full h-full flex items-center justify-center"><svg class="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg></div>';
+                                                                                e.currentTarget.parentElement.innerHTML = '<div class="w-full h-full flex items-center justify-center"><svg class="w-6 h-6 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg></div>';
                                                                             }}
                                                                         />
                                                                     ) : (
                                                                         <div className="w-full h-full flex items-center justify-center">
-                                                                            <ImageIcon className="w-8 h-8 text-gray-300" />
+                                                                            <ImageIcon className="w-6 h-6 text-gray-300" />
                                                                         </div>
                                                                     )}
                                                                 </div>
-                                                                
-                                                                {/* Informações da variação */}
                                                                 <div className="min-w-0 flex-1">
-                                                                    <div className="font-medium text-gray-900 mb-1">
+                                                                    <div className="font-medium text-foreground text-sm">
                                                                         {variacao.nome || `${corNome} / ${tamanhoNome}`}
                                                                     </div>
-                                                                    <div className="text-sm text-gray-600 mb-1">
+                                                                    <div className="text-xs text-muted-foreground">
                                                                         Estoque: {estoqueVar} {isOutOfStock && '(Esgotado)'}
                                                                     </div>
-                                                                    <div className="font-bold text-green-600">
-                                                                        R$ {precoVar.toFixed(2)}
-                                                                    </div>
+                                                                </div>
+                                                                <div className="font-bold text-primary text-sm">
+                                                                    R$ {precoVar.toFixed(2)}
                                                                 </div>
                                                             </div>
                                                         </button>
@@ -891,185 +1029,202 @@ const CatalogoPublicoPage = () => {
                                         </div>
                                     )}
 
-                                    {/* Estoque */}
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-sm font-medium">Disponibilidade:</span>
-                                        {temEstoqueDisponivel(produtoSelecionado) ? (
-                                            <span className="text-sm text-green-600 flex items-center">
-                                                <CheckCircle size={16} className="mr-1"/> 
-                                                {getTextoDisponibilidadeEstoque(produtoSelecionado)}
-                                            </span>
-                                        ) : (
-                                            <span className="text-sm text-red-600 flex items-center">
-                                                <AlertCircle size={16} className="mr-1"/> 
-                                                Sem estoque
-                                            </span>
-                                        )}
-                                    </div>
-
-                                    {/* Preço */}
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-sm font-medium">Preço:</span>
-                                        <div className="text-right">
-                                            {isPromocaoAtiva(produtoSelecionado) && (
-                                                <span className="text-sm line-through text-muted-foreground mr-2">
-                                                    R$ {parseFloat(produtoSelecionado.preco_venda || 0).toFixed(2)}
+                                    {/* Preço e Disponibilidade */}
+                                    <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 space-y-3">
+                                        {/* Disponibilidade */}
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-sm font-medium text-muted-foreground">Disponibilidade:</span>
+                                            {temEstoqueDisponivel(produtoSelecionado) ? (
+                                                <span className="text-sm text-green-600 font-medium flex items-center">
+                                                    <CheckCircle size={16} className="mr-1"/> 
+                                                    {getTextoDisponibilidadeEstoque(produtoSelecionado)}
+                                                </span>
+                                            ) : (
+                                                <span className="text-sm text-red-600 font-medium flex items-center">
+                                                    <AlertCircle size={16} className="mr-1"/> 
+                                                    Sem estoque
                                                 </span>
                                             )}
-                                            <span className={`text-lg font-bold ${
-                                                isPromocaoAtiva(produtoSelecionado) ? 'text-primary' : 'text-foreground'
-                                            }`}>
-                                                R$ {parseFloat(
-                                                    isPromocaoAtiva(produtoSelecionado) 
-                                                        ? produtoSelecionado.preco_promocional 
-                                                        : produtoSelecionado.preco_venda || 0
-                                                ).toFixed(2)}
-                                            </span>
                                         </div>
-                                    </div>
 
-                                    {/* Controle de quantidade */}
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-sm font-medium">Quantidade:</span>
-                                        <div className="flex items-center space-x-3">
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => setQuantidadeSelecionada(Math.max(1, quantidadeSelecionada - 1))}
-                                                disabled={quantidadeSelecionada <= 1}
-                                            >
-                                                <Minus className="h-4 w-4" />
-                                            </Button>
-                                            <span className="text-lg font-medium w-12 text-center">
-                                                {quantidadeSelecionada}
-                                            </span>
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => setQuantidadeSelecionada(quantidadeSelecionada + 1)}
-                                                disabled={quantidadeSelecionada >= calcularEstoqueDisponivel(produtoSelecionado, variacaoSelecionada)}
-                                            >
-                                                <Plus className="h-4 w-4" />
-                                            </Button>
-                                        </div>
-                                        {calcularEstoqueDisponivel(produtoSelecionado, variacaoSelecionada) > 0 && (
-                                            <span className="text-xs text-muted-foreground ml-2">
-                                                (Estoque: {calcularEstoqueDisponivel(produtoSelecionado, variacaoSelecionada)})
-                                            </span>
-                                        )}
-                                    </div>
-
-                                    {/* Total */}
-                                    <div className="border-t pt-3">
+                                        {/* Preço */}
                                         <div className="flex items-center justify-between">
-                                            <span className="text-base font-medium">Total:</span>
-                                            <span className="text-xl font-bold text-primary">
+                                            <span className="text-sm font-medium text-muted-foreground">Preço:</span>
+                                            <div className="text-right">
+                                                {isPromocaoAtiva(produtoSelecionado) && (
+                                                    <span className="text-sm line-through text-muted-foreground mr-2">
+                                                        R$ {parseFloat(produtoSelecionado.preco_venda || 0).toFixed(2)}
+                                                    </span>
+                                                )}
+                                                <span className={`text-2xl font-bold ${
+                                                    isPromocaoAtiva(produtoSelecionado) ? 'text-primary' : 'text-foreground'
+                                                }`}>
+                                                    R$ {parseFloat(
+                                                        variacaoSelecionada?.preco_var ||
+                                                        (isPromocaoAtiva(produtoSelecionado) 
+                                                            ? produtoSelecionado.preco_promocional 
+                                                            : produtoSelecionado.preco_venda) || 0
+                                                    ).toFixed(2)}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        {/* Controle de quantidade */}
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-sm font-medium text-muted-foreground">Quantidade:</span>
+                                            <div className="flex items-center gap-3">
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => setQuantidadeSelecionada(Math.max(1, quantidadeSelecionada - 1))}
+                                                    disabled={quantidadeSelecionada <= 1}
+                                                    className="h-8 w-8 p-0"
+                                                >
+                                                    <Minus className="h-4 w-4" />
+                                                </Button>
+                                                <span className="text-lg font-semibold w-12 text-center">
+                                                    {quantidadeSelecionada}
+                                                </span>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => setQuantidadeSelecionada(quantidadeSelecionada + 1)}
+                                                    disabled={quantidadeSelecionada >= calcularEstoqueDisponivel(produtoSelecionado, variacaoSelecionada)}
+                                                    className="h-8 w-8 p-0"
+                                                >
+                                                    <Plus className="h-4 w-4" />
+                                                </Button>
+                                                <span className="text-xs text-muted-foreground">
+                                                    (Estoque: {calcularEstoqueDisponivel(produtoSelecionado, variacaoSelecionada)})
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        {/* Total */}
+                                        <div className="flex items-center justify-between pt-2 border-t">
+                                            <span className="text-base font-semibold text-foreground">Total:</span>
+                                            <span className="text-2xl font-bold text-primary">
                                                 R$ {(
                                                     parseFloat(
-                                                        isPromocaoAtiva(produtoSelecionado) 
+                                                        variacaoSelecionada?.preco_var ||
+                                                        (isPromocaoAtiva(produtoSelecionado) 
                                                             ? produtoSelecionado.preco_promocional 
-                                                            : produtoSelecionado.preco_venda || 0
+                                                            : produtoSelecionado.preco_venda) || 0
                                                     ) * quantidadeSelecionada
                                                 ).toFixed(2)}
                                             </span>
                                         </div>
                                     </div>
+
+                                    {/* Botões de Ação */}
+                                    <div className="flex gap-3 pt-2">
+                                        <Button 
+                                            variant="outline" 
+                                            onClick={() => setShowProdutoModal(false)}
+                                            className="flex-1"
+                                        >
+                                            Fechar
+                                        </Button>
+                                        <Button 
+                                            onClick={() => {
+                                                if (produtoSelecionado) {
+                                                    if (produtoSelecionado.variacoes_ativa && Array.isArray(produtoSelecionado.variacoes) && produtoSelecionado.variacoes.length > 0 && !variacaoSelecionada) {
+                                                        toast({
+                                                            title: 'Selecione uma variação',
+                                                            description: 'Este produto possui variações. Selecione uma opção antes de adicionar ao carrinho.',
+                                                            variant: 'destructive'
+                                                        });
+                                                        return;
+                                                    }
+                                                    
+                                                    const carrinhoExistente = JSON.parse(localStorage.getItem('carrinho') || '[]');
+                                                    const novoCarrinho = [...carrinhoExistente];
+                                                    let precoFinal = parseFloat(isPromocaoAtiva(produtoSelecionado) ? produtoSelecionado.preco_promocional : produtoSelecionado.preco_venda || 0);
+                                                    let nomeCompleto = produtoSelecionado.nome;
+                                                    let estoqueDisponivel = produtoSelecionado.estoque_atual || produtoSelecionado.estoque;
+                                                    
+                                                    if (variacaoSelecionada) {
+                                                        precoFinal = parseFloat(variacaoSelecionada.preco_var || precoFinal || 0);
+                                                        estoqueDisponivel = variacaoSelecionada.estoque_var || 0;
+                                                        const corNome = getNomeVariacao(variacaoSelecionada.cor, 'cor');
+                                                        const tamanhoNome = getNomeVariacao(variacaoSelecionada.tamanho, 'tamanho');
+                                                        nomeCompleto = `${produtoSelecionado.nome} - ${variacaoSelecionada.nome || `${corNome}/${tamanhoNome}`}`;
+                                                    }
+                                                    
+                                                    const itemId = variacaoSelecionada ? `${produtoSelecionado.id}-${variacaoSelecionada.id || variacaoSelecionada.cor}-${variacaoSelecionada.tamanho}` : produtoSelecionado.id;
+                                                    const itemExistente = novoCarrinho.find(item => item.id === itemId);
+                                                    const quantidadeAtualNoCarrinho = itemExistente ? itemExistente.quantidade : 0;
+                                                    const novaQuantidadeTotal = quantidadeAtualNoCarrinho + quantidadeSelecionada;
+                                                    
+                                                    if (novaQuantidadeTotal > estoqueDisponivel) {
+                                                        toast({
+                                                            title: 'Estoque insuficiente',
+                                                            description: `Estoque disponível: ${estoqueDisponivel} unidade(s). Você já tem ${quantidadeAtualNoCarrinho} no carrinho.`,
+                                                            variant: 'destructive'
+                                                        });
+                                                        return;
+                                                    }
+                                                    
+                                                    if (itemExistente) {
+                                                        novoCarrinho.forEach(item => {
+                                                            if (item.id === itemId) {
+                                                                item.quantidade = novaQuantidadeTotal;
+                                                            }
+                                                        });
+                                                    } else {
+                                                        novoCarrinho.push({
+                                                            id: itemId,
+                                                            produtoId: produtoSelecionado.id,
+                                                            nome: nomeCompleto,
+                                                            preco: parseFloat(precoFinal || 0),
+                                                            quantidade: quantidadeSelecionada,
+                                                            imagem: produtoSelecionado.imagem_principal,
+                                                            estoque: estoqueDisponivel,
+                                                            variacao: variacaoSelecionada,
+                                                            tenant_id: tenantId || produtoSelecionado.tenant_id || produtoSelecionado.tenantId
+                                                        });
+                                                    }
+                                                    
+                                                    setCarrinho(novoCarrinho);
+                                                    localStorage.setItem('carrinho', JSON.stringify(novoCarrinho));
+                                                    setShowProdutoModal(false);
+                                                    setProdutoSelecionado(null);
+                                                    setQuantidadeSelecionada(1);
+                                                    
+                                                    navigate(`/checkout${tenantId ? `/${tenantId}` : ''}`, { 
+                                                        state: { carrinho: novoCarrinho } 
+                                                    });
+                                                }
+                                            }}
+                                            disabled={parseFloat(produtoSelecionado.estoque_atual || produtoSelecionado.estoque) <= 0}
+                                            className="flex-[2] bg-primary hover:bg-primary/90"
+                                        >
+                                            <ShoppingCart className="h-5 w-5 mr-2" />
+                                            Comprar
+                                        </Button>
+                                    </div>
                                 </div>
                             </div>
-                            <DialogFooter className="flex gap-2">
-                                <Button variant="outline" onClick={() => setShowProdutoModal(false)}>
-                                    Fechar
-                                </Button>
-                                <Button 
-                                    onClick={() => {
-                                        if (produtoSelecionado) {
-                                            // Se tem variações ativas e nenhuma variação foi selecionada, mostrar erro
-                                            if (produtoSelecionado.variacoes_ativa && Array.isArray(produtoSelecionado.variacoes) && produtoSelecionado.variacoes.length > 0 && !variacaoSelecionada) {
-                                                toast({
-                                                    title: 'Selecione uma variação',
-                                                    description: 'Este produto possui variações. Selecione uma opção antes de adicionar ao carrinho.',
-                                                    variant: 'destructive'
-                                                });
-                                                return;
-                                            }
-                                            
-                                            // Carregar carrinho existente do localStorage
-                                            const carrinhoExistente = JSON.parse(localStorage.getItem('carrinho') || '[]');
-                                            const novoCarrinho = [...carrinhoExistente];
-                                            let precoFinal = parseFloat(isPromocaoAtiva(produtoSelecionado) ? produtoSelecionado.preco_promocional : produtoSelecionado.preco_venda || 0);
-                                            let nomeCompleto = produtoSelecionado.nome;
-                                            let estoqueDisponivel = produtoSelecionado.estoque_atual || produtoSelecionado.estoque;
-                                            
-                                            // Se tem variação selecionada, usar preço e estoque da variação
-                                            if (variacaoSelecionada) {
-                                                precoFinal = parseFloat(variacaoSelecionada.preco_var || precoFinal || 0);
-                                                estoqueDisponivel = variacaoSelecionada.estoque_var || 0;
-                                                const corNome = getNomeVariacao(variacaoSelecionada.cor, 'cor');
-                                                const tamanhoNome = getNomeVariacao(variacaoSelecionada.tamanho, 'tamanho');
-                                                nomeCompleto = `${produtoSelecionado.nome} - ${variacaoSelecionada.nome || `${corNome}/${tamanhoNome}`}`;
-                                            }
-                                            
-                                            // Criar item do carrinho
-                                            const itemId = variacaoSelecionada ? `${produtoSelecionado.id}-${variacaoSelecionada.id || variacaoSelecionada.cor}-${variacaoSelecionada.tamanho}` : produtoSelecionado.id;
-                                            const itemExistente = novoCarrinho.find(item => item.id === itemId);
-                                            const quantidadeAtualNoCarrinho = itemExistente ? itemExistente.quantidade : 0;
-                                            const novaQuantidadeTotal = quantidadeAtualNoCarrinho + quantidadeSelecionada;
-                                            
-                                            // Verificar estoque disponível considerando quantidade já no carrinho
-                                            if (novaQuantidadeTotal > estoqueDisponivel) {
-                                                toast({
-                                                    title: 'Estoque insuficiente',
-                                                    description: `Estoque disponível: ${estoqueDisponivel} unidade(s). Você já tem ${quantidadeAtualNoCarrinho} no carrinho.`,
-                                                    variant: 'destructive'
-                                                });
-                                                return;
-                                            }
-                                            
-                                            if (itemExistente) {
-                                                novoCarrinho.forEach(item => {
-                                                    if (item.id === itemId) {
-                                                        item.quantidade = novaQuantidadeTotal;
-                                                    }
-                                                });
-                                            } else {
-                                                novoCarrinho.push({
-                                                    id: itemId,
-                                                    produtoId: produtoSelecionado.id,
-                                                    nome: nomeCompleto,
-                                                    preco: parseFloat(precoFinal || 0),
-                                                    quantidade: quantidadeSelecionada,
-                                                    imagem: produtoSelecionado.imagem_principal,
-                                                    estoque: estoqueDisponivel,
-                                                    variacao: variacaoSelecionada,
-                                                    tenant_id: tenantId || produtoSelecionado.tenant_id || produtoSelecionado.tenantId // Incluir tenantId para uso no checkout
-                                                });
-                                            }
-                                            
-                                            // Atualizar estado do carrinho
-                                            setCarrinho(novoCarrinho);
-                                            
-                                            // Salvar carrinho no localStorage
-                                            localStorage.setItem('carrinho', JSON.stringify(novoCarrinho));
-                                            
-                                            // Fechar modal
-                                            setShowProdutoModal(false);
-                                            setProdutoSelecionado(null);
-                                            setQuantidadeSelecionada(1);
-                                            
-                                            // Navegar para checkout
-                                            navigate(`/checkout${tenantId ? `/${tenantId}` : ''}`, { 
-                                                state: { carrinho: novoCarrinho } 
-                                            });
-                                        }
-                                    }}
-                                    disabled={parseFloat(produtoSelecionado.estoque_atual || produtoSelecionado.estoque) <= 0}
-                                    className="flex-1"
-                                >
-                                    <ShoppingCart className="h-4 w-4 mr-2" />
-                                    Comprar
-                                </Button>
-                            </DialogFooter>
-                        </>
+
+                            {/* Descrição Longa / Informações Completas */}
+                            {produtoSelecionado.descricao_longa && (
+                                <div className="border-t bg-amber-50/50 dark:bg-amber-900/10">
+                                    <div className="p-6">
+                                        <h3 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2 border-b-2 border-amber-400 pb-2">
+                                            <Package className="w-5 h-5 text-amber-600" />
+                                            INFORMAÇÕES DO PRODUTO
+                                        </h3>
+                                        <div 
+                                            className="prose prose-sm max-w-none text-foreground/80 leading-relaxed whitespace-pre-line"
+                                            dangerouslySetInnerHTML={{ 
+                                                __html: produtoSelecionado.descricao_longa
+                                                    .replace(/\n/g, '<br>')
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     )}
                 </DialogContent>
             </Dialog>

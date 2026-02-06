@@ -4,7 +4,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { MapPin, Image as ImageIcon, UserCircle2 } from 'lucide-react';
+import { MapPin, Image as ImageIcon, UserCircle2, Search, Loader2 } from 'lucide-react';
 
 const estadosBrasileiros = [
     { sigla: 'AC', nome: 'Acre' }, { sigla: 'AL', nome: 'Alagoas' }, { sigla: 'AP', nome: 'Amapá' },
@@ -19,7 +19,7 @@ const estadosBrasileiros = [
   ];
 
 
-const ClienteTabDadosCadastrais = ({ cliente, handleInputChange, handleNestedInputChange, handleSelectChange, handleLocateCep, handleFotoUpload, fotoPreview }) => {
+const ClienteTabDadosCadastrais = ({ cliente, handleInputChange, handleNestedInputChange, handleSelectChange, handleLocateCep, handleFotoUpload, fotoPreview, handleBuscarCnpj, isBuscandoCnpj }) => {
   return (
     <div className="space-y-6">
       <Card>
@@ -63,7 +63,21 @@ const ClienteTabDadosCadastrais = ({ cliente, handleInputChange, handleNestedInp
               </div>
               <div className="space-y-1">
                 <Label htmlFor="cpf_cnpj">{cliente.tipo_pessoa === 'Pessoa Física' ? 'CPF' : 'CNPJ'}</Label>
-                <Input id="cpf_cnpj" name="cpf_cnpj" value={cliente.cpf_cnpj || ''} onChange={handleInputChange} placeholder={cliente.tipo_pessoa === 'Pessoa Física' ? '000.000.000-00' : '00.000.000/0000-00'}/>
+                <div className="flex gap-2">
+                  <Input id="cpf_cnpj" name="cpf_cnpj" value={cliente.cpf_cnpj || ''} onChange={handleInputChange} placeholder={cliente.tipo_pessoa === 'Pessoa Física' ? '000.000.000-00' : '00.000.000/0000-00'} className="flex-1"/>
+                  {cliente.tipo_pessoa === 'Pessoa Jurídica' && (
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      size="icon"
+                      onClick={handleBuscarCnpj}
+                      disabled={isBuscandoCnpj}
+                      title="Buscar dados do CNPJ"
+                    >
+                      {isBuscandoCnpj ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                    </Button>
+                  )}
+                </div>
               </div>
               <div className="space-y-1">
                 <Label htmlFor="rg_ie">{cliente.tipo_pessoa === 'Pessoa Física' ? 'RG' : 'Inscrição Estadual'}</Label>

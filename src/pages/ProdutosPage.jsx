@@ -12,7 +12,7 @@ import { safeJsonParse, formatCurrency } from '@/lib/utils';
 import { useToast } from '@/components/ui/use-toast';
 import { motion } from 'framer-motion';
 import { exportToExcel, importFromExcel } from '@/lib/utils'; // Supondo que existam
-import { produtoService, categoriaService } from '@/services/api';
+import { produtoService, categoriaService, historicoEntradaEstoqueService } from '@/services/api';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -231,6 +231,81 @@ const ProdutosPage = ({ vendedorAtual }) => {
         // Criar novo produto
         response = await produtoService.create(produtoData);
         toast({ title: "Produto criado", description: "O produto foi criado com sucesso." });
+        
+        // Se o produto tem variações com estoque, criar entrada de estoque automática
+        const produtoCriado = response.data;
+        if (produtoCriado && produtoData.variacoes_ativa && produtoData.variacoes?.length > 0) {
+          const variacoesComEstoque = produtoData.variacoes.filter(v => parseFloat(v.estoque_var) > 0);
+          
+          if (variacoesComEstoque.length > 0) {
+            try {
+              // Criar entrada de estoque automática para as variações
+              const entradaAutomatica = {
+                codigo_entrada: `ENT-AUTO-${Date.now()}`,
+                data_entrada: new Date().toISOString().split('T')[0],
+                numero_nota: null,
+                data_nota: null,
+                fornecedor_id: null,
+                fornecedor_nome: null,
+                usuario_id: vendedorAtual?.id || 2,
+                usuario_nome: vendedorAtual?.nome || 'Sistema',
+                itens: variacoesComEstoque.map(v => ({
+                  id: produtoCriado.id,
+                  nome: `${produtoData.nome} (${v.nome || v.cor || v.tamanho || 'Variação'})`,
+                  quantidade: parseFloat(v.estoque_var) || 0,
+                  custoUnitario: parseFloat(v.preco_var) || parseFloat(produtoData.preco_custo) || 0,
+                  preco_venda_registrado: parseFloat(v.preco_var) || parseFloat(produtoData.preco_venda) || null,
+                  variacao_id: v.id,
+                  variacao_nome: v.nome,
+                  variacao_cor: v.cor,
+                  variacao_tamanho: v.tamanho
+                })),
+                observacoes: 'Entrada automática - Cadastro inicial de variações',
+                status: 'confirmada',
+                data_confirmacao: new Date().toISOString()
+              };
+              
+              await historicoEntradaEstoqueService.create(entradaAutomatica);
+              console.log('✅ Entrada de estoque automática criada para variações');
+            } catch (entradaError) {
+              console.error('⚠️ Erro ao criar entrada automática de estoque:', entradaError);
+              // Não mostra erro para o usuário, pois o produto foi salvo com sucesso
+            }
+          }
+        }
+        
+        // Se o produto principal tem estoque (sem variações), criar entrada de estoque
+        if (!produtoData.variacoes_ativa && parseFloat(produtoData.estoque) > 0) {
+          try {
+            const entradaAutomatica = {
+              codigo_entrada: `ENT-AUTO-${Date.now()}`,
+              data_entrada: new Date().toISOString().split('T')[0],
+              numero_nota: null,
+              data_nota: null,
+              fornecedor_id: null,
+              fornecedor_nome: null,
+              usuario_id: vendedorAtual?.id || 2,
+              usuario_nome: vendedorAtual?.nome || 'Sistema',
+              itens: [{
+                id: produtoCriado.id,
+                nome: produtoData.nome,
+                quantidade: parseFloat(produtoData.estoque) || 0,
+                custoUnitario: parseFloat(produtoData.preco_custo) || 0,
+                preco_venda_registrado: parseFloat(produtoData.preco_venda) || null,
+                variacao_id: null,
+                variacao_nome: null
+              }],
+              observacoes: 'Entrada automática - Cadastro inicial do produto',
+              status: 'confirmada',
+              data_confirmacao: new Date().toISOString()
+            };
+            
+            await historicoEntradaEstoqueService.create(entradaAutomatica);
+            console.log('✅ Entrada de estoque automática criada para produto');
+          } catch (entradaError) {
+            console.error('⚠️ Erro ao criar entrada automática de estoque:', entradaError);
+          }
+        }
       }
       
       // Recarregar todos os produtos para garantir que temos os dados mais atualizados

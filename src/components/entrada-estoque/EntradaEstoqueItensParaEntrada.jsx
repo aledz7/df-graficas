@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Trash2, CheckCircle, Percent, DollarSign, TrendingUp, Package } from 'lucide-react';
+import { Trash2, CheckCircle, Percent, DollarSign, TrendingUp, Package, Palette } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
@@ -94,7 +94,7 @@ const EntradaEstoqueItensParaEntrada = ({ itensEntrada, handleUpdateItem, handle
             <div className="space-y-4 pr-2">
               {itensEntrada.length > 0 ? itensEntrada.map(item => (
                 <motion.div
-                  key={item.id}
+                  key={item.itemId || item.id}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 border border-gray-200 dark:border-gray-700"
@@ -102,17 +102,24 @@ const EntradaEstoqueItensParaEntrada = ({ itensEntrada, handleUpdateItem, handle
                   <div className="space-y-3">
                     <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-base break-words">{item.nome}</p>
-                        {item.isNovoDoXml && (
-                          <Badge variant="outline" className="mt-1 text-blue-600 border-blue-300">
-                            Novo do XML
-                          </Badge>
-                        )}
+                        <p className="font-semibold text-base break-words">{item.nomeExibicao || item.nome}</p>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {item.variacao && (
+                            <Badge variant="secondary" className="text-purple-600 border-purple-300">
+                              <Palette className="h-3 w-3 mr-1" /> Variação
+                            </Badge>
+                          )}
+                          {item.isNovoDoXml && (
+                            <Badge variant="outline" className="text-blue-600 border-blue-300">
+                              Novo do XML
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                       <Button 
                         variant="ghost" 
                         size="icon" 
-                        onClick={() => handleRemoveItem(item.id)} 
+                        onClick={() => handleRemoveItem(item.itemId || item.id)} 
                         className="text-red-600 hover:text-red-700 flex-shrink-0 ml-2"
                       >
                         <Trash2 size={20}/>
@@ -121,38 +128,38 @@ const EntradaEstoqueItensParaEntrada = ({ itensEntrada, handleUpdateItem, handle
                     
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <Label htmlFor={`qtd-${item.id}`} className="text-xs">Quantidade</Label>
+                        <Label htmlFor={`qtd-${item.itemId || item.id}`} className="text-xs">Quantidade</Label>
                         <Input 
-                          id={`qtd-${item.id}`}
+                          id={`qtd-${item.itemId || item.id}`}
                           type="number" 
                           value={item.quantidade} 
-                          onChange={(e) => handleUpdateItem(item.id, 'quantidade', parseFloat(e.target.value) || 0)} 
+                          onChange={(e) => handleUpdateItem(item.itemId || item.id, 'quantidade', parseFloat(e.target.value) || 0)} 
                           min="0.01" 
                           step="0.01" 
                           className="h-9"
                         />
                       </div>
                       <div>
-                        <Label htmlFor={`custo-${item.id}`} className="text-xs">Custo Unit.</Label>
+                        <Label htmlFor={`custo-${item.itemId || item.id}`} className="text-xs">Custo Unit.</Label>
                         <Input 
-                          id={`custo-${item.id}`}
+                          id={`custo-${item.itemId || item.id}`}
                           type="number" 
                           step="0.01" 
                           value={item.custoUnitario} 
-                          onChange={(e) => handleUpdateItem(item.id, 'custoUnitario', e.target.value)} 
+                          onChange={(e) => handleUpdateItem(item.itemId || item.id, 'custoUnitario', e.target.value)} 
                           className="h-9"
                         />
                       </div>
                     </div>
 
                     <div>
-                      <Label htmlFor={`venda-${item.id}`} className="text-xs">Preço de Venda</Label>
+                      <Label htmlFor={`venda-${item.itemId || item.id}`} className="text-xs">Preço de Venda</Label>
                       <Input 
-                        id={`venda-${item.id}`}
+                        id={`venda-${item.itemId || item.id}`}
                         type="number" 
                         step="0.01" 
                         value={item.preco_venda || ''} 
-                        onChange={(e) => handleUpdateItem(item.id, 'preco_venda', e.target.value)} 
+                        onChange={(e) => handleUpdateItem(item.itemId || item.id, 'preco_venda', e.target.value)} 
                         placeholder="R$ 0,00" 
                         className="h-9"
                       />
@@ -194,23 +201,30 @@ const EntradaEstoqueItensParaEntrada = ({ itensEntrada, handleUpdateItem, handle
               </TableHeader>
               <TableBody>
                 {itensEntrada.map(item => (
-                  <TableRow key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                  <TableRow key={item.itemId || item.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                     <TableCell className="font-medium">
-                      {item.nome}
-                      {item.isNovoDoXml && <span className="text-xs text-blue-500 ml-1">(Novo do XML)</span>}
+                      <div className="flex items-center gap-2">
+                        <span>{item.nomeExibicao || item.nome}</span>
+                        {item.variacao && (
+                          <Badge variant="secondary" className="text-purple-600 text-xs">
+                            <Palette className="h-3 w-3 mr-1" /> Var
+                          </Badge>
+                        )}
+                        {item.isNovoDoXml && <span className="text-xs text-blue-500 ml-1">(Novo do XML)</span>}
+                      </div>
                     </TableCell>
                     <TableCell>
-                      <Input type="number" value={item.quantidade} onChange={(e) => handleUpdateItem(item.id, 'quantidade', parseFloat(e.target.value) || 0)} min="0.01" step="0.01" className="h-8"/>
+                      <Input type="number" value={item.quantidade} onChange={(e) => handleUpdateItem(item.itemId || item.id, 'quantidade', parseFloat(e.target.value) || 0)} min="0.01" step="0.01" className="h-8"/>
                     </TableCell>
                     <TableCell>
-                      <Input type="number" step="0.01" value={item.custoUnitario} onChange={(e) => handleUpdateItem(item.id, 'custoUnitario', e.target.value)} className="h-8"/>
+                      <Input type="number" step="0.01" value={item.custoUnitario} onChange={(e) => handleUpdateItem(item.itemId || item.id, 'custoUnitario', e.target.value)} className="h-8"/>
                     </TableCell>
                     <TableCell>
-                      <Input type="number" step="0.01" value={item.preco_venda || ''} onChange={(e) => handleUpdateItem(item.id, 'preco_venda', e.target.value)} placeholder="R$ 0,00" className="h-8"/>
+                      <Input type="number" step="0.01" value={item.preco_venda || ''} onChange={(e) => handleUpdateItem(item.itemId || item.id, 'preco_venda', e.target.value)} placeholder="R$ 0,00" className="h-8"/>
                     </TableCell>
                     <TableCell className="text-right">{formatCurrency(item.quantidade * parseFloat(item.custoUnitario || 0))}</TableCell>
                     <TableCell>
-                      <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(item.id)} className="text-destructive h-8 w-8"><Trash2 size={16}/></Button>
+                      <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(item.itemId || item.id)} className="text-destructive h-8 w-8"><Trash2 size={16}/></Button>
                     </TableCell>
                   </TableRow>
                 ))}

@@ -32,7 +32,17 @@ const EntradaEstoquePage = ({ vendedorAtual }) => {
       let produtosArray = [];
       try {
         const produtosResponse = await produtoService.getAll();
-        produtosArray = produtosResponse.data || [];
+        // Verificar diferentes estruturas possíveis da resposta
+        if (Array.isArray(produtosResponse.data)) {
+          produtosArray = produtosResponse.data;
+        } else if (Array.isArray(produtosResponse.data?.data)) {
+          produtosArray = produtosResponse.data.data;
+        } else if (Array.isArray(produtosResponse)) {
+          produtosArray = produtosResponse;
+        } else {
+          console.warn('⚠️ Estrutura de resposta inesperada para produtos:', produtosResponse);
+          produtosArray = [];
+        }
       } catch (produtosError) {
         console.error('Erro ao carregar produtos da API:', produtosError);
         // Fallback para apiDataManager
@@ -145,74 +155,65 @@ const EntradaEstoquePage = ({ vendedorAtual }) => {
     setFilteredProdutos(produtosFiltrados);
   }, [searchTerm, produtosDisponiveis]);
 
-  const handleAddItem = (produto) => {
+  const handleAddItem = (produto, variacao = null) => {
     // Garantir que itensEntrada seja sempre um array antes de usar .find()
     const itensEntradaArray1 = Array.isArray(itensEntrada) ? itensEntrada : [];
-    const itemExistente = itensEntradaArray1.find(item => item.id === produto.id);
+    
+    // Criar um ID único para o item (produto + variação se houver)
+    const itemId = variacao 
+      ? `${produto.id}-var-${variacao.id}` 
+      : produto.id;
+    
+    const itemExistente = itensEntradaArray1.find(item => item.itemId === itemId);
+    
     if (itemExistente) {
       setItensEntrada(itensEntradaArray1.map(item =>
-        item.id === produto.id ? { ...item, quantidade: (parseFloat(item.quantidade) || 0) + 1 } : item
+        item.itemId === itemId ? { ...item, quantidade: (parseFloat(item.quantidade) || 0) + 1 } : item
       ));
     } else {
       // Garantir que itensEntrada seja sempre um array antes de usar spread operator
       const itensEntradaArray2 = Array.isArray(itensEntrada) ? itensEntrada : [];
-      setItensEntrada([...itensEntradaArray2, {
+      
+      // Construir o item base
+      const novoItem = {
         ...produto,
+        itemId: itemId,
         quantidade: 1,
-        custoUnitario: produto.preco_custo || '0',
-        preco_venda: produto.preco_venda || ''
-      }]);
+        custoUnitario: variacao?.preco_var || produto.preco_custo || '0',
+        preco_venda: variacao?.preco_var || produto.preco_venda || '',
+        // Informações da variação
+        variacao: variacao ? {
+          id: variacao.id,
+          nome: variacao.nome,
+          cor: variacao.cor,
+          tamanho: variacao.tamanho,
+          codigo_barras: variacao.codigo_barras,
+          estoque_atual: variacao.estoque_var || 0
+        } : null
+      };
+      
+      // Se tiver variação, ajustar o nome para exibição
+      if (variacao) {
+        const variacaoInfo = [variacao.nome, variacao.cor, variacao.tamanho].filter(Boolean).join(' - ');
+        novoItem.nomeExibicao = `${produto.nome} (${variacaoInfo || 'Variação'})`;
+      }
+      
+      setItensEntrada([...itensEntradaArray2, novoItem]);
     }
   };
 
-  const handleUpdateItem = (id, field, value) => {
+  const handleUpdateItem = (itemId, field, value) => {
     // Garantir que itensEntrada seja sempre um array antes de usar .map()
     const itensEntradaArray3 = Array.isArray(itensEntrada) ? itensEntrada : [];
     setItensEntrada(itensEntradaArray3.map(item =>
-      item.id === id ? { ...item, [field]: value } : item
+      item.itemId === itemId ? { ...item, [field]: value } : item
     ));
   };
 
-  const handleRemoveItem = (id) => {
+  const handleRemoveItem = (itemId) => {
     // Garantir que itensEntrada seja sempre um array antes de usar .filter()
     const itensEntradaArray4 = Array.isArray(itensEntrada) ? itensEntrada : [];
-    setItensEntrada(itensEntradaArray4.filter(item => item.id !== id));
-  };
-
-  const testarAPI = async () => {
-    try {
-      const token = apiDataManager.getToken();
-
-      // Teste simples com um valor pequeno
-      await apiDataManager.setItem('teste_api', { teste: 'funcionando', timestamp: new Date().toISOString() }, true);
-      toast({ title: "API Funcionando", description: "A API está respondendo corretamente.", variant: "success" });
-    } catch (error) {
-      console.error('Erro no teste da API:', error);
-      toast({ title: "Erro na API", description: "A API não está respondendo corretamente.", variant: "destructive" });
-    }
-  };
-
-  const testarHistorico = async () => {
-    try {
-
-      // Testar API
-      try {
-        const historicoResponse = await historicoEntradaEstoqueService.getAll();
-      } catch (apiError) {
-        console.error('🧪 Erro na API:', apiError);
-        toast({ title: "Erro na API", description: "Falha ao carregar da API.", variant: "destructive" });
-      }
-
-      // Testar localStorage
-      try {
-        const storedHistorico = await apiDataManager.getItem('historico_entrada_estoque', false, true);
-      } catch (localError) {
-        console.error('🧪 Erro no localStorage:', localError);
-        toast({ title: "Erro no LocalStorage", description: "Falha ao carregar do localStorage.", variant: "destructive" });
-      }
-    } catch (error) {
-      console.error('Erro no teste do histórico:', error);
-    }
+    setItensEntrada(itensEntradaArray4.filter(item => item.itemId !== itemId));
   };
 
   const handleFinalizarEntrada = async () => {
@@ -321,15 +322,30 @@ const EntradaEstoquePage = ({ vendedorAtual }) => {
           continue;
         }
 
-        // Atualizar estoque usando o método específico
-        try {
-          await produtoService.atualizarEstoque(itemEntrada.id, {
-            quantidade: parseFloat(itemEntrada.quantidade) || 0,
-            tipo: 'entrada',
-            observacao: `Entrada de estoque - Nota: ${notaInfo.numeroNota || 'N/A'}`
-          });
-        } catch (estoqueError) {
-          console.error('Erro ao atualizar estoque do produto:', estoqueError);
+        // Verificar se é uma variação
+        if (itemEntrada.variacao) {
+          // Atualizar estoque da variação
+          try {
+            await produtoService.atualizarEstoqueVariacao(itemEntrada.id, {
+              variacao_id: itemEntrada.variacao.id,
+              quantidade: parseFloat(itemEntrada.quantidade) || 0,
+              tipo: 'entrada',
+              observacao: `Entrada de estoque - Nota: ${notaInfo.numeroNota || 'N/A'}`
+            });
+          } catch (estoqueError) {
+            console.error('Erro ao atualizar estoque da variação:', estoqueError);
+          }
+        } else {
+          // Atualizar estoque do produto principal
+          try {
+            await produtoService.atualizarEstoque(itemEntrada.id, {
+              quantidade: parseFloat(itemEntrada.quantidade) || 0,
+              tipo: 'entrada',
+              observacao: `Entrada de estoque - Nota: ${notaInfo.numeroNota || 'N/A'}`
+            });
+          } catch (estoqueError) {
+            console.error('Erro ao atualizar estoque do produto:', estoqueError);
+          }
         }
       }
     } catch (error) {
@@ -350,10 +366,14 @@ const EntradaEstoquePage = ({ vendedorAtual }) => {
       usuario_nome: vendedorAtual ? vendedorAtual.nome : 'Admin', // Nome padrão se não houver vendedor
       itens: (Array.isArray(itensEntrada) ? itensEntrada : []).map(i => ({
         id: i.id,
-        nome: i.nome,
+        nome: i.nomeExibicao || i.nome,
         quantidade: parseFloat(i.quantidade) || 0,
         custoUnitario: parseFloat(i.custoUnitario) || 0,
-        preco_venda_registrado: i.preco_venda || null
+        preco_venda_registrado: i.preco_venda || null,
+        variacao_id: i.variacao?.id || null,
+        variacao_nome: i.variacao?.nome || null,
+        variacao_cor: i.variacao?.cor || null,
+        variacao_tamanho: i.variacao?.tamanho || null
       })),
       observacoes: `Entrada registrada por ${vendedorAtual ? vendedorAtual.nome : 'Sistema'}`,
       status: 'confirmada',
@@ -380,10 +400,12 @@ const EntradaEstoquePage = ({ vendedorAtual }) => {
         ...notaInfo,
         itens: (Array.isArray(itensEntrada) ? itensEntrada : []).map(i => ({
           id: i.id,
-          nome: i.nome,
+          nome: i.nomeExibicao || i.nome,
           quantidade: i.quantidade,
           custoUnitario: i.custoUnitario,
-          preco_venda_registrado: i.preco_venda
+          preco_venda_registrado: i.preco_venda,
+          variacao_id: i.variacao?.id || null,
+          variacao_nome: i.variacao?.nome || null
         })),
         responsavel: vendedorAtual ? { id: vendedorAtual.id, nome: vendedorAtual.nome } : { id: 'sistema', nome: 'Sistema' }
       };
@@ -664,25 +686,9 @@ const EntradaEstoquePage = ({ vendedorAtual }) => {
       <div className="lg:col-span-2 space-y-6">
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <div className="flex items-center">
-                <PackageSearch className="mr-2 h-6 w-6 text-primary" />
-                Registrar Entrada de Estoque
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={testarAPI}
-                  className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
-                >
-                  Testar API
-                </button>
-                <button
-                  onClick={testarHistorico}
-                  className="px-3 py-1 text-sm bg-green-500 text-white rounded hover:bg-green-600"
-                >
-                  Testar Histórico
-                </button>
-              </div>
+            <CardTitle className="flex items-center">
+              <PackageSearch className="mr-2 h-6 w-6 text-primary" />
+              Registrar Entrada de Estoque
             </CardTitle>
             <CardDescription>Adicione produtos e suas quantidades recebidas.</CardDescription>
           </CardHeader>
