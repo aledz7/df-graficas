@@ -5,8 +5,9 @@ import { useNomeSistema } from '@/hooks/useNomeSistema.jsx';
 import {
   LayoutDashboard, ShoppingCart, Package, Users, Truck, Banknote,
   Settings, BarChart3, FileText, SprayCan, Calculator,
-  Palette, Boxes, BookOpen, Wrench, HardHat, FileClock, CheckCircle2, History, SlidersHorizontal, Trash2, Barcode, Store, Activity, CalendarDays, FileSpreadsheet, Box, LogIn, LogOut, PackagePlus, ListChecks, Printer, DollarSign, ShieldAlert, Ruler, Star, TrendingUp, CreditCard, Ticket
+  Palette, Boxes, BookOpen, Wrench, HardHat, FileClock, CheckCircle2, History, SlidersHorizontal, Trash2, Barcode, Store, Activity, CalendarDays, FileSpreadsheet, Box, LogIn, LogOut, PackagePlus, ListChecks, Printer, DollarSign, ShieldAlert, Ruler, Star, TrendingUp, CreditCard, Ticket, Gift
 } from 'lucide-react';
+import IndiqueGanheModal from '@/components/IndiqueGanheModal';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
@@ -202,6 +203,7 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen }) => {
   const { nomeSistema } = useNomeSistema();
   const [logoUrl, setLogoUrl] = useState('');
   const [loadingLogo, setLoadingLogo] = useState(true);
+  const [indiqueGanheOpen, setIndiqueGanheOpen] = useState(false);
 
   const closeSidebar = () => setIsSidebarOpen(false);
   const { logout, user } = useAuth();
@@ -308,7 +310,18 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen }) => {
                 />
               ))}
             </Accordion>
-            <div className="pt-4 border-t">
+            <div className="pt-4 border-t space-y-2">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setIndiqueGanheOpen(true);
+                  closeSidebar();
+                }} 
+                className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white hover:!text-white border-0"
+              >
+                <Gift className="h-4 w-4 mr-2" />
+                Indique e Ganhe
+              </Button>
               <Button 
                 variant="destructive" 
                 onClick={logout} 
@@ -321,6 +334,12 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen }) => {
           </nav>
         </ScrollArea>
       </aside>
+      
+      {/* Modal Indique e Ganhe */}
+      <IndiqueGanheModal 
+        open={indiqueGanheOpen} 
+        onOpenChange={setIndiqueGanheOpen} 
+      />
     </>
   );
 };
