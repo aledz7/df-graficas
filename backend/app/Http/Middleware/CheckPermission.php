@@ -25,12 +25,8 @@ class CheckPermission
             ], 401);
         }
 
-        // Se for administrador, permite tudo
-        if ($user->is_admin) {
-            return $next($request);
-        }
-
         // Verificar se o usuário tem a permissão específica
+        // Nota: Funcionários não podem ser admin - a administração de tenants é feita por sistema separado
         $permissions = $user->permissions;
         
         if (!is_array($permissions) || !isset($permissions[$permission]) || !$permissions[$permission]) {

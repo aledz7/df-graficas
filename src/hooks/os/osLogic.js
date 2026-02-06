@@ -456,7 +456,7 @@ export const calcularTotalOS = async (ordemServico, clienteSelecionado = null) =
 };
 
 export const adicionarItemOS = (ordemServico, itemAtual, acabamentosConfig) => {
-    // Calcular subtotal ANTES de formatar, garantindo que o item tenha valores numéricos corretos
+    // Log do item recebido para debug
     console.log('🔍 [adicionarItemOS] Item recebido para adicionar:', {
         tipo_item: itemAtual.tipo_item,
         consumo_custo_total: itemAtual.consumo_custo_total,
@@ -464,18 +464,27 @@ export const adicionarItemOS = (ordemServico, itemAtual, acabamentosConfig) => {
         valor_unitario_m2: itemAtual.valor_unitario_m2,
         quantidade: itemAtual.quantidade,
         largura: itemAtual.largura,
-        altura: itemAtual.altura
+        altura: itemAtual.altura,
+        subtotal_item_recebido: itemAtual.subtotal_item
     });
     
-    const subtotal = calcularSubtotalItem(itemAtual, acabamentosConfig);
+    // CORREÇÃO: Verificar se o item já tem um subtotal_item válido (calculado no OSItemForm)
+    // Se já tem, preservar esse valor em vez de recalcular
+    const subtotalRecebido = safeParseFloat(itemAtual.subtotal_item, 0);
+    const temSubtotalValido = subtotalRecebido > 0;
     
-    console.log('💰 [adicionarItemOS] Calculando subtotal:', {
+    // Só recalcular se não houver subtotal válido
+    const subtotal = temSubtotalValido ? subtotalRecebido : calcularSubtotalItem(itemAtual, acabamentosConfig);
+    
+    console.log('💰 [adicionarItemOS] Subtotal:', {
         tipo_item: itemAtual.tipo_item,
         valor_unitario: itemAtual.valor_unitario,
         valor_unitario_m2: itemAtual.valor_unitario_m2,
         quantidade: itemAtual.quantidade,
         consumo_custo_total: itemAtual.consumo_custo_total,
-        subtotal_calculado: subtotal,
+        subtotal_recebido: subtotalRecebido,
+        subtotal_usado: subtotal,
+        usou_valor_recebido: temSubtotalValido,
         isNaN: isNaN(subtotal)
     });
     

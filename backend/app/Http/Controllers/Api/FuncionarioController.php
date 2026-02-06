@@ -147,6 +147,10 @@ class FuncionarioController extends BaseController
 
             // Sempre criar no tenant do usuário logado
             $data['tenant_id'] = auth()->user()->tenant_id;
+            
+            // SEGURANÇA: Funcionários nunca podem ser admin
+            // A administração de tenants é feita por um sistema separado
+            $data['is_admin'] = false;
 
             // Normalizar data_nascimento (string vazia -> null para gravar corretamente)
             if (array_key_exists('data_nascimento', $data)) {
@@ -233,6 +237,10 @@ class FuncionarioController extends BaseController
 
             $funcionario = User::where('tenant_id', auth()->user()->tenant_id)->findOrFail($id);
             $data = $request->all();
+            
+            // SEGURANÇA: Funcionários nunca podem ser admin
+            // A administração de tenants é feita por um sistema separado
+            $data['is_admin'] = false;
 
             // Normalizar data_nascimento (string vazia -> null para gravar corretamente)
             if (array_key_exists('data_nascimento', $data)) {

@@ -45,6 +45,12 @@ const SettingsPage = lazy(() => import('@/pages/SettingsPage.jsx'));
 const ExemploPermissoesPage = lazy(() => import('./pages/ExemploPermissoesPage'));
 const TesteMenuPage = lazy(() => import('./pages/TesteMenuPage'));
 
+// Admin Pages (Sistema separado de administração de tenants)
+const AdminLoginPage = lazy(() => import('@/pages/admin/AdminLoginPage'));
+const AdminDashboardPage = lazy(() => import('@/pages/admin/AdminDashboardPage'));
+const AdminTenantsPage = lazy(() => import('@/pages/AdminTenantsPage'));
+import AdminProtectedRoute from '@/components/admin/AdminProtectedRoute';
+
 
 
 
@@ -530,6 +536,28 @@ function AppContent() {
           <Route path="/checkout/:tenantId" element={<CheckoutPage />} />
           <Route path="/test-api" element={<TestApiPage />} />
           <Route path="/test-data-manager" element={renderWithLayout(TestDataManagerPage)} />
+          
+          {/* Admin Routes - Sistema separado de administração de tenants */}
+          <Route path="/admin/login" element={
+            <Suspense fallback={<LoadingFallback />}>
+              <AdminLoginPage />
+            </Suspense>
+          } />
+          <Route path="/admin/dashboard" element={
+            <AdminProtectedRoute>
+              <Suspense fallback={<LoadingFallback />}>
+                <AdminDashboardPage />
+              </Suspense>
+            </AdminProtectedRoute>
+          } />
+          <Route path="/admin/tenants" element={
+            <AdminProtectedRoute>
+              <Suspense fallback={<LoadingFallback />}>
+                <AdminTenantsPage />
+              </Suspense>
+            </AdminProtectedRoute>
+          } />
+          <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
           <Route path="/operacional/envelopamento/editar/:orcamentoId" element={renderWithoutLayout(EditarOrcamentoEnvelopamentoPage)} />
           <Route path="/configuracoes" element={renderWithLayout(SettingsPage)} />
           <Route path="/exemplo-permissoes" element={renderWithLayout(ExemploPermissoesPage)} />

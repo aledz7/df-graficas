@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/components/ui/use-toast';
 import { Building2, Search, Eye, Pencil, Lock, Unlock, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { adminTenantService } from '@/services/adminTenantService';
+import AdminLayout from '@/components/admin/AdminLayout';
 
 const formatDate = (dateStr) => (!dateStr ? '—' : new Date(dateStr).toLocaleDateString('pt-BR'));
 
@@ -105,25 +106,26 @@ export default function AdminTenantsPage() {
   };
 
   return (
+    <AdminLayout>
     <div className="p-4 md:p-6 space-y-6">
-      <Card>
+      <Card className="bg-slate-800 border-slate-700">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Building2 className="h-5 w-5" /> Gerenciar Tenants (Clientes do Sistema)</CardTitle>
-          <CardDescription>Liste, visualize e bloqueie ou ative o acesso dos tenants. Apenas administradores.</CardDescription>
+          <CardTitle className="flex items-center gap-2 text-white"><Building2 className="h-5 w-5" /> Gerenciar Tenants (Clientes do Sistema)</CardTitle>
+          <CardDescription className="text-slate-400">Liste, visualize e bloqueie ou ative o acesso dos tenants.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap items-end gap-3">
             <div className="flex-1 min-w-[180px]">
-              <Label className="text-xs">Buscar</Label>
+              <Label className="text-xs text-slate-300">Buscar</Label>
               <div className="relative mt-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Nome, email, razão social..." value={filters.search} onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))} onKeyDown={(e) => e.key === 'Enter' && handleApplyFilters()} className="pl-9" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Input placeholder="Nome, email, razão social..." value={filters.search} onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))} onKeyDown={(e) => e.key === 'Enter' && handleApplyFilters()} className="pl-9 bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-500" />
               </div>
             </div>
             <div className="w-[140px]">
-              <Label className="text-xs">Status</Label>
+              <Label className="text-xs text-slate-300">Status</Label>
               <Select value={filters.ativo === '' ? 'todos' : filters.ativo} onValueChange={(v) => setFilters((f) => ({ ...f, ativo: v === 'todos' ? '' : v }))}>
-                <SelectTrigger className="mt-1"><SelectValue placeholder="Todos" /></SelectTrigger>
+                <SelectTrigger className="mt-1 bg-slate-700/50 border-slate-600 text-white"><SelectValue placeholder="Todos" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="todos">Todos</SelectItem>
                   <SelectItem value="true">Ativo</SelectItem>
@@ -132,47 +134,47 @@ export default function AdminTenantsPage() {
               </Select>
             </div>
             <div className="w-[140px]">
-              <Label className="text-xs">Plano</Label>
-              <Input placeholder="ex: gratuito" value={filters.plano} onChange={(e) => setFilters((f) => ({ ...f, plano: e.target.value }))} className="mt-1" />
+              <Label className="text-xs text-slate-300">Plano</Label>
+              <Input placeholder="ex: gratuito" value={filters.plano} onChange={(e) => setFilters((f) => ({ ...f, plano: e.target.value }))} className="mt-1 bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-500" />
             </div>
             <Button onClick={handleApplyFilters}>Filtrar</Button>
           </div>
           {loading ? (
-            <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
+            <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-slate-400" /></div>
           ) : (
             <>
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Nome</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Plano</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Data ativação</TableHead>
-                    <TableHead className="text-center">Usuários</TableHead>
-                    <TableHead className="text-center">Clientes</TableHead>
-                    <TableHead className="text-center">Vendas</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
+                  <TableRow className="border-slate-700 hover:bg-slate-700/50">
+                    <TableHead className="text-slate-300">Nome</TableHead>
+                    <TableHead className="text-slate-300">Email</TableHead>
+                    <TableHead className="text-slate-300">Plano</TableHead>
+                    <TableHead className="text-slate-300">Status</TableHead>
+                    <TableHead className="text-slate-300">Data ativação</TableHead>
+                    <TableHead className="text-center text-slate-300">Usuários</TableHead>
+                    <TableHead className="text-center text-slate-300">Clientes</TableHead>
+                    <TableHead className="text-center text-slate-300">Vendas</TableHead>
+                    <TableHead className="text-right text-slate-300">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {tenants.length === 0 ? (
-                    <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">Nenhum tenant encontrado.</TableCell></TableRow>
+                    <TableRow className="border-slate-700"><TableCell colSpan={9} className="text-center text-slate-400 py-8">Nenhum tenant encontrado.</TableCell></TableRow>
                   ) : tenants.map((t) => (
-                    <TableRow key={t.id}>
-                      <TableCell className="font-medium">{t.nome || '—'}</TableCell>
-                      <TableCell>{t.email || '—'}</TableCell>
-                      <TableCell>{t.plano || '—'}</TableCell>
+                    <TableRow key={t.id} className="border-slate-700 hover:bg-slate-700/50">
+                      <TableCell className="font-medium text-white">{t.nome || '—'}</TableCell>
+                      <TableCell className="text-slate-300">{t.email || '—'}</TableCell>
+                      <TableCell className="text-slate-300">{t.plano || '—'}</TableCell>
                       <TableCell><Badge variant={t.ativo ? 'default' : 'secondary'}>{t.ativo ? 'Ativo' : 'Bloqueado'}</Badge></TableCell>
-                      <TableCell>{formatDate(t.data_ativacao)}</TableCell>
-                      <TableCell className="text-center">{t.users_count ?? 0}</TableCell>
-                      <TableCell className="text-center">{t.clientes_count ?? 0}</TableCell>
-                      <TableCell className="text-center">{t.vendas_count ?? 0}</TableCell>
+                      <TableCell className="text-slate-300">{formatDate(t.data_ativacao)}</TableCell>
+                      <TableCell className="text-center text-slate-300">{t.users_count ?? 0}</TableCell>
+                      <TableCell className="text-center text-slate-300">{t.clientes_count ?? 0}</TableCell>
+                      <TableCell className="text-center text-slate-300">{t.vendas_count ?? 0}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
-                          <Button variant="ghost" size="icon" onClick={() => handleViewDetail(t)} title="Ver detalhes"><Eye className="h-4 w-4" /></Button>
-                          <Button variant="ghost" size="icon" onClick={() => handleOpenEdit(t)} title="Editar"><Pencil className="h-4 w-4" /></Button>
-                          <Button variant="ghost" size="icon" onClick={() => handleToggleAtivo(t)} title={t.ativo ? 'Bloquear' : 'Ativar'}>{t.ativo ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}</Button>
+                          <Button variant="ghost" size="icon" className="text-slate-300 hover:text-white hover:bg-slate-700" onClick={() => handleViewDetail(t)} title="Ver detalhes"><Eye className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" className="text-slate-300 hover:text-white hover:bg-slate-700" onClick={() => handleOpenEdit(t)} title="Editar"><Pencil className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" className="text-slate-300 hover:text-white hover:bg-slate-700" onClick={() => handleToggleAtivo(t)} title={t.ativo ? 'Bloquear' : 'Ativar'}>{t.ativo ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}</Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -181,10 +183,10 @@ export default function AdminTenantsPage() {
               </Table>
               {pagination.last_page > 1 && (
                 <div className="flex items-center justify-between pt-4">
-                  <p className="text-sm text-muted-foreground">Página {pagination.current_page} de {pagination.last_page} ({pagination.total} registros)</p>
+                  <p className="text-sm text-slate-400">Página {pagination.current_page} de {pagination.last_page} ({pagination.total} registros)</p>
                   <div className="flex gap-2">
-                    <Button variant="outline" size="sm" disabled={pagination.current_page <= 1} onClick={() => loadTenants(pagination.current_page - 1)}><ChevronLeft className="h-4 w-4" /></Button>
-                    <Button variant="outline" size="sm" disabled={pagination.current_page >= pagination.last_page} onClick={() => loadTenants(pagination.current_page + 1)}><ChevronRight className="h-4 w-4" /></Button>
+                    <Button variant="outline" size="sm" className="border-slate-600 text-slate-300 hover:bg-slate-700" disabled={pagination.current_page <= 1} onClick={() => loadTenants(pagination.current_page - 1)}><ChevronLeft className="h-4 w-4" /></Button>
+                    <Button variant="outline" size="sm" className="border-slate-600 text-slate-300 hover:bg-slate-700" disabled={pagination.current_page >= pagination.last_page} onClick={() => loadTenants(pagination.current_page + 1)}><ChevronRight className="h-4 w-4" /></Button>
                   </div>
                 </div>
               )}
@@ -269,5 +271,6 @@ export default function AdminTenantsPage() {
         </DialogContent>
       </Dialog>
     </div>
+    </AdminLayout>
   );
 }

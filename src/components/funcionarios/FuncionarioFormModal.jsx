@@ -75,7 +75,6 @@ const initialFuncionarioState = () => ({
   faltas: [],
   permissions: {},
   senha: "",
-  is_admin: false,
 });
 
 const FuncionarioFormModal = ({ isOpen, onClose, funcionario }) => {
@@ -134,7 +133,6 @@ const FuncionarioFormModal = ({ isOpen, onClose, funcionario }) => {
                   funcionarioData.permissions !== null
                     ? funcionarioData.permissions
                     : {},
-                is_admin: Boolean(funcionarioData.is_admin),
                 foto_url: funcionarioData.foto_url || null,
               };
 
@@ -184,7 +182,9 @@ const FuncionarioFormModal = ({ isOpen, onClose, funcionario }) => {
             : 0,
         permite_receber_comissao: Boolean(formData.permite_receber_comissao),
         status: Boolean(formData.status),
-        is_admin: Boolean(formData.is_admin),
+        // Funcionários nunca podem ser admin - is_admin é sempre false
+        // A administração de tenants é feita por um sistema separado
+        is_admin: false,
         // Garantir que arrays e objetos estejam no formato correto
         vales: Array.isArray(formData.vales) ? formData.vales : [],
         faltas: Array.isArray(formData.faltas) ? formData.faltas : [],
@@ -203,10 +203,6 @@ const FuncionarioFormModal = ({ isOpen, onClose, funcionario }) => {
 
       // Não enviar campo "senha" em texto puro para o backend
       delete dataToSave.senha;
-
-      // Debug: verificar dados sendo enviados
-      console.log('🔍 Dados sendo enviados para o backend:', dataToSave);
-      console.log('🔍 Campo is_admin:', dataToSave.is_admin, typeof dataToSave.is_admin);
 
       if (formData.id) {
         // Atualizar funcionário existente

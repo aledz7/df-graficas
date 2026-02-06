@@ -125,11 +125,6 @@ const AppHeader = ({
                 <p className="text-xs leading-none text-muted-foreground">
                   {user?.email || vendedorAtual?.email || 'exemplo@email.com'}
                 </p>
-                {user?.is_admin && (
-                  <p className="text-xs leading-none text-primary font-medium">
-                    Administrador
-                  </p>
-                )}
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />

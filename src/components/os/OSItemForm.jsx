@@ -2189,10 +2189,67 @@ const OSItemForm = ({
       }
     }
 
-    if (isEditing) {
-      if (typeof onUpdateItem === 'function') onUpdateItem(currentServico);
+    // CORREÇÃO: Recalcular o subtotal no momento do submit para garantir valor correto
+    // Isso evita problemas de sincronização assíncrona do estado
+    const alturaParsed = safeParseFloat(currentServico.altura, 0);
+    const larguraParsed = safeParseFloat(currentServico.largura, 0);
+    const quantidadeParsed = safeParseFloat(currentServico.quantidade, 1);
+    const quantidadeValidaSubmit = Number.isFinite(quantidadeParsed) && quantidadeParsed > 0 ? quantidadeParsed : 1;
+    const areaTotalSubmit = alturaParsed * larguraParsed * quantidadeValidaSubmit;
+    
+    // Verificar se tem consumo de material com custo válido
+    const temConsumoMaterialSubmit = currentServico.consumo_material_utilizado || 
+                                     currentServico.consumo_largura_peca || 
+                                     currentServico.consumo_altura_peca;
+    const consumoCustoTotalSubmit = safeParseFloat(currentServico.consumo_custo_total, 0);
+    const temConsumoCustoTotalValidoSubmit = consumoCustoTotalSubmit > 0;
+    
+    let subtotalCorrigido;
+    if (temConsumoMaterialSubmit && temConsumoCustoTotalValidoSubmit) {
+      subtotalCorrigido = consumoCustoTotalSubmit;
     } else {
-      if (typeof onAdicionarItem === 'function') onAdicionarItem(currentServico);
+      const valorUnitarioM2Submit = safeParseFloat(currentServico.valor_unitario_m2, 0);
+      subtotalCorrigido = areaTotalSubmit * valorUnitarioM2Submit;
+      
+      // Adicionar acabamentos se houver
+      if (currentServico.acabamentos_selecionados && 
+          currentServico.acabamentos_selecionados.length > 0 && 
+          Array.isArray(acabamentosConfig)) {
+        const perimetroSubmit = (larguraParsed > 0 && alturaParsed > 0) ? 2 * (larguraParsed + alturaParsed) : 0;
+        
+        currentServico.acabamentos_selecionados.forEach(acabSelecionado => {
+          const acabamentoDef = acabamentosConfig.find(a => a.id === acabSelecionado.id);
+          if (acabamentoDef) {
+            let valorAcabamento = 0;
+            
+            if (acabamentoDef.tipo_aplicacao === 'area_total') {
+              const valorM2 = safeParseFloat(acabamentoDef.valor_m2 || acabamentoDef.valor, 0);
+              valorAcabamento = areaTotalSubmit * valorM2;
+            } else if (acabamentoDef.tipo_aplicacao === 'perimetro' || acabamentoDef.tipo_aplicacao === 'metro_linear') {
+              const valorLinear = safeParseFloat(acabamentoDef.valor_m2 || acabamentoDef.valor_un || acabamentoDef.valor, 0);
+              valorAcabamento = perimetroSubmit * quantidadeValidaSubmit * valorLinear;
+            } else if (acabamentoDef.tipo_aplicacao === 'unidade') {
+              const valorUn = safeParseFloat(acabamentoDef.valor_un || acabamentoDef.valor, 0);
+              valorAcabamento = quantidadeValidaSubmit * valorUn;
+            }
+            
+            subtotalCorrigido += Math.max(0, valorAcabamento);
+          }
+        });
+      }
+    }
+    
+    // Criar item com subtotal corrigido
+    const itemComSubtotalCorrigido = {
+      ...currentServico,
+      subtotal_item: isNaN(subtotalCorrigido) ? 0 : parseFloat(subtotalCorrigido.toFixed(2)),
+      area_calculada_item: isNaN(areaTotalSubmit) ? 0 : parseFloat(areaTotalSubmit.toFixed(3))
+    };
+
+    if (isEditing) {
+      if (typeof onUpdateItem === 'function') onUpdateItem(itemComSubtotalCorrigido);
+    } else {
+      if (typeof onAdicionarItem === 'function') onAdicionarItem(itemComSubtotalCorrigido);
     }
   };
   
@@ -2213,8 +2270,63 @@ const OSItemForm = ({
   const quantidadeValida = Number.isFinite(quantidade) && quantidade > 0 ? quantidade : 1;
   const areaTotal = areaUnitaria * quantidadeValida;
   const areaDisplay = Number.isFinite(areaTotal) ? areaTotal.toFixed(3).replace('.', ',') : '0,000';
-  const subtotalItemDisplay = Number.isFinite(safeParseFloat(currentServico.subtotal_item)) 
-    ? safeParseFloat(currentServico.subtotal_item).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  
+  // CORREÇÃO: Calcular o subtotal localmente para exibição imediata
+  // Isso garante que o valor exibido sempre reflita os valores atuais de altura, largura, quantidade e valor_m2
+  // O cálculo usa a mesma lógica que calcularSubtotalItem, mas com os valores locais para resposta imediata
+  const subtotalCalculadoLocal = useMemo(() => {
+    // Verificar se tem consumo de material com custo válido
+    const temConsumoMaterial = currentServico.consumo_material_utilizado || 
+                               currentServico.consumo_largura_peca || 
+                               currentServico.consumo_altura_peca;
+    const consumoCustoTotal = safeParseFloat(currentServico.consumo_custo_total, 0);
+    const temConsumoCustoTotalValido = consumoCustoTotal > 0;
+    
+    // Se tem consumo de material com custo válido, usar esse custo
+    if (temConsumoMaterial && temConsumoCustoTotalValido) {
+      return consumoCustoTotal;
+    }
+    
+    // Caso contrário, calcular por área (usando valores locais já parseados)
+    const valorUnitarioM2 = safeParseFloat(currentServico.valor_unitario_m2, 0);
+    let subtotal = areaTotal * valorUnitarioM2;
+    
+    // Adicionar acabamentos se houver
+    if (currentServico.acabamentos_selecionados && 
+        currentServico.acabamentos_selecionados.length > 0 && 
+        Array.isArray(acabamentosConfig)) {
+      const perimetro = (larguraNumerica > 0 && alturaNumerica > 0) ? 2 * (larguraNumerica + alturaNumerica) : 0;
+      
+      currentServico.acabamentos_selecionados.forEach(acabSelecionado => {
+        const acabamentoDef = acabamentosConfig.find(a => a.id === acabSelecionado.id);
+        if (acabamentoDef) {
+          let valorAcabamento = 0;
+          
+          if (acabamentoDef.tipo_aplicacao === 'area_total') {
+            const valorM2 = safeParseFloat(acabamentoDef.valor_m2 || acabamentoDef.valor, 0);
+            valorAcabamento = areaTotal * valorM2;
+          } else if (acabamentoDef.tipo_aplicacao === 'perimetro' || acabamentoDef.tipo_aplicacao === 'metro_linear') {
+            const valorLinear = safeParseFloat(acabamentoDef.valor_m2 || acabamentoDef.valor_un || acabamentoDef.valor, 0);
+            valorAcabamento = perimetro * quantidadeValida * valorLinear;
+          } else if (acabamentoDef.tipo_aplicacao === 'unidade') {
+            const valorUn = safeParseFloat(acabamentoDef.valor_un || acabamentoDef.valor, 0);
+            valorAcabamento = quantidadeValida * valorUn;
+          }
+          
+          subtotal += Math.max(0, valorAcabamento);
+        }
+      });
+    }
+    
+    return isNaN(subtotal) ? 0 : subtotal;
+  }, [currentServico.altura, currentServico.largura, currentServico.quantidade, 
+      currentServico.valor_unitario_m2, currentServico.acabamentos_selecionados,
+      currentServico.consumo_material_utilizado, currentServico.consumo_largura_peca,
+      currentServico.consumo_altura_peca, currentServico.consumo_custo_total,
+      areaTotal, larguraNumerica, alturaNumerica, quantidadeValida, acabamentosConfig]);
+  
+  const subtotalItemDisplay = Number.isFinite(subtotalCalculadoLocal) 
+    ? subtotalCalculadoLocal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
     : '0,00';
   const valorUnitarioM2Display = currentServico.valor_unitario_m2 ? formatToDisplay(currentServico.valor_unitario_m2, 2) : '';
   const pecasPorChapaDisplay = Number.isFinite(pecasPorChapa) ? pecasPorChapa.toLocaleString('pt-BR') : '0';

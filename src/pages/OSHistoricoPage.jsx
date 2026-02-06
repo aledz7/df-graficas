@@ -402,7 +402,7 @@ const OSHistoricoPage = ({ vendedorAtual }) => {
       if (searchId) {
         const term = searchId.toString().trim();
         ordensFiltradas = ordensFiltradas.filter(os =>
-          os.id?.toString() === term
+          os.numero_os?.toString() === term || os.id?.toString() === term
         );
       }
       if (searchCliente) {
@@ -703,7 +703,7 @@ const OSHistoricoPage = ({ vendedorAtual }) => {
     // Mostrar sucesso IMEDIATAMENTE
     toast({ 
       title: 'OS excluída com sucesso', 
-      description: `OS ${osToDeleteRef.id || osToDeleteRef.id_os || 'N/A'} removida da lista.` 
+      description: `OS ${osToDeleteRef.numero_os || osToDeleteRef.id || osToDeleteRef.id_os || 'N/A'} removida da lista.` 
     });
     
     // Processar exclusão em background (sem bloquear a UI)
@@ -1084,7 +1084,7 @@ const OSHistoricoPage = ({ vendedorAtual }) => {
                     <div className="flex justify-between items-start gap-2">
                       <div>
                         <p className="text-xs text-gray-500 dark:text-gray-400">ID</p>
-                        <p className="font-semibold text-lg">{os.id || 'N/A'}</p>
+                        <p className="font-semibold text-lg">{os.numero_os || os.id || 'N/A'}</p>
                       </div>
                       <div className="flex flex-col gap-1 items-end">
                         {getStatusBadge(os.status_os, os.data_validade)}
@@ -1256,7 +1256,7 @@ const OSHistoricoPage = ({ vendedorAtual }) => {
               ) : filteredOS.length > 0 ? (
                 filteredOS.map((os) => (
                   <TableRow key={os.id_os} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                                                <TableCell className="font-medium">{os.id || 'N/A'}</TableCell>
+                                                <TableCell className="font-medium">{os.numero_os || os.id || 'N/A'}</TableCell>
                     {/* <TableCell>{isValid(parseISO(os.data_criacao)) ? format(parseISO(os.data_criacao), 'dd/MM/yyyy') : 'Data inválida'}</TableCell> */}
                     <TableCell>{os.cliente?.nome || os.cliente?.nome_completo || os.cliente_info?.nome || os.cliente_nome_manual || 'N/A'}</TableCell>
                     <TableCell>{os.data_criacao ? 

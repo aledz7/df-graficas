@@ -166,6 +166,37 @@ const DashboardPage = ({ theme }) => {
           }
         });
         
+        // Filtrar OS finalizadas do dia (vendas via OS)
+        const osFinalizadasHoje = osSalvas.filter(os => {
+          try {
+            const statusOs = (os.status_os || '').toString().toLowerCase();
+            // Considerar OS finalizada como venda
+            const isOSFinalizada = statusOs === 'finalizada' || 
+                                   statusOs === 'finalizado' ||
+                                   statusOs === 'concluída' ||
+                                   statusOs === 'concluida';
+            
+            if (!isOSFinalizada) return false;
+            
+            // Verificar se foi finalizada hoje (usar data de atualização ou criação)
+            const dataOS = os.updated_at || os.data_finalizacao || os.data_criacao || os.created_at;
+            const dt = parseToDate(dataOS);
+            return dt && isToday(dt);
+          } catch(error) {
+            console.error("Erro ao processar OS finalizada:", error, os);
+            return false;
+          }
+        });
+        
+        console.log('📊 Dashboard - Vendas do dia:', {
+          vendasPDV: vendasPDVHoje.length,
+          osFinalizadas: osFinalizadasHoje.length,
+          total: vendasPDVHoje.length + osFinalizadasHoje.length
+        });
+        
+        // Total de vendas = vendas PDV + OS finalizadas
+        const totalVendasHoje = vendasPDVHoje.length + osFinalizadasHoje.length;
+        
         
         // Contar OS em aberto (apenas com status "orçamento" e que não estão expiradas)
         const hoje = new Date();
@@ -534,7 +565,7 @@ const DashboardPage = ({ theme }) => {
         
         
         const newStats = {
-          vendasDiaQtd: vendasPDVHoje.length.toString(),
+          vendasDiaQtd: totalVendasHoje.toString(),
           osAberto: osAberto.toString(),
           envelopamentosOrcados: envelopamentosOrcados.toString(),
           estoqueMinimoCount: `${produtosEstoqueBaixoCount} Itens`,

@@ -120,6 +120,34 @@ class AdminConfigService {
       return false;
     }
   }
+
+  /**
+   * Busca a configuração de numeração inicial de OS
+   */
+  async getConfiguracaoNumeracaoOS() {
+    try {
+      const response = await api.get('/api/ordens-servico/configuracao-numeracao');
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao buscar configuração de numeração:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Atualiza a configuração de numeração inicial de OS
+   */
+  async setConfiguracaoNumeracaoOS(numeracaoInicial) {
+    try {
+      const response = await api.post('/api/ordens-servico/configuracao-numeracao', {
+        numeracao_inicial_os: numeracaoInicial
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao salvar configuração de numeração:', error);
+      throw error;
+    }
+  }
 }
 
 export const adminConfigService = new AdminConfigService(); 

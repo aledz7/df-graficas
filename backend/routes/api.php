@@ -458,6 +458,8 @@ Route::middleware(['api.auth'])->group(function () {
     Route::get('ordens-servico/proximo-numero', [OrdemServicoController::class, 'getProximoNumero']);
     Route::get('ordens-servico/em-producao', [OrdemServicoController::class, 'emProducao']);
     Route::get('ordens-servico/a-serem-entregues', [OrdemServicoController::class, 'aSeremEntregues']);
+    Route::get('ordens-servico/configuracao-numeracao', [OrdemServicoController::class, 'getConfiguracaoNumeracao']);
+    Route::post('ordens-servico/configuracao-numeracao', [OrdemServicoController::class, 'setConfiguracaoNumeracao']);
 
     Route::prefix('ordens-servico')->group(function () {
         Route::get('entregues', [OrdemServicoController::class, 'entregues']);

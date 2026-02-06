@@ -27,12 +27,8 @@ class TenantScope implements Scope
         // Get the authenticated user
         $user = Auth::user();
         
-        // Removidos logs de debug para reduzir ruído
-
-        // Skip for super admin
-        if ($user && $user->isSuperAdmin()) {
-            return;
-        }
+        // SEGURANÇA: Todos os usuários (funcionários) devem respeitar o filtro de tenant
+        // A administração de tenants é feita por um sistema separado, não pelo sistema de funcionários
 
         // Apply tenant filter
         if ($user && $user->tenant_id) {

@@ -3,8 +3,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
-import { AlertCircle, Eye, EyeOff, CheckCircle, Info, Shield } from 'lucide-react';
+import { AlertCircle, Eye, EyeOff, CheckCircle, Info } from 'lucide-react';
 import { funcionarioService } from '@/services/funcionarioService';
 
 const FuncionarioCredenciais = ({ formData, setFormData }) => {
@@ -100,25 +99,6 @@ const FuncionarioCredenciais = ({ formData, setFormData }) => {
                             )}
                         </div>
                     )}
-                </div>
-
-                <div className="space-y-3">
-                    <div className="flex items-center space-x-2">
-                        <Switch
-                            id="is_admin"
-                            checked={formData.is_admin || false}
-                            onCheckedChange={(checked) => 
-                                setFormData(prev => ({ ...prev, is_admin: checked }))
-                            }
-                        />
-                        <Label htmlFor="is_admin" className="flex items-center gap-2">
-                            <Shield className="h-4 w-4" />
-                            Admin?
-                        </Label>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                        Marque esta opção se o funcionário deve ter privilégios de administrador no sistema.
-                    </p>
                 </div>
 
                 {hasCredentials && (

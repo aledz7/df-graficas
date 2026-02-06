@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
-import { Settings, Save, Upload, Download, DatabaseBackup, AlertTriangle, KeyRound, Eye, EyeOff } from 'lucide-react';
+import { Settings, Save, Upload, Download, DatabaseBackup, AlertTriangle, KeyRound, Eye, EyeOff, Hash, Info } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { safeJsonParse } from '@/lib/utils';
 import { adminConfigService } from '@/services/adminConfigService';
@@ -23,11 +23,23 @@ const AdminSettingsPage = () => {
   const [saving, setSaving] = useState(false);
   const [showSenhaMasterModal, setShowSenhaMasterModal] = useState(false);
   const [operacaoPendente, setOperacaoPendente] = useState(null);
+  
+  // Estado para numeração de OS
+  const [numeracaoOS, setNumeracaoOS] = useState({
+    numeracao_inicial_os: 1,
+    ultimo_numero_os: null,
+    proximo_numero_os: 1,
+    pode_alterar: true
+  });
+  const [novaNumeracaoOS, setNovaNumeracaoOS] = useState('');
+  const [savingNumeracao, setSavingNumeracao] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
       try {
         setLoading(true);
+        
+        // Carregar configurações gerais
         const response = await adminConfigService.getConfiguracoes();
         
         if (response.success) {
@@ -36,6 +48,17 @@ const AdminSettingsPage = () => {
           if (response.data.nome_sistema) {
             setConfig(prev => ({ ...prev, nomeSistema: response.data.nome_sistema }));
           }
+        }
+        
+        // Carregar configuração de numeração de OS
+        try {
+          const numeracaoResponse = await adminConfigService.getConfiguracaoNumeracaoOS();
+          if (numeracaoResponse.success) {
+            setNumeracaoOS(numeracaoResponse.data);
+            setNovaNumeracaoOS(numeracaoResponse.data.numeracao_inicial_os?.toString() || '1');
+          }
+        } catch (err) {
+          console.error('Erro ao carregar configuração de numeração:', err);
         }
       } catch (error) {
         console.error('Erro ao carregar configurações:', error);
@@ -136,6 +159,55 @@ const AdminSettingsPage = () => {
       executarSalvarSenhaMaster();
     }
     setOperacaoPendente(null);
+  };
+
+  const handleSaveNumeracaoOS = async () => {
+    try {
+      setSavingNumeracao(true);
+      
+      const numero = parseInt(novaNumeracaoOS, 10);
+      
+      if (isNaN(numero) || numero < 1) {
+        toast({ 
+          title: "Erro", 
+          description: "O número deve ser maior que zero.", 
+          variant: "destructive" 
+        });
+        return;
+      }
+      
+      const response = await adminConfigService.setConfiguracaoNumeracaoOS(numero);
+      
+      if (response.success) {
+        toast({ 
+          title: "Configuração Salva!", 
+          description: "A numeração inicial de OS foi configurada com sucesso." 
+        });
+        
+        // Atualizar o estado local
+        setNumeracaoOS(prev => ({
+          ...prev,
+          numeracao_inicial_os: numero,
+          proximo_numero_os: response.data?.proximo_numero_os || numero
+        }));
+      } else {
+        toast({ 
+          title: "Erro", 
+          description: response.message || "Erro ao salvar configuração.", 
+          variant: "destructive" 
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao salvar numeração:', error);
+      const errorMessage = error.response?.data?.message || "Erro ao salvar configuração de numeração.";
+      toast({ 
+        title: "Erro", 
+        description: errorMessage, 
+        variant: "destructive" 
+      });
+    } finally {
+      setSavingNumeracao(false);
+    }
   };
 
   const exportData = async () => {
@@ -308,6 +380,61 @@ const AdminSettingsPage = () => {
              <Button onClick={handleSaveSenhaMaster} size="sm" className="mt-3" disabled={saving}>
                 <Save size={16} className="mr-2" /> 
                 {saving ? 'Salvando...' : 'Salvar Senha Master'}
+            </Button>
+          </div>
+
+          <div className="space-y-4 p-6 border rounded-lg shadow-sm bg-card">
+            <CardTitle className="text-xl font-semibold flex items-center">
+              <Hash className="mr-2 text-primary" /> Numeração de Ordens de Serviço
+            </CardTitle>
+            <CardDescription>
+              Configure a numeração inicial das Ordens de Serviço. Útil para empresas que estão migrando de outro sistema e desejam continuar a numeração.
+            </CardDescription>
+            
+            <div className="mt-2 p-4 bg-blue-50 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-700 rounded-lg">
+              <div className="flex items-start">
+                <Info className="h-5 w-5 text-blue-500 mr-2 mt-0.5 flex-shrink-0" />
+                <div className="text-sm text-blue-700 dark:text-blue-300">
+                  <p><strong>Status atual:</strong></p>
+                  <ul className="list-disc ml-4 mt-1 space-y-1">
+                    <li>Numeração inicial configurada: <strong>{numeracaoOS.numeracao_inicial_os}</strong></li>
+                    {numeracaoOS.ultimo_numero_os !== null && (
+                      <li>Último número utilizado: <strong>{numeracaoOS.ultimo_numero_os}</strong></li>
+                    )}
+                    <li>Próximo número a ser gerado: <strong>{numeracaoOS.proximo_numero_os}</strong></li>
+                  </ul>
+                  {!numeracaoOS.pode_alterar && numeracaoOS.ultimo_numero_os !== null && (
+                    <p className="mt-2 text-yellow-600 dark:text-yellow-400">
+                      <strong>Atenção:</strong> Como já existem OSs cadastradas, a nova numeração deve ser maior que {numeracaoOS.ultimo_numero_os}.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="numeracaoOS">Numeração Inicial</Label>
+              <div className="flex gap-2">
+                <Input 
+                  id="numeracaoOS" 
+                  name="numeracaoOS"
+                  type="number"
+                  min="1"
+                  max="999999999"
+                  value={novaNumeracaoOS} 
+                  onChange={(e) => setNovaNumeracaoOS(e.target.value)} 
+                  placeholder="Ex: 1000"
+                  className="max-w-xs"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Digite o número a partir do qual as novas OSs serão numeradas. Ex: se digitar 1000, a primeira OS criada será OS-1000.
+              </p>
+            </div>
+            
+            <Button onClick={handleSaveNumeracaoOS} size="sm" className="mt-3" disabled={savingNumeracao}>
+              <Save size={16} className="mr-2" /> 
+              {savingNumeracao ? 'Salvando...' : 'Salvar Numeração'}
             </Button>
           </div>
 

@@ -2,7 +2,18 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { AlertTriangle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { AlertTriangle, Plus, Trash2, Info } from 'lucide-react';
+
+const TIPOS_PRECIFICACAO = [
+  { value: 'unidade', label: 'Por Unidade', descricao: 'Preço fixo por unidade vendida' },
+  { value: 'quantidade_definida', label: 'Por Quantidade Definidas', descricao: 'Preços específicos para quantidades exatas' },
+  { value: 'm2_cm2', label: 'Por M²/CM²', descricao: 'Preço calculado pela área em metros ou centímetros quadrados' },
+  { value: 'm2_cm2_tabelado', label: 'Por M²/CM² Tabelado', descricao: 'Tabela de preços por faixas de área' },
+  { value: 'metro_linear', label: 'Por Metro Linear', descricao: 'Preço calculado pelo comprimento em metros' },
+  { value: 'faixa_quantidade', label: 'Por Faixa de Quantidades', descricao: 'Preços escalonados por intervalos de quantidade' },
+];
 
 const ProdutoTabPrecoEstoque = ({ currentProduto, handleInputChange }) => {
   const isUnidadeMetroQuadrado = (currentProduto.unidadeMedida || currentProduto.unidade_medida) === 'm2';
@@ -12,6 +23,65 @@ const ProdutoTabPrecoEstoque = ({ currentProduto, handleInputChange }) => {
   });
   const [quantidadeChapas, setQuantidadeChapas] = React.useState('1');
   const quantidadeInicializadaRef = React.useRef(false);
+
+  // Tipo de precificação selecionado
+  const tipoPrecificacao = currentProduto.tipo_precificacao || 'unidade';
+
+  // Tabela de preços para quantidade definida e faixas
+  const tabelaPrecos = currentProduto.tabela_precos || [];
+
+  // Funções para gerenciar tabela de preços
+  const handleAddFaixa = () => {
+    const novaFaixa = tipoPrecificacao === 'quantidade_definida' 
+      ? { quantidade: '', preco: '' }
+      : tipoPrecificacao === 'faixa_quantidade'
+      ? { quantidade_min: '', quantidade_max: '', preco: '' }
+      : { area_min: '', area_max: '', preco: '' };
+    
+    handleInputChange({
+      target: {
+        name: 'tabela_precos',
+        value: [...tabelaPrecos, novaFaixa],
+      },
+    });
+  };
+
+  const handleRemoveFaixa = (index) => {
+    const novaTabela = tabelaPrecos.filter((_, i) => i !== index);
+    handleInputChange({
+      target: {
+        name: 'tabela_precos',
+        value: novaTabela,
+      },
+    });
+  };
+
+  const handleFaixaChange = (index, campo, valor) => {
+    const novaTabela = [...tabelaPrecos];
+    novaTabela[index] = { ...novaTabela[index], [campo]: valor };
+    handleInputChange({
+      target: {
+        name: 'tabela_precos',
+        value: novaTabela,
+      },
+    });
+  };
+
+  const handleTipoPrecificacaoChange = (novoTipo) => {
+    handleInputChange({
+      target: {
+        name: 'tipo_precificacao',
+        value: novoTipo,
+      },
+    });
+    // Limpar tabela de preços ao mudar o tipo
+    handleInputChange({
+      target: {
+        name: 'tabela_precos',
+        value: [],
+      },
+    });
+  };
 
   const formatarNumero = (valor, casasDecimais = 4) => {
     if (valor === '' || valor === null || valor === undefined || isNaN(valor)) {
@@ -187,6 +257,287 @@ const ProdutoTabPrecoEstoque = ({ currentProduto, handleInputChange }) => {
     handleInputChange,
   ]);
 
+  // Renderiza os campos específicos baseado no tipo de precificação
+  const renderCamposPrecificacao = () => {
+    const tipoInfo = TIPOS_PRECIFICACAO.find(t => t.value === tipoPrecificacao);
+    
+    switch (tipoPrecificacao) {
+      case 'unidade':
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <Label htmlFor="preco_custo">Preço de Custo (R$)</Label>
+              <Input id="preco_custo" name="preco_custo" type="number" step="0.01" value={currentProduto.preco_custo} onChange={handleInputChange} placeholder="0.00"/>
+            </div>
+            <div>
+              <Label htmlFor="margem_lucro">Margem de Lucro (%)</Label>
+              <Input id="margem_lucro" name="margem_lucro" type="number" step="0.1" min="0" max="1000" value={currentProduto.margem_lucro} onChange={handleInputChange} placeholder="Ex: 50"/>
+            </div>
+            <div>
+              <Label htmlFor="preco_venda">
+                Preço de Venda (R$)
+                {currentProduto.isComposto && (
+                  <span className="text-xs text-blue-600 ml-2">🔒 Calculado automaticamente</span>
+                )}
+              </Label>
+              <Input 
+                id="preco_venda" 
+                name="preco_venda" 
+                type="number" 
+                step="0.01" 
+                value={currentProduto.preco_venda} 
+                onChange={handleInputChange} 
+                placeholder="Calculado ou manual"
+                disabled={currentProduto.isComposto}
+                className={currentProduto.isComposto ? "bg-gray-100 cursor-not-allowed" : ""}
+              />
+            </div>
+          </div>
+        );
+
+      case 'quantidade_definida':
+        return (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="preco_custo">Preço de Custo Unitário (R$)</Label>
+                <Input id="preco_custo" name="preco_custo" type="number" step="0.01" value={currentProduto.preco_custo} onChange={handleInputChange} placeholder="0.00"/>
+              </div>
+            </div>
+            <div className="rounded-lg border border-blue-200 dark:border-blue-800 p-4 bg-blue-50/50 dark:bg-blue-900/20">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <p className="text-sm font-semibold text-blue-800 dark:text-blue-200">Tabela de Preços por Quantidade</p>
+                  <p className="text-xs text-blue-600 dark:text-blue-300">Defina preços específicos para quantidades exatas</p>
+                </div>
+                <Button type="button" variant="outline" size="sm" onClick={handleAddFaixa} className="border-blue-300 text-blue-700 hover:bg-blue-100">
+                  <Plus size={16} className="mr-1" /> Adicionar Quantidade
+                </Button>
+              </div>
+              {tabelaPrecos.length === 0 ? (
+                <p className="text-sm text-gray-500 italic">Nenhuma quantidade definida. Clique em "Adicionar Quantidade" para começar.</p>
+              ) : (
+                <div className="space-y-2">
+                  {tabelaPrecos.map((faixa, index) => (
+                    <div key={index} className="flex items-center gap-3 bg-white dark:bg-slate-800 p-3 rounded-md border">
+                      <div className="flex-1">
+                        <Label className="text-xs">Quantidade</Label>
+                        <Input 
+                          type="number" 
+                          min="1"
+                          value={faixa.quantidade || ''} 
+                          onChange={(e) => handleFaixaChange(index, 'quantidade', e.target.value)}
+                          placeholder="Ex: 100"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <Label className="text-xs">Preço Unitário (R$)</Label>
+                        <Input 
+                          type="number" 
+                          step="0.01"
+                          value={faixa.preco || ''} 
+                          onChange={(e) => handleFaixaChange(index, 'preco', e.target.value)}
+                          placeholder="0.00"
+                        />
+                      </div>
+                      <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveFaixa(index)} className="text-red-500 hover:text-red-700 hover:bg-red-50 mt-5">
+                        <Trash2 size={18} />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+
+      case 'm2_cm2':
+        return (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <Label htmlFor="preco_custo">Preço de Custo por m² (R$)</Label>
+                <Input id="preco_custo" name="preco_custo" type="number" step="0.01" value={currentProduto.preco_custo} onChange={handleInputChange} placeholder="0.00"/>
+              </div>
+              <div>
+                <Label htmlFor="margem_lucro">Margem de Lucro (%)</Label>
+                <Input id="margem_lucro" name="margem_lucro" type="number" step="0.1" min="0" max="1000" value={currentProduto.margem_lucro} onChange={handleInputChange} placeholder="Ex: 50"/>
+              </div>
+              <div>
+                <Label htmlFor="preco_m2">Preço de Venda por m² (R$)</Label>
+                <Input id="preco_m2" name="preco_m2" type="number" step="0.01" value={currentProduto.preco_m2 !== null && currentProduto.preco_m2 !== undefined ? currentProduto.preco_m2 : ''} onChange={handleInputChange} placeholder="0.00"/>
+              </div>
+            </div>
+            <div className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 p-3 rounded-md">
+              <Info size={16} className="mt-0.5 flex-shrink-0" />
+              <p>O valor final será calculado multiplicando o preço por m² pela área informada na ordem de serviço (largura × altura).</p>
+            </div>
+          </div>
+        );
+
+      case 'm2_cm2_tabelado':
+        return (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="preco_custo">Preço de Custo por m² (R$)</Label>
+                <Input id="preco_custo" name="preco_custo" type="number" step="0.01" value={currentProduto.preco_custo} onChange={handleInputChange} placeholder="0.00"/>
+              </div>
+            </div>
+            <div className="rounded-lg border border-green-200 dark:border-green-800 p-4 bg-green-50/50 dark:bg-green-900/20">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <p className="text-sm font-semibold text-green-800 dark:text-green-200">Tabela de Preços por Faixa de Área</p>
+                  <p className="text-xs text-green-600 dark:text-green-300">Defina preços diferentes para intervalos de área (m²)</p>
+                </div>
+                <Button type="button" variant="outline" size="sm" onClick={handleAddFaixa} className="border-green-300 text-green-700 hover:bg-green-100">
+                  <Plus size={16} className="mr-1" /> Adicionar Faixa
+                </Button>
+              </div>
+              {tabelaPrecos.length === 0 ? (
+                <p className="text-sm text-gray-500 italic">Nenhuma faixa definida. Clique em "Adicionar Faixa" para começar.</p>
+              ) : (
+                <div className="space-y-2">
+                  {tabelaPrecos.map((faixa, index) => (
+                    <div key={index} className="flex items-center gap-3 bg-white dark:bg-slate-800 p-3 rounded-md border">
+                      <div className="flex-1">
+                        <Label className="text-xs">Área Mínima (m²)</Label>
+                        <Input 
+                          type="number" 
+                          step="0.01"
+                          min="0"
+                          value={faixa.area_min || ''} 
+                          onChange={(e) => handleFaixaChange(index, 'area_min', e.target.value)}
+                          placeholder="0.00"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <Label className="text-xs">Área Máxima (m²)</Label>
+                        <Input 
+                          type="number" 
+                          step="0.01"
+                          min="0"
+                          value={faixa.area_max || ''} 
+                          onChange={(e) => handleFaixaChange(index, 'area_max', e.target.value)}
+                          placeholder="Ex: 1.00"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <Label className="text-xs">Preço por m² (R$)</Label>
+                        <Input 
+                          type="number" 
+                          step="0.01"
+                          value={faixa.preco || ''} 
+                          onChange={(e) => handleFaixaChange(index, 'preco', e.target.value)}
+                          placeholder="0.00"
+                        />
+                      </div>
+                      <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveFaixa(index)} className="text-red-500 hover:text-red-700 hover:bg-red-50 mt-5">
+                        <Trash2 size={18} />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+
+      case 'metro_linear':
+        return (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <Label htmlFor="preco_custo">Preço de Custo por Metro (R$)</Label>
+                <Input id="preco_custo" name="preco_custo" type="number" step="0.01" value={currentProduto.preco_custo} onChange={handleInputChange} placeholder="0.00"/>
+              </div>
+              <div>
+                <Label htmlFor="margem_lucro">Margem de Lucro (%)</Label>
+                <Input id="margem_lucro" name="margem_lucro" type="number" step="0.1" min="0" max="1000" value={currentProduto.margem_lucro} onChange={handleInputChange} placeholder="Ex: 50"/>
+              </div>
+              <div>
+                <Label htmlFor="preco_metro_linear">Preço de Venda por Metro (R$)</Label>
+                <Input id="preco_metro_linear" name="preco_metro_linear" type="number" step="0.01" value={currentProduto.preco_metro_linear || ''} onChange={handleInputChange} placeholder="0.00"/>
+              </div>
+            </div>
+            <div className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 p-3 rounded-md">
+              <Info size={16} className="mt-0.5 flex-shrink-0" />
+              <p>O valor final será calculado multiplicando o preço por metro pelo comprimento informado na ordem de serviço.</p>
+            </div>
+          </div>
+        );
+
+      case 'faixa_quantidade':
+        return (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="preco_custo">Preço de Custo Unitário (R$)</Label>
+                <Input id="preco_custo" name="preco_custo" type="number" step="0.01" value={currentProduto.preco_custo} onChange={handleInputChange} placeholder="0.00"/>
+              </div>
+            </div>
+            <div className="rounded-lg border border-purple-200 dark:border-purple-800 p-4 bg-purple-50/50 dark:bg-purple-900/20">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <p className="text-sm font-semibold text-purple-800 dark:text-purple-200">Tabela de Preços por Faixa de Quantidade</p>
+                  <p className="text-xs text-purple-600 dark:text-purple-300">Defina preços escalonados por intervalos de quantidade</p>
+                </div>
+                <Button type="button" variant="outline" size="sm" onClick={handleAddFaixa} className="border-purple-300 text-purple-700 hover:bg-purple-100">
+                  <Plus size={16} className="mr-1" /> Adicionar Faixa
+                </Button>
+              </div>
+              {tabelaPrecos.length === 0 ? (
+                <p className="text-sm text-gray-500 italic">Nenhuma faixa definida. Clique em "Adicionar Faixa" para começar.</p>
+              ) : (
+                <div className="space-y-2">
+                  {tabelaPrecos.map((faixa, index) => (
+                    <div key={index} className="flex items-center gap-3 bg-white dark:bg-slate-800 p-3 rounded-md border">
+                      <div className="flex-1">
+                        <Label className="text-xs">Quantidade Mínima</Label>
+                        <Input 
+                          type="number" 
+                          min="1"
+                          value={faixa.quantidade_min || ''} 
+                          onChange={(e) => handleFaixaChange(index, 'quantidade_min', e.target.value)}
+                          placeholder="1"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <Label className="text-xs">Quantidade Máxima</Label>
+                        <Input 
+                          type="number" 
+                          min="1"
+                          value={faixa.quantidade_max || ''} 
+                          onChange={(e) => handleFaixaChange(index, 'quantidade_max', e.target.value)}
+                          placeholder="100"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <Label className="text-xs">Preço Unitário (R$)</Label>
+                        <Input 
+                          type="number" 
+                          step="0.01"
+                          value={faixa.preco || ''} 
+                          onChange={(e) => handleFaixaChange(index, 'preco', e.target.value)}
+                          placeholder="0.00"
+                        />
+                      </div>
+                      <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveFaixa(index)} className="text-red-500 hover:text-red-700 hover:bg-red-50 mt-5">
+                        <Trash2 size={18} />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -194,43 +545,40 @@ const ProdutoTabPrecoEstoque = ({ currentProduto, handleInputChange }) => {
         <CardDescription>Defina os valores de custo, venda e controle de estoque.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Seletor de Tipo de Precificação */}
+        <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-4 bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
             <div>
-                <Label htmlFor="preco_custo">Preço de Custo (R$)</Label>
-                <Input id="preco_custo" name="preco_custo" type="number" step="0.01" value={currentProduto.preco_custo} onChange={handleInputChange} placeholder="0.00"/>
+              <Label htmlFor="tipo_precificacao" className="text-base font-semibold">Tipo de Precificação</Label>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
+                Escolha como o preço deste produto será calculado
+              </p>
+              <Select value={tipoPrecificacao} onValueChange={handleTipoPrecificacaoChange}>
+                <SelectTrigger className="bg-white dark:bg-slate-800">
+                  <SelectValue placeholder="Selecione o tipo..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {TIPOS_PRECIFICACAO.map((tipo) => (
+                    <SelectItem key={tipo.value} value={tipo.value}>
+                      {tipo.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <div>
-                <Label htmlFor="margem_lucro">Margem de Lucro (%)</Label>
-                <Input id="margem_lucro" name="margem_lucro" type="number" step="0.1" min="0" max="1000" value={currentProduto.margem_lucro} onChange={handleInputChange} placeholder="Ex: 50"/>
+            <div className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-800 p-3 rounded-md border border-slate-200 dark:border-slate-700">
+              <Info size={16} className="mt-0.5 flex-shrink-0 text-blue-500" />
+              <p>{TIPOS_PRECIFICACAO.find(t => t.value === tipoPrecificacao)?.descricao}</p>
             </div>
-            <div>
-                <Label htmlFor="preco_venda">
-                    Preço de Venda (R$)
-                    {currentProduto.isComposto && (
-                        <span className="text-xs text-blue-600 ml-2">🔒 Calculado automaticamente</span>
-                    )}
-                </Label>
-                <Input 
-                    id="preco_venda" 
-                    name="preco_venda" 
-                    type="number" 
-                    step="0.01" 
-                    value={currentProduto.preco_venda} 
-                    onChange={handleInputChange} 
-                    placeholder="Calculado ou manual"
-                    disabled={currentProduto.isComposto}
-                    className={currentProduto.isComposto ? "bg-gray-100 cursor-not-allowed" : ""}
-                />
-                {currentProduto.isComposto && (
-                    <p className="text-xs text-blue-600 mt-1">
-                        💡 Este preço é calculado automaticamente baseado na soma dos itens do kit na aba "Composição"
-                    </p>
-                )}
-            </div>
-            <div>
-                <Label htmlFor="preco_m2">Preço por m² (R$)</Label>
-                <Input id="preco_m2" name="preco_m2" type="number" step="0.01" value={currentProduto.preco_m2 !== null && currentProduto.preco_m2 !== undefined ? currentProduto.preco_m2 : ''} onChange={handleInputChange} placeholder="0.00"/>
-            </div>
+          </div>
+        </div>
+
+        {/* Campos dinâmicos baseados no tipo de precificação */}
+        <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-4">
+          <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 mb-3">
+            Configuração de Preços - {TIPOS_PRECIFICACAO.find(t => t.value === tipoPrecificacao)?.label}
+          </p>
+          {renderCamposPrecificacao()}
         </div>
         {isUnidadeMetroQuadrado && (
           <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-4 space-y-3 bg-slate-50/60 dark:bg-slate-900/30">

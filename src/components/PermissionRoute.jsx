@@ -11,12 +11,7 @@ const PermissionRoute = ({
   requireAny = false,
   fallbackComponent = null 
 }) => {
-  const { hasPermission, hasAnyPermission, hasAllPermissions, isAdmin } = usePermissions();
-
-  // Se for admin, permite tudo
-  if (isAdmin) {
-    return children;
-  }
+  const { hasPermission, hasAnyPermission, hasAllPermissions } = usePermissions();
 
   let hasAccess = false;
 

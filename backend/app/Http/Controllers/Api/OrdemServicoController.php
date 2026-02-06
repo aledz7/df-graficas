@@ -247,7 +247,7 @@ class OrdemServicoController extends Controller
         if ($request->status_os && !in_array($request->status_os, ['Orçamento Salvo', 'Orçamento Salvo (Editado)'])) {
             $rules['data_prevista_entrega'] = 'required|date';
             $rules['maquina_impressao_id'] = 'required|integer';
-            $rules['observacoes_gerais_os'] = 'required|string';
+            // observacoes_gerais_os permanece opcional
         }
         
         $validator = Validator::make($request->all(), $rules, $messages);
@@ -302,19 +302,19 @@ class OrdemServicoController extends Controller
 
             if ($request->id_os && !empty($request->id_os)) {
                 // Verificar se o ID já existe (incluindo soft deletes) com LOCK para evitar race condition
-                // Buscar por qualquer OS com este id_os, independente de estar deletada ou não
-                // REMOVIDO: ->where('tenant_id', $tenantId) - id_os é único globalmente
+                // Buscar por qualquer OS com este id_os DENTRO DO MESMO TENANT
+                // CORRIGIDO: id_os é único por tenant, não globalmente
                 $existingOS = DB::table('ordens_servico')
                     ->where('id_os', $request->id_os)
+                    ->where('tenant_id', $tenantId)
                     ->lockForUpdate()
                     ->first();
                 
                 if ($existingOS) {
-                    \Log::warning('Tentativa de criar OS com ID duplicado (gerando novo automaticamente):', [
+                    \Log::warning('Tentativa de criar OS com ID duplicado no mesmo tenant (gerando novo automaticamente):', [
                         'id_os' => $request->id_os,
                         'existing_id' => $existingOS->id,
-                        'existing_tenant_id' => $existingOS->tenant_id,
-                        'current_tenant_id' => $tenantId,
+                        'tenant_id' => $tenantId,
                         'existing_deleted_at' => $existingOS->deleted_at
                     ]);
                     $deveGerarNovoIdOs = true;
@@ -686,7 +686,44 @@ class OrdemServicoController extends Controller
             ->orderByDesc('numero_os')
             ->value('numero_os');
 
-        return (int)($ultimoNumero ?? 0) + 1;
+        // Obter a numeração inicial configurada
+        $numeracaoInicial = $this->getNumeracaoInicialOS($tenantId);
+        
+        // Se não há nenhum número ainda, usar a numeração inicial
+        if ($ultimoNumero === null) {
+            return $numeracaoInicial;
+        }
+
+        // Calcular o próximo número baseado no último
+        $proximoNumero = (int)$ultimoNumero + 1;
+        
+        // Se a numeração inicial configurada for maior, usar ela
+        // Isso permite "pular" para uma numeração maior quando configurado
+        if ($numeracaoInicial > $proximoNumero) {
+            return $numeracaoInicial;
+        }
+
+        return $proximoNumero;
+    }
+
+    /**
+     * Obtém a numeração inicial de OS configurada para o tenant
+     */
+    protected function getNumeracaoInicialOS(?int $tenantId): int
+    {
+        if (!$tenantId) {
+            return 1;
+        }
+
+        $tenant = \App\Models\Tenant::find($tenantId);
+        if (!$tenant) {
+            return 1;
+        }
+
+        // Buscar a numeração inicial nas configurações do tenant
+        $numeracaoInicial = $tenant->getConfiguracao('numeracao_inicial_os', 1);
+        
+        return max(1, (int)$numeracaoInicial);
     }
 
     /**
@@ -2735,6 +2772,152 @@ class OrdemServicoController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Erro ao corrigir OS 758: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Obtém a configuração de numeração inicial de OS do tenant atual
+     */
+    public function getConfiguracaoNumeracao()
+    {
+        try {
+            $tenantId = auth()->user()->tenant_id;
+            
+            if (!$tenantId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tenant não identificado'
+                ], 400);
+            }
+
+            $tenant = \App\Models\Tenant::find($tenantId);
+            
+            if (!$tenant) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tenant não encontrado'
+                ], 404);
+            }
+
+            $numeracaoInicial = (int)$tenant->getConfiguracao('numeracao_inicial_os', 1);
+            
+            // Obter o próximo número que será gerado (para exibição informativa)
+            $ultimoNumero = OrdemServico::withoutTenant()
+                ->withTrashed()
+                ->where('tenant_id', $tenantId)
+                ->orderByDesc('numero_os')
+                ->value('numero_os');
+
+            // Calcular próximo número usando a mesma lógica do resolverNumeroSequencial
+            if ($ultimoNumero === null) {
+                $proximoNumero = $numeracaoInicial;
+            } else {
+                $proximoBaseado = (int)$ultimoNumero + 1;
+                // Usar o maior entre (último + 1) e a numeração inicial configurada
+                $proximoNumero = max($proximoBaseado, $numeracaoInicial);
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'numeracao_inicial_os' => $numeracaoInicial,
+                    'ultimo_numero_os' => $ultimoNumero,
+                    'proximo_numero_os' => $proximoNumero,
+                    'pode_alterar' => true, // Sempre pode alterar, desde que seja maior que último número
+                ]
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Erro ao buscar configuração de numeração:', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erro ao buscar configuração de numeração: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Salva a configuração de numeração inicial de OS do tenant atual
+     */
+    public function setConfiguracaoNumeracao(Request $request)
+    {
+        try {
+            $tenantId = auth()->user()->tenant_id;
+            
+            if (!$tenantId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tenant não identificado'
+                ], 400);
+            }
+
+            $tenant = \App\Models\Tenant::find($tenantId);
+            
+            if (!$tenant) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tenant não encontrado'
+                ], 404);
+            }
+
+            // Validar o número
+            $request->validate([
+                'numeracao_inicial_os' => 'required|integer|min:1|max:999999999'
+            ]);
+
+            $novoNumero = (int)$request->numeracao_inicial_os;
+
+            // Verificar se já existem OSs cadastradas
+            $ultimoNumero = OrdemServico::withoutTenant()
+                ->withTrashed()
+                ->where('tenant_id', $tenantId)
+                ->orderByDesc('numero_os')
+                ->value('numero_os');
+
+            if ($ultimoNumero !== null && $novoNumero <= $ultimoNumero) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Já existem OSs cadastradas. A numeração inicial deve ser maior que {$ultimoNumero}."
+                ], 422);
+            }
+
+            // Salvar a configuração
+            $tenant->setConfiguracao('numeracao_inicial_os', $novoNumero);
+            $tenant->save();
+
+            \Log::info('Numeração inicial de OS atualizada', [
+                'tenant_id' => $tenantId,
+                'usuario_id' => auth()->id(),
+                'numeracao_inicial' => $novoNumero
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Numeração inicial configurada com sucesso',
+                'data' => [
+                    'numeracao_inicial_os' => $novoNumero,
+                    'proximo_numero_os' => $ultimoNumero ? (int)$ultimoNumero + 1 : $novoNumero
+                ]
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Dados inválidos',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            \Log::error('Erro ao salvar configuração de numeração:', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erro ao salvar configuração de numeração: ' . $e->getMessage()
             ], 500);
         }
     }

@@ -49,7 +49,10 @@ class Produto extends Model
         'variacoes_ativa',
         'variacoes',
         'is_composto',
-        'composicao'
+        'composicao',
+        'tipo_precificacao',
+        'tabela_precos',
+        'preco_metro_linear'
     ];
 
     /**
@@ -74,9 +77,11 @@ class Produto extends Model
         'percentual_comissao' => 'decimal:2',
         'estoque' => 'decimal:2',
         'estoque_minimo' => 'decimal:2',
+        'preco_metro_linear' => 'decimal:2',
         'galeria_urls' => 'array',
         'variacoes' => 'array',
         'composicao' => 'array',
+        'tabela_precos' => 'array',
         'promo_data_inicio' => 'datetime',
         'promo_data_fim' => 'datetime',
     ];

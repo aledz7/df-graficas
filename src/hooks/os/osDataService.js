@@ -944,30 +944,32 @@ export const saveOSToAPI = async (osData, options = {}) => {
       }
     }
     
-    // Em caso de erro na API, tentar salvar pelo menos no localStorage
-    console.log('💾 Tentando salvar no localStorage como fallback...');
-    try {
-      // Ainda assim, tentar descobrir o id numérico consultando por id_os
-      let hydrated = { ...osData };
-      if (!hydrated.id && hydrated.id_os) {
-        try {
-          const fetched = await osService.getById(hydrated.id_os);
-          if (fetched?.id) hydrated.id = fetched.id;
-          else if (fetched?.data?.id) hydrated.id = fetched.data.id;
-        } catch (_) {}
+    // IMPORTANTE: NÃO fazer fallback silencioso para localStorage quando a API falhar
+    // O usuário precisa saber que a OS não foi salva no banco de dados
+    // Criar mensagem de erro amigável para o usuário
+    let mensagemErro = 'Erro ao salvar OS no servidor.';
+    
+    // Extrair mensagem mais específica do erro
+    if (error.response?.data?.message) {
+      const msgBackend = error.response.data.message;
+      
+      // Verificar se é erro de constraint de unicidade
+      if (msgBackend.includes('Duplicate entry') && msgBackend.includes('id_os')) {
+        mensagemErro = 'Erro: O número da OS já existe. Tente novamente para gerar um novo número.';
+      } else if (msgBackend.includes('Duplicate entry')) {
+        mensagemErro = 'Erro: Registro duplicado. Verifique os dados e tente novamente.';
+      } else {
+        // Usar mensagem do backend se disponível
+        mensagemErro = `Erro do servidor: ${msgBackend.substring(0, 200)}`;
       }
-
-      const fallbackResult = await saveOSToLocalStorage(hydrated, options); // Usar objeto possivelmente hidratado
-      console.log('✅ Fallback localStorage bem-sucedido');
-      
-      // Disparar evento para atualizar páginas que mostram histórico
-      window.dispatchEvent(new CustomEvent('osSalva', { detail: fallbackResult }));
-      
-      return fallbackResult;
-    } catch (fallbackError) {
-      console.error('❌ Erro no fallback localStorage:', fallbackError);
-      throw new Error(`Erro ao salvar OS na API: ${error.message}. Fallback localStorage também falhou: ${fallbackError.message}`);
+    } else if (error.message) {
+      mensagemErro = `Erro: ${error.message}`;
     }
+    
+    console.error('❌ [saveOSToAPI] Falha ao salvar OS - NÃO fazendo fallback silencioso:', mensagemErro);
+    
+    // Lançar erro para que o frontend mostre a mensagem correta ao usuário
+    throw new Error(mensagemErro);
   }
 };
 
