@@ -39,6 +39,19 @@ const colorClassMap = {
   black: 'bg-zinc-900 hover:bg-black',
 };
 
+// Verifica se é uma cor hex personalizada
+const isHexColor = (c) => /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(c);
+
+// Função para escurecer uma cor hex (para o hover)
+const darkenColor = (hex, percent = 10) => {
+  const num = parseInt(hex.replace('#', ''), 16);
+  const amt = Math.round(2.55 * percent);
+  const R = Math.max((num >> 16) - amt, 0);
+  const G = Math.max((num >> 8 & 0x00FF) - amt, 0);
+  const B = Math.max((num & 0x0000FF) - amt, 0);
+  return '#' + (0x1000000 + R * 0x10000 + G * 0x100 + B).toString(16).slice(1);
+};
+
 const QuickActions = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -54,19 +67,30 @@ const QuickActions = () => {
   });
 
   // Carregar cores do backend
-  useEffect(() => {
-    const loadColors = async () => {
-      try {
-        const response = await aparenciaService.getQuickActionsColors();
-        if (response.success && response.data?.colors) {
-          setColors(response.data.colors);
-        }
-      } catch (error) {
-        console.warn('Não foi possível carregar cores personalizadas, usando padrão:', error);
+  const loadColors = async () => {
+    try {
+      const response = await aparenciaService.getQuickActionsColors();
+      if (response.success && response.data?.colors) {
+        setColors(response.data.colors);
       }
+    } catch (error) {
+      console.warn('Não foi possível carregar cores personalizadas, usando padrão:', error);
+    }
+  };
+
+  useEffect(() => {
+    loadColors();
+    
+    // Escutar evento de atualização de cores
+    const handleColorsUpdated = () => {
+      loadColors();
     };
     
-    loadColors();
+    window.addEventListener('quickActionsColorsUpdated', handleColorsUpdated);
+    
+    return () => {
+      window.removeEventListener('quickActionsColorsUpdated', handleColorsUpdated);
+    };
   }, []);
 
   const handleActionClick = (path, moduleName, state = {}) => {
@@ -98,7 +122,14 @@ const QuickActions = () => {
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {actions.map((action, index) => {
             const colorValue = colors[action.colorKey] || 'gray';
-            const colorClass = colorClassMap[colorValue] || colorClassMap.gray;
+            const isCustomHex = isHexColor(colorValue);
+            const colorClass = !isCustomHex ? (colorClassMap[colorValue] || colorClassMap.gray) : '';
+            
+            // Estilo inline para cores hex personalizadas
+            const customStyle = isCustomHex ? {
+              backgroundColor: colorValue,
+              '--hover-bg': darkenColor(colorValue, 15),
+            } : {};
             
             return (
               <motion.button
@@ -110,6 +141,17 @@ const QuickActions = () => {
                 whileTap={{ scale: 0.95 }}
                 onClick={() => handleActionClick(action.path, action.module, action.state)}
                 className={`${colorClass} text-white p-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex flex-col items-center justify-center space-y-1.5 text-center aspect-square`}
+                style={customStyle}
+                onMouseEnter={(e) => {
+                  if (isCustomHex) {
+                    e.currentTarget.style.backgroundColor = darkenColor(colorValue, 15);
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (isCustomHex) {
+                    e.currentTarget.style.backgroundColor = colorValue;
+                  }
+                }}
               >
                 <action.icon className="h-6 w-6 sm:h-7 sm:w-7" />
                 <span className="text-xs sm:text-sm font-medium">{action.label}</span>

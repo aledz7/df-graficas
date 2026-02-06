@@ -3,6 +3,20 @@ import { motion } from 'framer-motion';
 import { Card, CardContent } from '@/components/ui/card';
 
 const StatCard = ({ title, value, icon: Icon, color, trend, subtext }) => {
+  // Verifica se é uma cor hex personalizada
+  const isHexColor = (c) => /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(c);
+  const isCustomColor = isHexColor(color);
+
+  // Função para escurecer uma cor hex
+  const darkenColor = (hex, percent = 10) => {
+    const num = parseInt(hex.replace('#', ''), 16);
+    const amt = Math.round(2.55 * percent);
+    const R = Math.max((num >> 16) - amt, 0);
+    const G = Math.max((num >> 8 & 0x00FF) - amt, 0);
+    const B = Math.max((num & 0x0000FF) - amt, 0);
+    return '#' + (0x1000000 + R * 0x10000 + G * 0x100 + B).toString(16).slice(1);
+  };
+
   const colorClasses = {
     green: 'from-green-500 to-green-600 dark:from-green-600 dark:to-green-700',
     blue: 'from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700',
@@ -24,6 +38,7 @@ const StatCard = ({ title, value, icon: Icon, color, trend, subtext }) => {
     slate: 'from-slate-500 to-slate-600 dark:from-slate-600 dark:to-slate-700',
     gray: 'from-gray-500 to-gray-600 dark:from-gray-600 dark:to-gray-700',
     zinc: 'from-zinc-500 to-zinc-600 dark:from-zinc-600 dark:to-zinc-700',
+    black: 'from-zinc-800 to-zinc-900 dark:from-zinc-900 dark:to-black',
   };
   
   const iconBgColors = {
@@ -47,7 +62,17 @@ const StatCard = ({ title, value, icon: Icon, color, trend, subtext }) => {
     slate: 'bg-slate-400/30 dark:bg-slate-500/40',
     gray: 'bg-gray-400/30 dark:bg-gray-500/40',
     zinc: 'bg-zinc-400/30 dark:bg-zinc-500/40',
-  }
+    black: 'bg-zinc-600/30 dark:bg-zinc-700/40',
+  };
+
+  // Estilo para cor customizada
+  const customStyle = isCustomColor ? {
+    background: `linear-gradient(to bottom right, ${color}, ${darkenColor(color, 15)})`,
+  } : {};
+
+  const customIconBgStyle = isCustomColor ? {
+    backgroundColor: `${color}50`, // 50 = 31% opacity em hex
+  } : {};
 
   return (
     <motion.div
@@ -57,13 +82,22 @@ const StatCard = ({ title, value, icon: Icon, color, trend, subtext }) => {
       whileHover={{ scale: 1.03, y: -3, boxShadow: "0px 10px 20px rgba(0,0,0,0.1)" }}
       className="h-full"
     >
-      <Card className={`h-full bg-gradient-to-br ${colorClasses[color]} text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden relative`}>
-        <div className={`absolute -top-4 -right-4 w-20 h-20 ${iconBgColors[color]} rounded-full opacity-50 blur-md`}></div>
+      <Card 
+        className={`h-full ${!isCustomColor ? `bg-gradient-to-br ${colorClasses[color] || colorClasses.gray}` : ''} text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden relative`}
+        style={customStyle}
+      >
+        <div 
+          className={`absolute -top-4 -right-4 w-20 h-20 ${!isCustomColor ? iconBgColors[color] || iconBgColors.gray : ''} rounded-full opacity-50 blur-md`}
+          style={customIconBgStyle}
+        ></div>
         <CardContent className="p-5 relative z-10 flex flex-col justify-between h-full">
           <div>
             <div className="flex items-center justify-between mb-3">
               <p className={`text-white/90 text-sm font-medium`}>{title}</p>
-              <div className={`${iconBgColors[color]} p-2.5 rounded-lg`}>
+              <div 
+                className={`${!isCustomColor ? iconBgColors[color] || iconBgColors.gray : ''} p-2.5 rounded-lg`}
+                style={customIconBgStyle}
+              >
                 <Icon className="h-5 w-5 text-white" />
               </div>
             </div>

@@ -45,18 +45,30 @@ const DashboardPage = ({ theme }) => {
   });
 
   // Carregar cores personalizadas do dashboard
-  useEffect(() => {
-    const loadDashboardColors = async () => {
-      try {
-        const response = await aparenciaService.getDashboardColors();
-        if (response.success && response.data?.colors) {
-          setDashboardColors(response.data.colors);
-        }
-      } catch (error) {
-        console.warn('Erro ao carregar cores do dashboard, usando padrão:', error);
+  const loadDashboardColors = async () => {
+    try {
+      const response = await aparenciaService.getDashboardColors();
+      if (response.success && response.data?.colors) {
+        setDashboardColors(response.data.colors);
       }
-    };
+    } catch (error) {
+      console.warn('Erro ao carregar cores do dashboard, usando padrão:', error);
+    }
+  };
+
+  useEffect(() => {
     loadDashboardColors();
+    
+    // Escutar evento de atualização de cores
+    const handleColorsUpdated = () => {
+      loadDashboardColors();
+    };
+    
+    window.addEventListener('dashboardColorsUpdated', handleColorsUpdated);
+    
+    return () => {
+      window.removeEventListener('dashboardColorsUpdated', handleColorsUpdated);
+    };
   }, []);
 
   useEffect(() => {

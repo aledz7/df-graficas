@@ -2,9 +2,11 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useToast } from '@/components/ui/use-toast';
-import { Sun, Moon, Monitor as MonitorIcon, Palette, Save, Droplet, Leaf, Zap, Sparkles, Sunrise, Paintbrush, Star, Wind, Flower2, CloudRain, Candy, Rocket, Coffee, Music, Feather, Gem, LayoutDashboard, RotateCcw, ShoppingCart, ClipboardList, Archive, PackagePlus, FilePlus2, UserPlus, BarChartHorizontalBig, LayoutGrid } from 'lucide-react';
+import { Sun, Moon, Monitor as MonitorIcon, Palette, Save, Droplet, Leaf, Zap, Sparkles, Sunrise, Paintbrush, Star, Wind, Flower2, CloudRain, Candy, Rocket, Coffee, Music, Feather, Gem, LayoutDashboard, RotateCcw, ShoppingCart, ClipboardList, Archive, PackagePlus, FilePlus2, UserPlus, BarChartHorizontalBig, LayoutGrid, Pipette } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { aparenciaService } from '@/services/api';
 
@@ -65,6 +67,27 @@ const AparenciaSettingsPage = ({ theme: currentGlobalTheme, setTheme: applyGloba
     { value: 'zinc', label: 'Zinco', hex: '#71717a' },
     { value: 'black', label: 'Preto', hex: '#18181b' },
   ];
+
+  // Função para verificar se é uma cor hex
+  const isHexColor = (color) => /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(color);
+
+  // Função para obter a cor hex (seja de uma cor predefinida ou personalizada)
+  const getColorHex = (colorValue) => {
+    if (isHexColor(colorValue)) {
+      return colorValue;
+    }
+    const predefinedColor = availableColors.find(c => c.value === colorValue);
+    return predefinedColor?.hex || '#6b7280';
+  };
+
+  // Função para obter o label da cor
+  const getColorLabel = (colorValue) => {
+    if (isHexColor(colorValue)) {
+      return `Personalizada (${colorValue})`;
+    }
+    const predefinedColor = availableColors.find(c => c.value === colorValue);
+    return predefinedColor?.label || 'Selecione uma cor';
+  };
 
   // Cards do dashboard com seus ícones
   const dashboardCards = [
@@ -148,6 +171,9 @@ const AparenciaSettingsPage = ({ theme: currentGlobalTheme, setTheme: applyGloba
       const response = await aparenciaService.updateDashboardColors(dashboardColors);
       
       if (response.success) {
+        // Disparar evento para atualizar o Dashboard
+        window.dispatchEvent(new CustomEvent('dashboardColorsUpdated'));
+        
         toast({
           title: 'Cores Salvas!',
           description: 'As cores dos cards do dashboard foram atualizadas com sucesso.',
@@ -208,6 +234,9 @@ const AparenciaSettingsPage = ({ theme: currentGlobalTheme, setTheme: applyGloba
       const response = await aparenciaService.updateQuickActionsColors(quickActionsColors);
       
       if (response.success) {
+        // Disparar evento para atualizar o QuickActions
+        window.dispatchEvent(new CustomEvent('quickActionsColorsUpdated'));
+        
         toast({
           title: 'Cores Salvas!',
           description: 'As cores dos botões de Ações Rápidas foram atualizadas com sucesso.',
@@ -359,47 +388,104 @@ const AparenciaSettingsPage = ({ theme: currentGlobalTheme, setTheme: applyGloba
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {dashboardCards.map(card => {
-                const selectedColor = availableColors.find(c => c.value === dashboardColors[card.key]);
+                const currentColor = dashboardColors[card.key];
+                const colorHex = getColorHex(currentColor);
                 const CardIcon = card.icon;
                 
                 return (
                   <div key={card.key} className="flex items-center gap-4 p-4 border rounded-lg bg-muted/30">
                     <div 
                       className="w-12 h-12 rounded-lg flex items-center justify-center shadow-md transition-all"
-                      style={{ backgroundColor: selectedColor?.hex || '#6b7280' }}
+                      style={{ backgroundColor: colorHex }}
                     >
                       <CardIcon className="h-6 w-6 text-white" />
                     </div>
                     <div className="flex-1">
                       <Label className="text-sm font-medium">{card.label}</Label>
-                      <Select 
-                        value={dashboardColors[card.key]} 
-                        onValueChange={(value) => handleColorChange(card.key, value)}
-                        disabled={isLoading || isSavingColors}
-                      >
-                        <SelectTrigger className="w-full mt-1 h-10">
-                          <div className="flex items-center gap-2">
-                            <div 
-                              className="w-4 h-4 rounded-full border"
-                              style={{ backgroundColor: selectedColor?.hex || '#6b7280' }}
-                            />
-                            <SelectValue placeholder="Selecione uma cor" />
-                          </div>
-                        </SelectTrigger>
-                        <SelectContent>
-                          {availableColors.map(color => (
-                            <SelectItem key={color.value} value={color.value}>
+                      <div className="flex gap-2 mt-1">
+                        <Select 
+                          value={isHexColor(currentColor) ? 'custom' : currentColor} 
+                          onValueChange={(value) => {
+                            if (value !== 'custom') {
+                              handleColorChange(card.key, value);
+                            }
+                          }}
+                          disabled={isLoading || isSavingColors}
+                        >
+                          <SelectTrigger className="flex-1 h-10">
+                            <div className="flex items-center gap-2">
+                              <div 
+                                className="w-4 h-4 rounded-full border"
+                                style={{ backgroundColor: colorHex }}
+                              />
+                              <span className="truncate">{getColorLabel(currentColor)}</span>
+                            </div>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableColors.map(color => (
+                              <SelectItem key={color.value} value={color.value}>
+                                <div className="flex items-center gap-2">
+                                  <div 
+                                    className="w-4 h-4 rounded-full border"
+                                    style={{ backgroundColor: color.hex }}
+                                  />
+                                  {color.label}
+                                </div>
+                              </SelectItem>
+                            ))}
+                            <SelectItem value="custom">
                               <div className="flex items-center gap-2">
-                                <div 
-                                  className="w-4 h-4 rounded-full border"
-                                  style={{ backgroundColor: color.hex }}
-                                />
-                                {color.label}
+                                <Pipette className="w-4 h-4" />
+                                Cor Personalizada...
                               </div>
                             </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                          </SelectContent>
+                        </Select>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button 
+                              variant="outline" 
+                              size="icon" 
+                              className="h-10 w-10 shrink-0"
+                              style={{ backgroundColor: colorHex }}
+                              disabled={isLoading || isSavingColors}
+                            >
+                              <Pipette className="h-4 w-4 text-white" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-64" align="end">
+                            <div className="space-y-3">
+                              <Label className="text-sm font-medium">Cor Personalizada</Label>
+                              <div className="flex gap-2">
+                                <input
+                                  type="color"
+                                  value={colorHex}
+                                  onChange={(e) => handleColorChange(card.key, e.target.value)}
+                                  className="w-12 h-10 rounded border cursor-pointer"
+                                />
+                                <Input
+                                  type="text"
+                                  value={isHexColor(currentColor) ? currentColor : colorHex}
+                                  onChange={(e) => {
+                                    const value = e.target.value;
+                                    if (value.startsWith('#')) {
+                                      handleColorChange(card.key, value);
+                                    } else {
+                                      handleColorChange(card.key, '#' + value);
+                                    }
+                                  }}
+                                  placeholder="#ff0000"
+                                  className="flex-1 h-10 font-mono text-sm"
+                                  maxLength={7}
+                                />
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                Digite o código hex (ex: #ff0000) ou use o seletor
+                              </p>
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+                      </div>
                     </div>
                   </div>
                 );
@@ -441,47 +527,104 @@ const AparenciaSettingsPage = ({ theme: currentGlobalTheme, setTheme: applyGloba
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {quickActionsButtons.map(button => {
-                const selectedColor = availableColors.find(c => c.value === quickActionsColors[button.key]);
+                const currentColor = quickActionsColors[button.key];
+                const colorHex = getColorHex(currentColor);
                 const ButtonIcon = button.icon;
                 
                 return (
                   <div key={button.key} className="flex items-center gap-4 p-4 border rounded-lg bg-muted/30">
                     <div 
                       className="w-12 h-12 rounded-lg flex items-center justify-center shadow-md transition-all"
-                      style={{ backgroundColor: selectedColor?.hex || '#6b7280' }}
+                      style={{ backgroundColor: colorHex }}
                     >
                       <ButtonIcon className="h-6 w-6 text-white" />
                     </div>
                     <div className="flex-1">
                       <Label className="text-sm font-medium">{button.label}</Label>
-                      <Select 
-                        value={quickActionsColors[button.key]} 
-                        onValueChange={(value) => handleQuickActionsColorChange(button.key, value)}
-                        disabled={isLoading || isSavingQuickActions}
-                      >
-                        <SelectTrigger className="w-full mt-1 h-10">
-                          <div className="flex items-center gap-2">
-                            <div 
-                              className="w-4 h-4 rounded-full border"
-                              style={{ backgroundColor: selectedColor?.hex || '#6b7280' }}
-                            />
-                            <SelectValue placeholder="Selecione uma cor" />
-                          </div>
-                        </SelectTrigger>
-                        <SelectContent>
-                          {availableColors.map(color => (
-                            <SelectItem key={color.value} value={color.value}>
+                      <div className="flex gap-2 mt-1">
+                        <Select 
+                          value={isHexColor(currentColor) ? 'custom' : currentColor} 
+                          onValueChange={(value) => {
+                            if (value !== 'custom') {
+                              handleQuickActionsColorChange(button.key, value);
+                            }
+                          }}
+                          disabled={isLoading || isSavingQuickActions}
+                        >
+                          <SelectTrigger className="flex-1 h-10">
+                            <div className="flex items-center gap-2">
+                              <div 
+                                className="w-4 h-4 rounded-full border"
+                                style={{ backgroundColor: colorHex }}
+                              />
+                              <span className="truncate">{getColorLabel(currentColor)}</span>
+                            </div>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableColors.map(color => (
+                              <SelectItem key={color.value} value={color.value}>
+                                <div className="flex items-center gap-2">
+                                  <div 
+                                    className="w-4 h-4 rounded-full border"
+                                    style={{ backgroundColor: color.hex }}
+                                  />
+                                  {color.label}
+                                </div>
+                              </SelectItem>
+                            ))}
+                            <SelectItem value="custom">
                               <div className="flex items-center gap-2">
-                                <div 
-                                  className="w-4 h-4 rounded-full border"
-                                  style={{ backgroundColor: color.hex }}
-                                />
-                                {color.label}
+                                <Pipette className="w-4 h-4" />
+                                Cor Personalizada...
                               </div>
                             </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                          </SelectContent>
+                        </Select>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button 
+                              variant="outline" 
+                              size="icon" 
+                              className="h-10 w-10 shrink-0"
+                              style={{ backgroundColor: colorHex }}
+                              disabled={isLoading || isSavingQuickActions}
+                            >
+                              <Pipette className="h-4 w-4 text-white" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-64" align="end">
+                            <div className="space-y-3">
+                              <Label className="text-sm font-medium">Cor Personalizada</Label>
+                              <div className="flex gap-2">
+                                <input
+                                  type="color"
+                                  value={colorHex}
+                                  onChange={(e) => handleQuickActionsColorChange(button.key, e.target.value)}
+                                  className="w-12 h-10 rounded border cursor-pointer"
+                                />
+                                <Input
+                                  type="text"
+                                  value={isHexColor(currentColor) ? currentColor : colorHex}
+                                  onChange={(e) => {
+                                    const value = e.target.value;
+                                    if (value.startsWith('#')) {
+                                      handleQuickActionsColorChange(button.key, value);
+                                    } else {
+                                      handleQuickActionsColorChange(button.key, '#' + value);
+                                    }
+                                  }}
+                                  placeholder="#ff0000"
+                                  className="flex-1 h-10 font-mono text-sm"
+                                  maxLength={7}
+                                />
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                Digite o código hex (ex: #ff0000) ou use o seletor
+                              </p>
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+                      </div>
                     </div>
                   </div>
                 );
