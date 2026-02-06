@@ -4,7 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Trash2, Edit, ImageOff, FileText } from 'lucide-react';
+import { Trash2, Edit, ImageOff, FileText, Copy } from 'lucide-react';
 import { getImageUrl } from '@/lib/imageUtils';
 import { Badge } from '@/components/ui/badge';
 import { safeParseFloat } from '@/lib/utils';
@@ -70,7 +70,7 @@ const getItemDisplayInfo = (item, produtosCadastrados) => {
   return { nome, imagemUrl, isPdf };
 };
 
-const OSItensTable = ({ itens, onRemoveItem, onEditItem, isOSFinalizada, viewOnly, produtosCadastrados }) => {
+const OSItensTable = ({ itens, onRemoveItem, onEditItem, onDuplicateItem, isOSFinalizada, viewOnly, produtosCadastrados }) => {
   const isDisabled = isOSFinalizada || viewOnly;
 
 
@@ -140,7 +140,7 @@ const OSItensTable = ({ itens, onRemoveItem, onEditItem, isOSFinalizada, viewOnl
                 <TableHead className="px-2 py-2 text-center">Qtd</TableHead>
                 <TableHead className="px-2 py-2 text-right">Subtotal</TableHead>
                 {!isDisabled && (
-                  <TableHead className="w-[80px] px-2 py-2 text-right">Ações</TableHead>
+                  <TableHead className="w-[100px] px-2 py-2 text-right">Ações</TableHead>
                 )}
               </TableRow>
             </TableHeader>
@@ -219,10 +219,13 @@ const OSItensTable = ({ itens, onRemoveItem, onEditItem, isOSFinalizada, viewOnl
                     <TableCell className="text-right font-semibold px-2 py-1.5 text-xs">R$ {item.subtotalExibir.toFixed(2)}</TableCell>
                     {!isDisabled && (
                       <TableCell className="text-right px-2 py-1.5">
-                        <Button variant="ghost" size="icon" onClick={() => onEditItem(item)} className="text-blue-500 hover:text-blue-600 h-7 w-7 mr-1">
+                        <Button variant="ghost" size="icon" onClick={() => onDuplicateItem(item)} className="text-green-500 hover:text-green-600 h-7 w-7 mr-1" title="Duplicar item">
+                          <Copy size={14}/>
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => onEditItem(item)} className="text-blue-500 hover:text-blue-600 h-7 w-7 mr-1" title="Editar item">
                           <Edit size={14}/>
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={() => onRemoveItem(item.id_item_os)} className="text-red-500 hover:text-red-600 h-7 w-7">
+                        <Button variant="ghost" size="icon" onClick={() => onRemoveItem(item.id_item_os)} className="text-red-500 hover:text-red-600 h-7 w-7" title="Remover item">
                           <Trash2 size={14}/>
                         </Button>
                       </TableCell>

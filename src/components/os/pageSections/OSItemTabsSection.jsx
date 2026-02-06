@@ -17,6 +17,7 @@ const OSItemTabsSection = ({
     itensOS, 
     onRemoverItem, 
     onEditarItem,
+    onDuplicarItem,
     isOSFinalizada,
     produtosCadastrados,
     produtosCarregados,
@@ -386,7 +387,8 @@ const OSItemTabsSection = ({
             <OSItensTable 
               itens={itensOS} 
               onRemoveItem={onRemoverItem} 
-              onEditItem={handleEditItemWrapper} 
+              onEditItem={handleEditItemWrapper}
+              onDuplicateItem={onDuplicarItem}
               isOSFinalizada={isOSFinalizada}
               viewOnly={viewOnly}
               produtosCadastrados={produtosCadastrados}

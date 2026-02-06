@@ -39,16 +39,8 @@ const OSFinalActions = ({
         return;
     }
     
-    // Validação de campos obrigatórios
+    // Validação de campos obrigatórios (previsão de entrega e máquina agora são opcionais)
     const camposFaltantes = [];
-    
-    if (!ordemServico.data_previsao_entrega) {
-        camposFaltantes.push('Previsão de Entrega');
-    }
-    
-    if (!ordemServico.maquina_impressao_id) {
-        camposFaltantes.push('Máquina de Impressão');
-    }
     
     if (!ordemServico.observacoes_gerais_os?.trim()) {
         camposFaltantes.push('Observações Gerais da OS');
@@ -235,7 +227,7 @@ const OSFinalActions = ({
           </Button>
         )}
         <Button variant="outline" onClick={handleSalvarOrcamentoOS} disabled={isOSFinalizada || isSaving}>
-          <Save size={16} className="mr-1.5" /> Salvar Orçamento
+          <Save size={16} className="mr-1.5" /> Salvar Pedido
         </Button>
         <Button onClick={handleOpenPagamento} className="bg-green-600 hover:bg-green-700 text-white" disabled={isOSFinalizada || isSaving || (Array.isArray(ordemServico.itens) ? ordemServico.itens : []).length === 0}>
           <ShoppingCart size={16} className="mr-1.5" /> {isOSFinalizada ? 'OS Finalizada' : 'Finalizar e Pagar'}

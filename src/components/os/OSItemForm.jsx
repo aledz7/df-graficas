@@ -1873,6 +1873,8 @@ const OSItemForm = ({
       onItemChange('valor_produto_origem', valorOrigem);
       onItemChange('tipo_item', novoTipoItem);
       onItemChange('variacao_selecionada', null);
+      // Passar valor mínimo do produto para aplicar no cálculo de subtotal
+      onItemChange('valor_minimo', produto.valor_minimo || null);
       
       toast({ 
         title: novoTipoItem === 'm2' ? "Produto Selecionado como Base (Serviço M²)" : "Produto Selecionado (Unidade)", 
@@ -1880,6 +1882,33 @@ const OSItemForm = ({
         variant: "default",
         duration: 7000
       });
+
+      // Verificar se é produto do tipo adesivo/lona para expandir seção de consumo automaticamente
+      const nomeLower = (produto.nome || '').toLowerCase();
+      const categoriaLower = (produto.categoria?.nome || produto.categoria_nome || '').toLowerCase();
+      const isAdesivo = nomeLower.includes('adesivo') || categoriaLower.includes('adesivo');
+      const isLona = nomeLower.includes('lona') || categoriaLower.includes('lona');
+      const isVinil = nomeLower.includes('vinil') || categoriaLower.includes('vinil');
+      
+      if (produtoEhM2 && (isAdesivo || isLona || isVinil)) {
+        // Pré-preencher o material utilizado com o nome do produto
+        onItemChange('consumo_material_utilizado', produto.nome);
+        
+        // Se o produto tem medidas de chapa definidas, pré-preencher
+        if (produto.medida_chapa_largura_cm && produto.medida_chapa_altura_cm) {
+          onItemChange('consumo_largura_chapa', String(produto.medida_chapa_largura_cm));
+          onItemChange('consumo_altura_chapa', String(produto.medida_chapa_altura_cm));
+          if (produto.valor_chapa) {
+            onItemChange('consumo_valor_unitario_chapa', String(produto.valor_chapa));
+          }
+        }
+        
+        toast({
+          title: "Consumo de Material",
+          description: `Produto "${produto.nome}" identificado como ${isAdesivo ? 'adesivo' : isLona ? 'lona' : 'vinil'}. Campos de consumo pré-preenchidos.`,
+          duration: 5000
+        });
+      }
     }
   };
 

@@ -15,7 +15,13 @@ const OSClienteSection = ({
   viewOnly,
 }) => {
   const handleNomeManualChange = (e) => {
-    setOrdemServico(prev => ({ ...prev, cliente_nome_manual: e.target.value, cliente_info: null }));
+    const value = e.target.value;
+    setOrdemServico(prev => ({ ...prev, cliente_nome_manual: value, cliente_info: null }));
+    
+    // Abrir modal automaticamente ao digitar (mínimo 2 caracteres)
+    if (value.length >= 2 && !isSaving && !viewOnly) {
+      handleOpenClienteModal(value);
+    }
   };
 
   const clienteParaMostrar = clienteSelecionado || ordemServico?.cliente_info || null;
@@ -61,7 +67,7 @@ const OSClienteSection = ({
                 className="flex-1"
               />
               <Button 
-                onClick={handleOpenClienteModal} 
+                onClick={() => handleOpenClienteModal('')} 
                 variant="outline"
                 disabled={isSaving || viewOnly}
                 className="whitespace-nowrap"

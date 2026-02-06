@@ -177,7 +177,7 @@ const OSFinalizacao = ({
                 <RotateCcw size={16} className="mr-2"/> Limpar OS / Novo
             </Button> 
             <Button onClick={handleSaveAndShowToast} className="bg-blue-600 hover:bg-blue-700 text-white">
-              <Save size={18} className="mr-2"/> Salvar Orçamento
+              <Save size={18} className="mr-2"/> Salvar Pedido
             </Button>
             <Button onClick={handleFinalizarGerarPDF} className="bg-green-600 hover:bg-green-700 text-white">
               <FileText size={18} className="mr-2"/> Finalizar e Gerar PDF

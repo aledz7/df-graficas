@@ -734,6 +734,50 @@ export const useOSItemHandlers = (
     });
   }, [handleUpdateItem, toast]);
 
+  // Handler para duplicar um item completo
+  const handleDuplicarItem = useCallback((itemParaDuplicar) => {
+    if (!itemParaDuplicar) {
+      toast({ 
+        title: "Erro", 
+        description: "Item inválido para duplicação.", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    // Gerar novo id_item_os para o item duplicado
+    const novoIdItemOS = `item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Criar cópia profunda do item
+    const itemDuplicado = {
+      ...itemParaDuplicar,
+      id_item_os: novoIdItemOS,
+      // Limpar campos que devem ser únicos
+      id: null,
+      // Copiar arrays e objetos aninhados para evitar compartilhamento de referências
+      acabamentos_selecionados: Array.isArray(itemParaDuplicar.acabamentos_selecionados) 
+        ? itemParaDuplicar.acabamentos_selecionados.map(acab => ({ ...acab }))
+        : [],
+      variacao_selecionada: itemParaDuplicar.variacao_selecionada 
+        ? { ...itemParaDuplicar.variacao_selecionada }
+        : null,
+      detalhes: Array.isArray(itemParaDuplicar.detalhes)
+        ? [...itemParaDuplicar.detalhes]
+        : itemParaDuplicar.detalhes,
+    };
+
+    // Adicionar o item duplicado à OS
+    setOrdemServico(prev => ({
+      ...prev,
+      itens: [...(prev.itens || []), itemDuplicado]
+    }));
+
+    toast({ 
+      title: "Item Duplicado", 
+      description: `O item "${itemParaDuplicar.nome_servico_produto || itemParaDuplicar.nome_produto || 'Item'}" foi duplicado com sucesso.` 
+    });
+  }, [setOrdemServico, toast]);
+
   return {
     checkEstoqueAcabamento,
     handleAdicionarItem,
@@ -742,5 +786,6 @@ export const useOSItemHandlers = (
     handleEditarItem,
     handleCancelEditItem,
     handleClonarMedidas,
+    handleDuplicarItem,
   };
 };

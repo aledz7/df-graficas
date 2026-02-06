@@ -655,7 +655,7 @@ const ProdutoTabPrecoEstoque = ({ currentProduto, handleInputChange }) => {
             </div>
           </div>
         )}
-         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
                 <Label htmlFor="estoque">
                   Estoque Atual {isUnidadeMetroQuadrado ? '(m²)' : ''} <span className="text-red-500">*</span>
@@ -683,6 +683,19 @@ const ProdutoTabPrecoEstoque = ({ currentProduto, handleInputChange }) => {
                 <Label htmlFor="estoque_minimo">Estoque Mínimo</Label>
                 <Input id="estoque_minimo" name="estoque_minimo" type="number" step="0.01" value={currentProduto.estoque_minimo} onChange={handleInputChange} placeholder="1"/>
                 <p className="text-xs text-gray-500 mt-1">Aceita valores fracionados (ex: 1.5, 5.25)</p>
+            </div>
+            <div>
+                <Label htmlFor="valor_minimo">Valor Mínimo de Venda (R$)</Label>
+                <Input 
+                  id="valor_minimo" 
+                  name="valor_minimo" 
+                  type="number" 
+                  step="0.01" 
+                  value={currentProduto.valor_minimo || ''} 
+                  onChange={handleInputChange} 
+                  placeholder="0.00"
+                />
+                <p className="text-xs text-gray-500 mt-1">Valor mínimo aplicado quando cálculo for menor (ex: área {"<"} 0,50m²)</p>
             </div>
         </div>
         {/* Alerta de estoque baixo para produto sem variações */}

@@ -214,6 +214,25 @@ const FluxoCaixaPage = () => {
       }, {});
   }, [todosLancamentosDoDia]);
 
+  const totaisPorConta = useMemo(() => {
+    return todosLancamentosDoDia
+      .filter(l => l.tipo === 'entrada')
+      .reduce((acc, l) => {
+        const contaNome = l.conta_nome || l.conta?.nome || 'Sem conta';
+        const contaId = l.conta_id || 'sem-conta';
+        const key = `${contaId}`;
+        
+        if (!acc[key]) {
+          acc[key] = {
+            nome: contaNome,
+            total: 0
+          };
+        }
+        acc[key].total += parseFloat(l.valor);
+        return acc;
+      }, {});
+  }, [todosLancamentosDoDia]);
+
 
   return (
     <motion.div 
@@ -379,6 +398,7 @@ const FluxoCaixaPage = () => {
       <FluxoCaixaSummary 
         totaisDoDia={totaisDoDia}
         totaisPorFormaPagamento={totaisPorFormaPagamento}
+        totaisPorConta={totaisPorConta}
       />
       
       <FluxoCaixaTable 
@@ -398,6 +418,7 @@ const FluxoCaixaPage = () => {
             data={dataSelecionada}
             totais={totaisDoDia}
             totaisPorFormaPagamento={totaisPorFormaPagamento}
+            totaisPorConta={totaisPorConta}
             empresa={empresa}
             logoUrl={logoUrl}
           />

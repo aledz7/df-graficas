@@ -266,7 +266,19 @@ export const calcularSubtotalItem = (item, acabamentosConfig) => {
         }
     }
     
-    const resultado = isNaN(subtotalBase) ? 0 : parseFloat(subtotalBase.toFixed(2));
+    let resultado = isNaN(subtotalBase) ? 0 : parseFloat(subtotalBase.toFixed(2));
+    
+    // Aplicar valor mínimo se o produto tiver valor_minimo definido e o subtotal for menor
+    const valorMinimo = safeParseFloat(item.valor_minimo || item.produto?.valor_minimo, 0);
+    if (valorMinimo > 0 && resultado < valorMinimo && resultado > 0) {
+        console.log('💰 [calcularSubtotalItem] Aplicando valor mínimo:', {
+            subtotalCalculado: resultado,
+            valorMinimo,
+            diferencaAbsorvida: valorMinimo - resultado
+        });
+        resultado = valorMinimo;
+    }
+    
     return resultado;
 };
 
@@ -326,25 +338,26 @@ export const calcularTotalOS = async (ordemServico, clienteSelecionado = null) =
         const itemAcabamentosSelecionados = Array.isArray(item.acabamentos_selecionados) ? item.acabamentos_selecionados : [];
 
         if (item.tipo_item === 'm2') {
-            const largura = safeParseFloat(item.largura);
-            const altura = safeParseFloat(item.altura);
-            const valorUnitarioM2 = safeParseFloat(item.valor_unitario_m2);
-
-            const area = largura * altura;
-            const subtotalBaseServicoM2 = area * quantidade * valorUnitarioM2;
-            subtotalServicosM2 += isNaN(subtotalBaseServicoM2) ? 0 : subtotalBaseServicoM2;
-
-            const subtotalApenasAcabamentosDoItem = safeParseFloat(item.subtotal_acabamentos);
+            // CORREÇÃO: Usar o subtotal_item já calculado (que tem os valores corretos)
+            // em vez de recalcular a partir de largura/altura que podem estar em formato BR
+            const subtotalItemCalculado = safeParseFloat(item.subtotal_item, 0);
+            
+            // Para o subtotalServicosM2, usar o subtotal_item menos os acabamentos
+            const subtotalApenasAcabamentosDoItem = safeParseFloat(item.subtotal_acabamentos, 0);
             totalAcabamentos += isNaN(subtotalApenasAcabamentosDoItem) ? 0 : subtotalApenasAcabamentosDoItem;
-
-            // Usar o subtotal_item já calculado (que inclui acabamentos) em vez de recalcular
-            const subtotalItemCalculado = safeParseFloat(item.subtotal_item);
+            
+            // Calcular o subtotal base (sem acabamentos) para exibição
+            // O subtotal_item já inclui acabamentos, então subtraímos para obter apenas serviços
+            const subtotalBaseServicoM2 = subtotalItemCalculado - subtotalApenasAcabamentosDoItem;
+            subtotalServicosM2 += isNaN(subtotalBaseServicoM2) ? 0 : Math.max(0, subtotalBaseServicoM2);
             
             console.log('📊 [calcularTotalOS] Item m²:', {
                 index,
                 nome: item.nome_produto || item.nome_servico_produto,
                 subtotal_item_original: item.subtotal_item,
                 subtotal_item_calculado: subtotalItemCalculado,
+                subtotal_acabamentos: subtotalApenasAcabamentosDoItem,
+                subtotal_base_servico: subtotalBaseServicoM2,
                 tipo_subtotal: typeof item.subtotal_item,
                 subtotalGeralItens_antes: subtotalGeralItens
             });

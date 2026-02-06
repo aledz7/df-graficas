@@ -52,7 +52,8 @@ class Produto extends Model
         'composicao',
         'tipo_precificacao',
         'tabela_precos',
-        'preco_metro_linear'
+        'preco_metro_linear',
+        'valor_minimo'
     ];
 
     /**
@@ -78,6 +79,7 @@ class Produto extends Model
         'estoque' => 'decimal:2',
         'estoque_minimo' => 'decimal:2',
         'preco_metro_linear' => 'decimal:2',
+        'valor_minimo' => 'decimal:2',
         'galeria_urls' => 'array',
         'variacoes' => 'array',
         'composicao' => 'array',

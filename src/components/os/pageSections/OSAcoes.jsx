@@ -14,7 +14,7 @@ const OSAcoes = ({
     <div className="mt-auto space-y-2 pt-4 border-t">
       <div className="grid grid-cols-2 gap-2">
         <Button variant="outline" onClick={onSalvarOrcamento} disabled={isOSFinalizada}>
-          <Save size={16} className="mr-1.5" /> Salvar Orçamento
+          <Save size={16} className="mr-1.5" /> Salvar Pedido
         </Button>
         <Button onClick={onFinalizarOS} className="bg-green-600 hover:bg-green-700 text-white" disabled={isOSFinalizada}>
           <CheckCircle2 size={16} className="mr-1.5" /> {isOSFinalizada ? 'OS Finalizada' : 'Finalizar OS'}

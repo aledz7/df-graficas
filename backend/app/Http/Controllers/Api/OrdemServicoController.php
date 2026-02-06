@@ -243,11 +243,13 @@ class OrdemServicoController extends Controller
             'observacoes_gerais_os.required' => 'As Observações Gerais da OS são obrigatórias.',
         ];
         
-        // Se não for um orçamento, tornar campos obrigatórios
-        if ($request->status_os && !in_array($request->status_os, ['Orçamento Salvo', 'Orçamento Salvo (Editado)'])) {
-            $rules['data_prevista_entrega'] = 'required|date';
-            $rules['maquina_impressao_id'] = 'required|integer';
-            // observacoes_gerais_os permanece opcional
+        // Previsão de entrega e máquina de impressão agora são opcionais para todos os status
+        // Os campos permanecem com validação de tipo quando preenchidos
+        if ($request->has('data_prevista_entrega') && $request->data_prevista_entrega) {
+            $rules['data_prevista_entrega'] = 'date';
+        }
+        if ($request->has('maquina_impressao_id') && $request->maquina_impressao_id) {
+            $rules['maquina_impressao_id'] = 'integer';
         }
         
         $validator = Validator::make($request->all(), $rules, $messages);

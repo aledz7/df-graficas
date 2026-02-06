@@ -9,6 +9,10 @@ import { initialOrdemServicoState } from './os/osConstants';
 import { apiDataManager } from '@/lib/apiDataManager';
 import { acabamentoService, maquinaService, empresaService } from '@/services/api';
 
+// Chave do localStorage para autosave
+const OS_AUTOSAVE_KEY = 'os_rascunho_autosave';
+const OS_AUTOSAVE_DEBOUNCE_MS = 3000; // 3 segundos
+
 export const useOrdemServico = ({ vendedorAtual }) => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -19,9 +23,13 @@ export const useOrdemServico = ({ vendedorAtual }) => {
   const documentRef = useRef();
   const finalizeModalOpenedRef = useRef(false);
   const osCarregadaParaFinalizarRef = useRef(false);
+  const autosaveTimeoutRef = useRef(null);
+  const rascunhoVerificadoRef = useRef(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false); 
   const [viewOnly, setViewOnly] = useState(false);
+  const [showRascunhoModal, setShowRascunhoModal] = useState(false);
+  const [rascunhoData, setRascunhoData] = useState(null);
   
   // Detectar viewOnly do state da navegação
   useEffect(() => {
@@ -300,6 +308,128 @@ export const useOrdemServico = ({ vendedorAtual }) => {
     };
   }, [params.id, searchParamsKey, vendedorAtual, locationKey]);
 
+  // ============ AUTOSAVE NO LOCALSTORAGE ============
+  
+  // Função para salvar rascunho no localStorage
+  const salvarRascunho = useCallback(() => {
+    // Não salvar se:
+    // - Está carregando
+    // - É uma OS já salva/finalizada (tem id)
+    // - Está em modo viewOnly
+    // - Não tem itens E não tem cliente
+    if (isLoading || viewOnly) return;
+    if (ordemServico.id || ordemServico.id_os) return; // OS já salva no servidor
+    
+    const temItens = Array.isArray(ordemServico.itens) && ordemServico.itens.length > 0;
+    const temCliente = clienteSelecionado || ordemServico.cliente_nome_manual;
+    
+    if (!temItens && !temCliente) {
+      // Limpar rascunho se não tem dados relevantes
+      localStorage.removeItem(OS_AUTOSAVE_KEY);
+      return;
+    }
+    
+    const rascunho = {
+      ordemServico,
+      clienteSelecionado,
+      timestamp: new Date().toISOString(),
+      qtdItens: ordemServico.itens?.length || 0
+    };
+    
+    localStorage.setItem(OS_AUTOSAVE_KEY, JSON.stringify(rascunho));
+    console.log('💾 [Autosave] Rascunho salvo:', {
+      qtdItens: rascunho.qtdItens,
+      cliente: clienteSelecionado?.nome || ordemServico.cliente_nome_manual || 'Sem cliente'
+    });
+  }, [ordemServico, clienteSelecionado, isLoading, viewOnly]);
+
+  // Autosave com debounce
+  useEffect(() => {
+    // Limpar timeout anterior
+    if (autosaveTimeoutRef.current) {
+      clearTimeout(autosaveTimeoutRef.current);
+    }
+    
+    // Não iniciar autosave se está carregando
+    if (isLoading) return;
+    
+    // Agendar novo autosave
+    autosaveTimeoutRef.current = setTimeout(() => {
+      salvarRascunho();
+    }, OS_AUTOSAVE_DEBOUNCE_MS);
+    
+    return () => {
+      if (autosaveTimeoutRef.current) {
+        clearTimeout(autosaveTimeoutRef.current);
+      }
+    };
+  }, [ordemServico, clienteSelecionado, salvarRascunho, isLoading]);
+
+  // Verificar se existe rascunho ao iniciar
+  useEffect(() => {
+    // Só verificar uma vez e apenas para novas OS
+    if (rascunhoVerificadoRef.current) return;
+    if (params.id) return; // Está editando uma OS existente
+    if (location.state?.fromCalculadora) return; // Veio da calculadora
+    if (location.state?.osId) return; // Veio do histórico
+    
+    rascunhoVerificadoRef.current = true;
+    
+    try {
+      const rascunhoStr = localStorage.getItem(OS_AUTOSAVE_KEY);
+      if (rascunhoStr) {
+        const rascunho = JSON.parse(rascunhoStr);
+        const dataRascunho = new Date(rascunho.timestamp);
+        const agora = new Date();
+        const diferencaHoras = (agora - dataRascunho) / (1000 * 60 * 60);
+        
+        // Só recuperar rascunhos com menos de 24 horas
+        if (diferencaHoras < 24) {
+          setRascunhoData(rascunho);
+          setShowRascunhoModal(true);
+        } else {
+          // Rascunho muito antigo, limpar
+          localStorage.removeItem(OS_AUTOSAVE_KEY);
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao verificar rascunho:', error);
+      localStorage.removeItem(OS_AUTOSAVE_KEY);
+    }
+  }, [params.id, location.state]);
+
+  // Função para recuperar rascunho
+  const handleRecuperarRascunho = useCallback(() => {
+    if (rascunhoData) {
+      setOrdemServico(rascunhoData.ordemServico);
+      if (rascunhoData.clienteSelecionado) {
+        setClienteSelecionado(rascunhoData.clienteSelecionado);
+      }
+      toast({
+        title: "Rascunho Recuperado",
+        description: `Rascunho com ${rascunhoData.qtdItens} item(s) restaurado com sucesso.`
+      });
+    }
+    setShowRascunhoModal(false);
+  }, [rascunhoData, setOrdemServico, setClienteSelecionado, toast]);
+
+  // Função para descartar rascunho
+  const handleDescartarRascunho = useCallback(() => {
+    localStorage.removeItem(OS_AUTOSAVE_KEY);
+    setShowRascunhoModal(false);
+    setRascunhoData(null);
+    toast({
+      title: "Rascunho Descartado",
+      description: "O rascunho anterior foi removido."
+    });
+  }, [toast]);
+
+  // Função para limpar rascunho (chamar após salvar com sucesso)
+  const limparRascunho = useCallback(() => {
+    localStorage.removeItem(OS_AUTOSAVE_KEY);
+    console.log('🗑️ [Autosave] Rascunho limpo após salvar com sucesso');
+  }, []);
+
   // Memoizar as funções para evitar re-renderizações desnecessárias
   const memoizedHandlers = useMemo(() => handlers, [
     handlers
@@ -327,6 +457,12 @@ export const useOrdemServico = ({ vendedorAtual }) => {
     isClienteModalOpen, setIsClienteModalOpen,
     isPagamentoModalOpen, setIsPagamentoModalOpen,
     isDocumentModalOpen, setIsDocumentModalOpen,
+    // Autosave
+    showRascunhoModal,
+    rascunhoData,
+    handleRecuperarRascunho,
+    handleDescartarRascunho,
+    limparRascunho,
     ...memoizedHandlers,
   };
 };

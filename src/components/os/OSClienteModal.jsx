@@ -9,13 +9,20 @@ import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { clienteService, funcionarioService } from '@/services/api';
 
-const OSClienteModal = ({ isOpen, onClose, onClienteSelecionado, onOpenNovoCliente }) => {
+const OSClienteModal = ({ isOpen, onClose, onClienteSelecionado, onOpenNovoCliente, initialSearchTerm = '' }) => {
     const [clientes, setClientes] = useState([]);
     const [funcionarios, setFuncionarios] = useState([]);
-    const [searchTerm, setSearchTerm] = useState('');
+    const [searchTerm, setSearchTerm] = useState(initialSearchTerm);
     const [searchFuncionarioTerm, setSearchFuncionarioTerm] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [loadingFuncionarios, setLoadingFuncionarios] = useState(false);
+
+    // Atualizar searchTerm quando initialSearchTerm mudar
+    useEffect(() => {
+        if (isOpen && initialSearchTerm) {
+            setSearchTerm(initialSearchTerm);
+        }
+    }, [isOpen, initialSearchTerm]);
 
     useEffect(() => {
         const loadData = async () => {

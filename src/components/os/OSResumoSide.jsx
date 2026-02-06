@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { DollarSign, Printer, Save, CheckCircle, FileText, RotateCcw, CalendarDays, Sparkles, Percent, Tag, BadgeAlert, AlertTriangle } from 'lucide-react';
+import { DollarSign, Printer, Save, CheckCircle, FileText, RotateCcw, CalendarDays, Sparkles, Percent, Tag, BadgeAlert, AlertTriangle, Plus, Search } from 'lucide-react';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
@@ -16,6 +16,8 @@ import { useToast } from '@/components/ui/use-toast';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { apiDataManager } from '@/lib/apiDataManager';
 import SenhaMasterModal from '@/components/SenhaMasterModal';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { maquinaService } from '@/services/api';
 
 const safeParseFloat = (value, defaultValue = 0) => {
   if (value === null || value === undefined || String(value).trim() === '') {
@@ -56,6 +58,12 @@ const OSResumoSide = ({
     const [freteValor, setFreteValor] = useState(ordemServico.frete_valor || '0');
     const [isSenhaModalOpen, setIsSenhaModalOpen] = useState(false);
     const [senhaAction, setSenhaAction] = useState(null); // 'save' | 'updateFinal'
+    
+    // Estados para modal de cadastro de máquina
+    const [isMaquinaModalOpen, setIsMaquinaModalOpen] = useState(false);
+    const [novaMaquina, setNovaMaquina] = useState({ nome: '', funcao: '', largura: '' });
+    const [isSavingMaquina, setIsSavingMaquina] = useState(false);
+    const [maquinaBusca, setMaquinaBusca] = useState('');
 
     // Usar as máquinas passadas via props
     useEffect(() => {
@@ -130,7 +138,55 @@ const OSResumoSide = ({
     };
 
     const handleMaquinaChange = (value) => {
+        // Se clicar em "nova", abrir modal de cadastro
+        if (value === '__nova__') {
+            setIsMaquinaModalOpen(true);
+            return;
+        }
         setOrdemServico(prev => ({ ...prev, maquina_impressao_id: value }));
+    };
+
+    // Filtrar máquinas pela busca
+    const maquinasFiltradas = maquinas.filter(maq => 
+        maq.nome.toLowerCase().includes(maquinaBusca.toLowerCase()) ||
+        (maq.funcao && maq.funcao.toLowerCase().includes(maquinaBusca.toLowerCase()))
+    );
+
+    // Função para cadastrar nova máquina
+    const handleSalvarNovaMaquina = async () => {
+        if (!novaMaquina.nome.trim()) {
+            toast({ title: "Erro", description: "O nome da máquina é obrigatório.", variant: "destructive" });
+            return;
+        }
+
+        setIsSavingMaquina(true);
+        try {
+            const response = await maquinaService.create({
+                nome: novaMaquina.nome.trim(),
+                funcao: novaMaquina.funcao.trim() || null,
+                largura: novaMaquina.largura ? parseFloat(novaMaquina.largura) : null,
+                ativo: true
+            });
+
+            const novaMaquinaCriada = response.data?.data || response.data;
+            
+            // Adicionar a nova máquina à lista
+            setMaquinas(prev => [...prev, novaMaquinaCriada]);
+            
+            // Selecionar a nova máquina
+            setOrdemServico(prev => ({ ...prev, maquina_impressao_id: novaMaquinaCriada.id }));
+            
+            // Fechar modal e limpar formulário
+            setIsMaquinaModalOpen(false);
+            setNovaMaquina({ nome: '', funcao: '', largura: '' });
+            
+            toast({ title: "Sucesso", description: `Máquina "${novaMaquinaCriada.nome}" cadastrada e selecionada.` });
+        } catch (error) {
+            console.error('Erro ao cadastrar máquina:', error);
+            toast({ title: "Erro", description: "Não foi possível cadastrar a máquina.", variant: "destructive" });
+        } finally {
+            setIsSavingMaquina(false);
+        }
     };
 
     const handleAcabamentoChange = (acabamentoId, checked) => {
@@ -245,27 +301,12 @@ const OSResumoSide = ({
     const faltandoPagar = Math.max(0, totalFinalCalculado - totalPagoOS);
     const temSaldoPendente = isStatusFinalizada && faltandoPagar > 0.01;
 
-    // Validação de campos obrigatórios
+    // Validação de campos obrigatórios (previsão de entrega e máquina agora são opcionais)
     const validarCamposObrigatorios = () => {
-        const camposFaltantes = [];
-        
-        if (!ordemServico.data_previsao_entrega) {
-            camposFaltantes.push('Previsão de Entrega');
-        }
-        
-        if (!ordemServico.maquina_impressao_id) {
-            camposFaltantes.push('Máquina de Impressão');
-        }
-        
-        if (camposFaltantes.length > 0) {
-            toast({
-                title: "Campos Obrigatórios",
-                description: `Por favor, preencha os seguintes campos: ${camposFaltantes.join(', ')}.`,
-                variant: "destructive"
-            });
-            return false;
-        }
-        
+        // Campos removidos da validação obrigatória:
+        // - data_previsao_entrega
+        // - maquina_impressao_id
+        // Agora todos os campos são opcionais
         return true;
     };
 
@@ -507,17 +548,33 @@ const OSResumoSide = ({
                     </div>
                     <div>
                         <Label htmlFor="maquina_impressao_id" className="flex items-center">
-                            Máquina de Impressão <span className="text-red-500 ml-1">*</span>
+                            Máquina de Impressão
                         </Label>
                         <Select value={ordemServico.maquina_impressao_id || ''} onValueChange={handleMaquinaChange} disabled={isOSFinalizada || isSaving || viewOnly}>
-                            <SelectTrigger
-                                id="maquina_impressao_id"
-                                className={!ordemServico.maquina_impressao_id ? 'border-red-500' : ''}
-                            >
-                                <SelectValue placeholder="Selecione uma máquina" />
+                            <SelectTrigger id="maquina_impressao_id">
+                                <SelectValue placeholder="Selecione uma máquina (opcional)" />
                             </SelectTrigger>
                             <SelectContent>
-                                {maquinas.map(maq => <SelectItem key={maq.id} value={maq.id}>{maq.nome}</SelectItem>)}
+                                <div className="p-2 border-b">
+                                    <div className="relative">
+                                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                        <Input
+                                            placeholder="Buscar máquina..."
+                                            value={maquinaBusca}
+                                            onChange={(e) => setMaquinaBusca(e.target.value)}
+                                            className="pl-8 h-8"
+                                        />
+                                    </div>
+                                </div>
+                                {maquinasFiltradas.map(maq => <SelectItem key={maq.id} value={maq.id}>{maq.nome}</SelectItem>)}
+                                <div className="border-t p-1">
+                                    <SelectItem value="__nova__" className="text-primary font-medium">
+                                        <div className="flex items-center">
+                                            <Plus size={14} className="mr-2" />
+                                            Cadastrar Nova Máquina
+                                        </div>
+                                    </SelectItem>
+                                </div>
                             </SelectContent>
                         </Select>
                     </div>
@@ -556,7 +613,7 @@ const OSResumoSide = ({
                     ) : (
                       <>
                         <Button onClick={handleSalvarComValidacao} variant="outline" className="w-full" disabled={isOSFinalizada || isSaving || viewOnly}>
-                          <Save className="mr-2 h-4 w-4"/>{isSaving ? 'Salvando...' : 'Salvar Orçamento'}
+                          <Save className="mr-2 h-4 w-4"/>{isSaving ? 'Salvando...' : 'Salvar Pedido'}
                         </Button>
                         <Button onClick={handleFinalizarComValidacao} className="w-full bg-green-600 hover:bg-green-700" disabled={isOSFinalizada || isSaving || viewOnly || (Array.isArray(ordemServico.itens) ? ordemServico.itens : []).length === 0 || (!clienteSelecionado && !ordemServico.cliente_nome_manual)}>
                           <CheckCircle className="mr-2 h-4 w-4"/>{isSaving ? 'Finalizando...' : 'Finalizar e Pagar'}
@@ -586,6 +643,55 @@ const OSResumoSide = ({
                 description="Informe a senha master para confirmar a atualização da OS finalizada."
               />
             )}
+
+            {/* Modal de Cadastro de Nova Máquina */}
+            <Dialog open={isMaquinaModalOpen} onOpenChange={setIsMaquinaModalOpen}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Cadastrar Nova Máquina</DialogTitle>
+                        <DialogDescription>Preencha os dados da máquina de impressão.</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div>
+                            <Label htmlFor="nova_maquina_nome">Nome / Marca <span className="text-red-500">*</span></Label>
+                            <Input
+                                id="nova_maquina_nome"
+                                value={novaMaquina.nome}
+                                onChange={(e) => setNovaMaquina(prev => ({ ...prev, nome: e.target.value }))}
+                                placeholder="Ex: Epson L1300"
+                            />
+                        </div>
+                        <div>
+                            <Label htmlFor="nova_maquina_funcao">Função / Descrição</Label>
+                            <Input
+                                id="nova_maquina_funcao"
+                                value={novaMaquina.funcao}
+                                onChange={(e) => setNovaMaquina(prev => ({ ...prev, funcao: e.target.value }))}
+                                placeholder="Ex: Impressora de sublimação"
+                            />
+                        </div>
+                        <div>
+                            <Label htmlFor="nova_maquina_largura">Largura de Impressão (cm)</Label>
+                            <Input
+                                id="nova_maquina_largura"
+                                type="number"
+                                step="0.1"
+                                value={novaMaquina.largura}
+                                onChange={(e) => setNovaMaquina(prev => ({ ...prev, largura: e.target.value }))}
+                                placeholder="Ex: 130"
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsMaquinaModalOpen(false)} disabled={isSavingMaquina}>
+                            Cancelar
+                        </Button>
+                        <Button onClick={handleSalvarNovaMaquina} disabled={isSavingMaquina}>
+                            {isSavingMaquina ? 'Salvando...' : 'Cadastrar'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </ScrollArea>
     );
 };

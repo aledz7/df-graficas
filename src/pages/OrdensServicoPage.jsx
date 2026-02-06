@@ -14,13 +14,19 @@ import OSHeader from '@/components/os/pageSections/OSHeader';
 import OSClienteSection from '@/components/os/pageSections/OSClienteSection';
 import OSItemTabsSection from '@/components/os/pageSections/OSItemTabsSection';
 import OSResumoSide from '@/components/os/OSResumoSide';
-import { Loader2 } from 'lucide-react';
+import { Loader2, RotateCcw } from 'lucide-react';
 import { useToast } from "@/components/ui/use-toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { format } from 'date-fns';
 
 const OrdensServicoPage = ({ vendedorAtual }) => {
     const location = useLocation();
     const navigate = useNavigate();
     const { toast } = useToast();
+    
+    // Estado para termo de busca inicial do cliente
+    const [clienteSearchTerm, setClienteSearchTerm] = useState('');
     
     // Debug logs removidos para evitar loop infinito
     const processedCalculadoraRef = useRef(false);
@@ -52,6 +58,7 @@ const OrdensServicoPage = ({ vendedorAtual }) => {
         handleUpdateItem,
         handleRemoverItem,
         handleEditarItem,
+        handleDuplicarItem,
         handleCancelEditItem,
         handleSalvarOrcamento,
         handleConfirmarPagamentoOS, 
@@ -68,7 +75,12 @@ const OrdensServicoPage = ({ vendedorAtual }) => {
         setIsPagamentoModalOpen,
         isDocumentModalOpen, 
         setIsDocumentModalOpen,
-        checkEstoqueAcabamento
+        checkEstoqueAcabamento,
+        // Autosave
+        showRascunhoModal,
+        rascunhoData,
+        handleRecuperarRascunho,
+        handleDescartarRascunho,
     } = useOrdemServico({ vendedorAtual });
 
     useEffect(() => {
@@ -273,7 +285,10 @@ const OrdensServicoPage = ({ vendedorAtual }) => {
                     clienteSelecionado={clienteSelecionado}
                     ordemServico={ordemServico}
                     setOrdemServico={setOrdemServico}
-                    handleOpenClienteModal={() => setIsClienteModalOpen(true)}
+                    handleOpenClienteModal={(searchTerm = '') => {
+                        setClienteSearchTerm(searchTerm);
+                        setIsClienteModalOpen(true);
+                    }}
                     handleClearCliente={() => handleClienteSelecionado(null)}
                     isSaving={isSaving}
                     viewOnly={viewOnly}
@@ -294,6 +309,7 @@ const OrdensServicoPage = ({ vendedorAtual }) => {
                     itensOS={ordemServico.itens || []}
                     onRemoverItem={handleRemoverItem}
                     onEditarItem={handleEditarItem}
+                    onDuplicarItem={handleDuplicarItem}
                     isOSFinalizada={isOSFinalizada || isSaving}
                     viewOnly={viewOnly}
                     ordemServico={ordemServico}
@@ -331,9 +347,16 @@ const OrdensServicoPage = ({ vendedorAtual }) => {
 
             <OSClienteModal 
               isOpen={isClienteModalOpen} 
-              onClose={() => setIsClienteModalOpen(false)} 
-              onClienteSelecionado={handleClienteSelecionado}
-              onOpenNovoCliente={handleOpenNovoClienteModal} 
+              onClose={() => {
+                setIsClienteModalOpen(false);
+                setClienteSearchTerm('');
+              }} 
+              onClienteSelecionado={(cliente) => {
+                handleClienteSelecionado(cliente);
+                setClienteSearchTerm('');
+              }}
+              onOpenNovoCliente={handleOpenNovoClienteModal}
+              initialSearchTerm={clienteSearchTerm}
             />
             <OSPagamentoModal 
                 open={isPagamentoModalOpen} 
@@ -377,6 +400,48 @@ const OrdensServicoPage = ({ vendedorAtual }) => {
                 onSave={handleSaveNovoCliente}
                 clienteEmEdicao={null}
             />
+
+            {/* Modal de Recuperação de Rascunho */}
+            <Dialog open={showRascunhoModal} onOpenChange={() => {}}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <RotateCcw className="h-5 w-5 text-blue-500" />
+                            Rascunho Encontrado
+                        </DialogTitle>
+                        <DialogDescription>
+                            Foi encontrado um rascunho não salvo. Deseja recuperá-lo?
+                        </DialogDescription>
+                    </DialogHeader>
+                    {rascunhoData && (
+                        <div className="p-4 bg-muted rounded-lg space-y-2">
+                            <p className="text-sm">
+                                <span className="font-medium">Cliente:</span>{' '}
+                                {rascunhoData.clienteSelecionado?.nome || 
+                                 rascunhoData.clienteSelecionado?.nome_completo || 
+                                 rascunhoData.ordemServico?.cliente_nome_manual || 
+                                 'Não informado'}
+                            </p>
+                            <p className="text-sm">
+                                <span className="font-medium">Itens:</span>{' '}
+                                {rascunhoData.qtdItens} item(s)
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                                <span className="font-medium">Salvo em:</span>{' '}
+                                {format(new Date(rascunhoData.timestamp), 'dd/MM/yyyy HH:mm')}
+                            </p>
+                        </div>
+                    )}
+                    <DialogFooter className="gap-2 sm:gap-0">
+                        <Button variant="outline" onClick={handleDescartarRascunho}>
+                            Descartar
+                        </Button>
+                        <Button onClick={handleRecuperarRascunho}>
+                            Recuperar Rascunho
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 };

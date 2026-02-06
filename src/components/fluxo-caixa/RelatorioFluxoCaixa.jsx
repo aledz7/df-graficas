@@ -3,7 +3,7 @@ import { format, parseISO } from 'date-fns';
 
 const formatCurrency = (value) => `R$ ${parseFloat(value || 0).toFixed(2).replace('.', ',')}`;
 
-const RelatorioFluxoCaixa = React.forwardRef(({ lancamentos = [], data, totais = {}, totaisPorFormaPagamento = {}, empresa = {}, logoUrl }, ref) => {
+const RelatorioFluxoCaixa = React.forwardRef(({ lancamentos = [], data, totais = {}, totaisPorFormaPagamento = {}, totaisPorConta = {}, empresa = {}, logoUrl }, ref) => {
   // Garantir que lancamentos seja sempre um array
   const lancamentosArray = Array.isArray(lancamentos) ? lancamentos : [];
   
@@ -15,6 +15,7 @@ const RelatorioFluxoCaixa = React.forwardRef(({ lancamentos = [], data, totais =
   };
 
   const formasPagamento = totaisPorFormaPagamento && typeof totaisPorFormaPagamento === 'object' ? totaisPorFormaPagamento : {};
+  const contas = totaisPorConta && typeof totaisPorConta === 'object' ? totaisPorConta : {};
 
   return (
     <div ref={ref} className="p-8 bg-white text-black font-sans">
@@ -52,21 +53,39 @@ const RelatorioFluxoCaixa = React.forwardRef(({ lancamentos = [], data, totais =
         </div>
       </section>
 
-      <section className="mb-8">
-        <h2 className="text-xl font-semibold mb-4 border-b pb-2">Entradas por Forma de Pagamento</h2>
-        {Object.keys(formasPagamento).length > 0 ? (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
-            {Object.entries(formasPagamento).map(([forma, total]) => (
-              <div key={forma} className="flex justify-between p-2 bg-gray-100 rounded">
-                <span className="font-medium">{forma}:</span>
-                <span>{formatCurrency(total)}</span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-sm text-gray-500">Nenhuma entrada registrada neste dia.</p>
-        )}
-      </section>
+      <div className="grid grid-cols-2 gap-4 mb-8">
+        <section>
+          <h2 className="text-lg font-semibold mb-3 border-b pb-2">Entradas por Forma de Pagamento</h2>
+          {Object.keys(formasPagamento).length > 0 ? (
+            <div className="grid grid-cols-1 gap-2 text-sm">
+              {Object.entries(formasPagamento).map(([forma, total]) => (
+                <div key={forma} className="flex justify-between p-2 bg-gray-100 rounded">
+                  <span className="font-medium capitalize">{forma.replace(/_/g, ' ')}:</span>
+                  <span>{formatCurrency(total)}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-500">Nenhuma entrada registrada neste dia.</p>
+          )}
+        </section>
+
+        <section>
+          <h2 className="text-lg font-semibold mb-3 border-b pb-2">Entradas por Saldo em Conta</h2>
+          {Object.keys(contas).length > 0 ? (
+            <div className="grid grid-cols-1 gap-2 text-sm">
+              {Object.entries(contas).map(([contaId, contaData]) => (
+                <div key={contaId} className="flex justify-between p-2 bg-indigo-50 rounded">
+                  <span className="font-medium">{contaData.nome}:</span>
+                  <span className="text-indigo-700 font-semibold">{formatCurrency(contaData.total)}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-500">Nenhuma entrada em contas neste dia.</p>
+          )}
+        </section>
+      </div>
 
       <section>
         <h2 className="text-xl font-semibold mb-4 border-b pb-2">Lançamentos Detalhados</h2>
