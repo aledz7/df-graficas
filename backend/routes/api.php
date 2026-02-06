@@ -495,6 +495,15 @@ Route::prefix('empresa')->group(function () {
         Route::get('theme', [AparenciaController::class, 'getTheme']);
         Route::put('theme', [AparenciaController::class, 'updateTheme']);
         Route::get('themes', [AparenciaController::class, 'getAvailableThemes']);
+        // Cores do Dashboard
+        Route::get('dashboard-colors', [AparenciaController::class, 'getDashboardColors']);
+        Route::put('dashboard-colors', [AparenciaController::class, 'updateDashboardColors']);
+        Route::post('dashboard-colors/reset', [AparenciaController::class, 'resetDashboardColors']);
+        Route::get('available-colors', [AparenciaController::class, 'getAvailableDashboardColors']);
+        // Cores das Ações Rápidas
+        Route::get('quick-actions-colors', [AparenciaController::class, 'getQuickActionsColors']);
+        Route::put('quick-actions-colors', [AparenciaController::class, 'updateQuickActionsColors']);
+        Route::post('quick-actions-colors/reset', [AparenciaController::class, 'resetQuickActionsColors']);
     });
 
     // Lixeira - Registros Excluídos

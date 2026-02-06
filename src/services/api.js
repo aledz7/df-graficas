@@ -1164,6 +1164,83 @@ export const aparenciaService = {
       console.error('Erro ao obter temas disponíveis:', error);
       throw error;
     }
+  },
+
+  // Obter cores do dashboard
+  getDashboardColors: async () => {
+    try {
+      const response = await api.get('/api/aparencia/dashboard-colors');
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao obter cores do dashboard:', error);
+      throw error;
+    }
+  },
+
+  // Atualizar cores do dashboard
+  updateDashboardColors: async (colors) => {
+    try {
+      const response = await api.put('/api/aparencia/dashboard-colors', { colors });
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao atualizar cores do dashboard:', error);
+      throw error;
+    }
+  },
+
+  // Resetar cores do dashboard
+  resetDashboardColors: async () => {
+    try {
+      const response = await api.post('/api/aparencia/dashboard-colors/reset');
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao resetar cores do dashboard:', error);
+      throw error;
+    }
+  },
+
+  // Obter cores disponíveis
+  getAvailableColors: async () => {
+    try {
+      const response = await api.get('/api/aparencia/available-colors');
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao obter cores disponíveis:', error);
+      throw error;
+    }
+  },
+
+  // Obter cores das Ações Rápidas
+  getQuickActionsColors: async () => {
+    try {
+      const response = await api.get('/api/aparencia/quick-actions-colors');
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao obter cores das ações rápidas:', error);
+      throw error;
+    }
+  },
+
+  // Atualizar cores das Ações Rápidas
+  updateQuickActionsColors: async (colors) => {
+    try {
+      const response = await api.put('/api/aparencia/quick-actions-colors', { colors });
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao atualizar cores das ações rápidas:', error);
+      throw error;
+    }
+  },
+
+  // Resetar cores das Ações Rápidas para o padrão
+  resetQuickActionsColors: async () => {
+    try {
+      const response = await api.post('/api/aparencia/quick-actions-colors/reset');
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao resetar cores das ações rápidas:', error);
+      throw error;
+    }
   }
 };
 

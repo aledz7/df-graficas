@@ -29,6 +29,8 @@ class User extends Authenticatable
         'is_active',
         'last_login_at',
         'theme',
+        'dashboard_colors',
+        'quick_actions_colors',
         // Campos de notificação
         'email_notifications',
         'system_alerts',
@@ -105,6 +107,9 @@ class User extends Authenticatable
             // Casts de 2FA
             'two_factor_enabled' => 'boolean',
             'two_factor_code_expires_at' => 'datetime',
+            // Cast de aparência
+            'dashboard_colors' => 'array',
+            'quick_actions_colors' => 'array',
             // Casts de funcionário
             'data_nascimento' => 'date',
             'comissao_dropshipping' => 'decimal:2',

@@ -22,7 +22,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { loadData } from '@/lib/utils';
 import { pdvService } from '@/services/pdvService';
 import { vendaService } from '@/services/api';
-import api from '@/services/api';
+import api, { aparenciaService } from '@/services/api';
 import { buscarProdutosEstoqueBaixo } from '@/utils/estoqueBaixoUtils';
 
 const DashboardPage = ({ theme }) => {
@@ -37,6 +37,27 @@ const DashboardPage = ({ theme }) => {
   const [proximosCompromissos, setProximosCompromissos] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isEstoqueBaixoModalOpen, setIsEstoqueBaixoModalOpen] = useState(false);
+  const [dashboardColors, setDashboardColors] = useState({
+    vendasDia: 'green',
+    osAberto: 'indigo',
+    orcEnvelopamento: 'purple',
+    estoqueBaixo: 'orange',
+  });
+
+  // Carregar cores personalizadas do dashboard
+  useEffect(() => {
+    const loadDashboardColors = async () => {
+      try {
+        const response = await aparenciaService.getDashboardColors();
+        if (response.success && response.data?.colors) {
+          setDashboardColors(response.data.colors);
+        }
+      } catch (error) {
+        console.warn('Erro ao carregar cores do dashboard, usando padrão:', error);
+      }
+    };
+    loadDashboardColors();
+  }, []);
 
   useEffect(() => {
     const loadDashboardData = async () => {
@@ -420,7 +441,19 @@ const DashboardPage = ({ theme }) => {
           console.log('🔍 Dashboard - Tentando carregar produtos com estoque baixo da API...');
           const { produtoService } = await import('@/services/api');
           const estoqueBaixoResponse = await produtoService.getEstoqueBaixo();
-          produtosEstoqueBaixo = estoqueBaixoResponse.data || [];
+          // Garantir que produtosEstoqueBaixo seja sempre um array
+          const responseData = estoqueBaixoResponse?.data;
+          if (Array.isArray(responseData)) {
+            produtosEstoqueBaixo = responseData;
+          } else if (responseData && Array.isArray(responseData.data)) {
+            // Caso a API retorne { data: { data: [...] } } (paginação Laravel)
+            produtosEstoqueBaixo = responseData.data;
+          } else if (responseData && typeof responseData === 'object') {
+            // Caso seja um objeto, tentar converter para array
+            produtosEstoqueBaixo = Object.values(responseData).filter(item => item && typeof item === 'object');
+          } else {
+            produtosEstoqueBaixo = [];
+          }
           console.log('✅ Dashboard - Produtos carregados da API:', produtosEstoqueBaixo.length);
         } catch (apiError) {
           console.warn('⚠️ Dashboard - Erro ao carregar da API, usando localStorage:', apiError);
@@ -430,7 +463,8 @@ const DashboardPage = ({ theme }) => {
           
           // Usar função compartilhada para garantir lógica idêntica
           console.log('🔍 Dashboard - Chamando função compartilhada buscarProdutosEstoqueBaixo...');
-          produtosEstoqueBaixo = await buscarProdutosEstoqueBaixo(produtosLocal);
+          const resultado = await buscarProdutosEstoqueBaixo(produtosLocal);
+          produtosEstoqueBaixo = Array.isArray(resultado) ? resultado : [];
         }
         
         const produtosEstoqueBaixoCount = produtosEstoqueBaixo.length;
@@ -518,28 +552,28 @@ const DashboardPage = ({ theme }) => {
       title: 'Vendas do Dia (Qtd)',
       value: dashboardStats.vendasDiaQtd,
       icon: ShoppingCart,
-      color: 'green',
+      color: dashboardColors.vendasDia,
       action: () => navigate('/operacional/pdv-historico', { state: { filterDate: { from: startOfDay(new Date()), to: endOfDay(new Date()) } } })
     },
     {
       title: 'OS em Aberto',
       value: dashboardStats.osAberto,
       icon: ClipboardList,
-      color: 'indigo',
+      color: dashboardColors.osAberto,
       action: () => navigate('/operacional/os-historico', { state: { filterStatus: ['Orçamento', 'Orçamento Salvo', 'Orçamento Salvo (Editado)'] } })
     },
     {
       title: 'Orç. Envelopamento',
       value: dashboardStats.envelopamentosOrcados,
       icon: Palette,
-      color: 'purple',
+      color: dashboardColors.orcEnvelopamento,
       action: () => navigate('/operacional/orcamentos-envelopamento', { state: { filterStatus: ['Orçamento Salvo', 'Rascunho'] } })
     },
     {
       title: 'Estoque Baixo',
       value: dashboardStats.estoqueMinimoCount,
       icon: Archive, 
-      color: 'orange',
+      color: dashboardColors.estoqueBaixo,
       subtext: 'Itens abaixo do mínimo',
       action: () => setIsEstoqueBaixoModalOpen(true)
     }

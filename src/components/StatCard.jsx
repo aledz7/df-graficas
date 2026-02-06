@@ -9,7 +9,21 @@ const StatCard = ({ title, value, icon: Icon, color, trend, subtext }) => {
     orange: 'from-orange-500 to-orange-600 dark:from-orange-600 dark:to-orange-700',
     red: 'from-red-500 to-red-600 dark:from-red-600 dark:to-red-700',
     purple: 'from-purple-500 to-purple-600 dark:from-purple-600 dark:to-purple-700',
-    indigo: 'from-indigo-500 to-indigo-600 dark:from-indigo-600 dark:to-indigo-700'
+    indigo: 'from-indigo-500 to-indigo-600 dark:from-indigo-600 dark:to-indigo-700',
+    pink: 'from-pink-500 to-pink-600 dark:from-pink-600 dark:to-pink-700',
+    amber: 'from-amber-500 to-amber-600 dark:from-amber-600 dark:to-amber-700',
+    yellow: 'from-yellow-500 to-yellow-600 dark:from-yellow-600 dark:to-yellow-700',
+    lime: 'from-lime-500 to-lime-600 dark:from-lime-600 dark:to-lime-700',
+    emerald: 'from-emerald-500 to-emerald-600 dark:from-emerald-600 dark:to-emerald-700',
+    teal: 'from-teal-500 to-teal-600 dark:from-teal-600 dark:to-teal-700',
+    cyan: 'from-cyan-500 to-cyan-600 dark:from-cyan-600 dark:to-cyan-700',
+    sky: 'from-sky-500 to-sky-600 dark:from-sky-600 dark:to-sky-700',
+    violet: 'from-violet-500 to-violet-600 dark:from-violet-600 dark:to-violet-700',
+    fuchsia: 'from-fuchsia-500 to-fuchsia-600 dark:from-fuchsia-600 dark:to-fuchsia-700',
+    rose: 'from-rose-500 to-rose-600 dark:from-rose-600 dark:to-rose-700',
+    slate: 'from-slate-500 to-slate-600 dark:from-slate-600 dark:to-slate-700',
+    gray: 'from-gray-500 to-gray-600 dark:from-gray-600 dark:to-gray-700',
+    zinc: 'from-zinc-500 to-zinc-600 dark:from-zinc-600 dark:to-zinc-700',
   };
   
   const iconBgColors = {
@@ -18,7 +32,21 @@ const StatCard = ({ title, value, icon: Icon, color, trend, subtext }) => {
     orange: 'bg-orange-400/30 dark:bg-orange-500/40',
     red: 'bg-red-400/30 dark:bg-red-500/40',
     purple: 'bg-purple-400/30 dark:bg-purple-500/40',
-    indigo: 'bg-indigo-400/30 dark:bg-indigo-500/40'
+    indigo: 'bg-indigo-400/30 dark:bg-indigo-500/40',
+    pink: 'bg-pink-400/30 dark:bg-pink-500/40',
+    amber: 'bg-amber-400/30 dark:bg-amber-500/40',
+    yellow: 'bg-yellow-400/30 dark:bg-yellow-500/40',
+    lime: 'bg-lime-400/30 dark:bg-lime-500/40',
+    emerald: 'bg-emerald-400/30 dark:bg-emerald-500/40',
+    teal: 'bg-teal-400/30 dark:bg-teal-500/40',
+    cyan: 'bg-cyan-400/30 dark:bg-cyan-500/40',
+    sky: 'bg-sky-400/30 dark:bg-sky-500/40',
+    violet: 'bg-violet-400/30 dark:bg-violet-500/40',
+    fuchsia: 'bg-fuchsia-400/30 dark:bg-fuchsia-500/40',
+    rose: 'bg-rose-400/30 dark:bg-rose-500/40',
+    slate: 'bg-slate-400/30 dark:bg-slate-500/40',
+    gray: 'bg-gray-400/30 dark:bg-gray-500/40',
+    zinc: 'bg-zinc-400/30 dark:bg-zinc-500/40',
   }
 
   return (
