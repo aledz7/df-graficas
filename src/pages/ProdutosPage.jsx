@@ -228,6 +228,14 @@ const ProdutosPage = ({ vendedorAtual }) => {
     setIsModalOpen(true);
   };
 
+  // Gerar código de produto único
+  const gerarCodigoProduto = () => {
+    const timestamp = Date.now();
+    const randomSuffix = Math.random().toString(36).substr(2, 8).toUpperCase();
+    const microTime = performance.now().toString(36).replace('.', '').substr(0, 4).toUpperCase();
+    return `PROD-${timestamp}${randomSuffix}${microTime}`;
+  };
+
   const handleSaveProduto = async (produtoData, cadastrarOutro = false) => {
     try {
       const isEditing = produtos.some(p => p.id === produtoData.id);
@@ -238,8 +246,35 @@ const ProdutosPage = ({ vendedorAtual }) => {
         response = await produtoService.update(produtoData.id, produtoData);
         toast({ title: "Produto atualizado", description: "O produto foi atualizado com sucesso." });
       } else {
-        // Criar novo produto
-        response = await produtoService.create(produtoData);
+        // Criar novo produto com retry em caso de código duplicado
+        let tentativas = 0;
+        const maxTentativas = 3;
+        let sucesso = false;
+        let ultimoErro = null;
+
+        while (!sucesso && tentativas < maxTentativas) {
+          try {
+            response = await produtoService.create(produtoData);
+            sucesso = true;
+          } catch (createError) {
+            ultimoErro = createError;
+            const errorMsg = createError.response?.data?.message || '';
+            // Se for erro de código duplicado, gerar novo código e tentar novamente
+            if (errorMsg.includes('Duplicate entry') || errorMsg.includes('codigo_produto') || errorMsg.includes('código único')) {
+              tentativas++;
+              produtoData = { ...produtoData, codigo_produto: gerarCodigoProduto() };
+              console.warn(`Código de produto duplicado, tentativa ${tentativas}/${maxTentativas} com novo código: ${produtoData.codigo_produto}`);
+            } else {
+              // Erro diferente, não tentar novamente
+              throw createError;
+            }
+          }
+        }
+
+        if (!sucesso) {
+          throw ultimoErro;
+        }
+
         toast({ title: "Produto criado", description: "O produto foi criado com sucesso." });
         
         // Se o produto tem variações com estoque, criar entrada de estoque automática

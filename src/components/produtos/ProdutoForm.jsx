@@ -117,15 +117,21 @@ const ProdutoForm = ({ isOpen, onClose, onSave, produtoEmEdicao, showSaveAndNewB
         }
     }, [isOpen]);
 
+    // Função para gerar código de produto único
+    const gerarCodigoProduto = useCallback((prefixo = 'PROD-') => {
+        const timestamp = Date.now();
+        const randomSuffix = Math.random().toString(36).substr(2, 8).toUpperCase();
+        const microTime = performance.now().toString(36).replace('.', '').substr(0, 4).toUpperCase();
+        return `${prefixo}${timestamp}${randomSuffix}${microTime}`;
+    }, []);
+
     const resetForm = useCallback(() => {
         const newId = `prod-${Date.now()}`;
         let codigoProduto = newId;
         
         // Aplicar configuração de código automático se estiver habilitada
         if (produtoConfig.geracaoCodigoAutomatica && produtoConfig.prefixoCodigo) {
-            const timestamp = Date.now();
-            const randomSuffix = Math.random().toString(36).substr(2, 6).toUpperCase();
-            codigoProduto = `${produtoConfig.prefixoCodigo}${timestamp}${randomSuffix}`;
+            codigoProduto = gerarCodigoProduto(produtoConfig.prefixoCodigo);
         }
         
         setCurrentProduto({ 

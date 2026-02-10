@@ -234,13 +234,35 @@ class ProdutoController extends ResourceController
 
         try {
             $produtoData = $payload;
-            // Gerar codigo_produto automaticamente se não vier no request
-            if (empty($produtoData['codigo_produto'])) {
-                $timestamp = now()->format('YmdHis');
-                $random = strtoupper(Str::random(4));
-                $produtoData['codigo_produto'] = 'PROD-' . $timestamp . '-' . $random;
-            }
             $produtoData['tenant_id'] = auth()->user()->tenant_id;
+
+            // Gerar codigo_produto automaticamente se não vier no request
+            // ou se o código já existir para este tenant (retry com novo código)
+            $codigoFornecido = !empty($produtoData['codigo_produto']);
+            $maxRetries = 5;
+            $retryCount = 0;
+
+            do {
+                if (!$codigoFornecido || $retryCount > 0) {
+                    $timestamp = now()->format('YmdHis');
+                    $random = strtoupper(Str::random(6));
+                    $produtoData['codigo_produto'] = 'PROD-' . $timestamp . '-' . $random;
+                }
+
+                $codigoExiste = Produto::where('tenant_id', $produtoData['tenant_id'])
+                    ->where('codigo_produto', $produtoData['codigo_produto'])
+                    ->exists();
+
+                if ($codigoExiste) {
+                    $retryCount++;
+                    $codigoFornecido = false; // Forçar geração de novo código
+                    usleep(100000); // 100ms para garantir timestamp diferente
+                }
+            } while ($codigoExiste && $retryCount < $maxRetries);
+
+            if ($codigoExiste) {
+                return $this->error('Não foi possível gerar um código único para o produto. Tente novamente.');
+            }
             
             // Limpar referências de imagens que não existem
             $produtoData = $this->limparReferenciasImagens($produtoData);
