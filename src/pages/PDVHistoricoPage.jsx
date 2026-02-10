@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Eye, Search, FileText, Printer, ShoppingCart, Trash2, CircleDollarSign, FileQuestion, CheckCircle2, AlertTriangle, CalendarDays, CalendarClock, Edit, RotateCcw, DollarSign, Banknote } from 'lucide-react';
+import { Eye, Search, FileText, Printer, ShoppingCart, Trash2, CircleDollarSign, FileQuestion, CheckCircle2, AlertTriangle, CalendarDays, CalendarClock, Edit, RotateCcw, DollarSign, Banknote, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { safeJsonParse, cn, formatCurrency } from '@/lib/utils';
 import { motion } from 'framer-motion';
@@ -15,14 +15,14 @@ import { generatePdfFromElement, printElement } from '@/lib/osDocumentGenerator'
 import DeleteWithJustificationModal from '@/components/utils/DeleteWithJustificationModal.jsx';
 import { moverParaLixeiraPDV } from '@/hooks/pdv/pdvDataService';
 import { apiDataManager } from '@/lib/apiDataManager';
-import { pdvService } from '../services/pdvService';
+
 import { vendaService } from '@/services/api';
 import { produtoService } from '@/services/api';
 import api from '@/services/api';
 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { format, parseISO, startOfDay, endOfDay, isBefore, isValid, startOfToday } from 'date-fns';
+import { format, parseISO, startOfDay, isBefore, isValid, startOfToday } from 'date-fns';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { CreditCard, Smartphone } from 'lucide-react';
 
@@ -31,78 +31,100 @@ const PDVHistoricoPage = ({ logoUrl, nomeEmpresa, vendedorAtual }) => {
   const location = useLocation();
   const { toast } = useToast();
   
+  const PER_PAGE = 20;
   const [documentos, setDocumentos] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filteredDocumentos, setFilteredDocumentos] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pagination, setPagination] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [documentoSelecionado, setDocumentoSelecionado] = useState(null);
   const [isReciboModalOpen, setIsReciboModalOpen] = useState(false);
   const reciboRef = useRef(null);
   const [documentoToDelete, setDocumentoToDelete] = useState(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const lastFilteredDocumentosRef = useRef([]);
-  const [dateRange, setDateRange] = useState({ from: startOfToday(), to: startOfToday() });
+  const [dateRange, setDateRange] = useState({ from: undefined, to: undefined });
   const [empresaSettings, setEmpresaSettings] = useState({});
   const [produtos, setProdutos] = useState([]);
   const [isPagamentoModalOpen, setIsPagamentoModalOpen] = useState(false);
   const [vendaParaPagamento, setVendaParaPagamento] = useState(null);
 
-  const loadDocumentos = useCallback(async () => {
+  // Refs para acessar valores atuais dentro de callbacks sem criar dependências
+  const searchTimerRef = useRef(null);
+  const fetchCounterRef = useRef(0);
+  const currentPageRef = useRef(1);
+  const isInitialMount = useRef(true);
+  const searchTermRef = useRef('');
+  const dateRangeRef = useRef({ from: undefined, to: undefined });
+
+  // Manter refs sincronizados com o estado
+  currentPageRef.current = currentPage;
+  searchTermRef.current = searchTerm;
+  dateRangeRef.current = dateRange;
+
+  const fetchDocumentos = useCallback(async (page = 1) => {
+    const fetchId = ++fetchCounterRef.current;
+    setIsLoading(true);
+
     try {
-      // Primeiro tenta buscar do backend
-      let vendasArray = [];
-      let orcamentosArray = [];
-      
-      try {
-        // Buscar todas as vendas diretamente da API para incluir orçamentos
-        const response = await api.get('/api/vendas', {
-          params: {
-            per_page: 1000
-          }
+      const params = {
+        page,
+        per_page: PER_PAGE,
+        sort_by: 'data_emissao',
+        sort_order: 'desc',
+      };
+
+      // Ler valores atuais dos filtros via refs (evita dependências no useCallback)
+      const search = searchTermRef.current;
+      const dr = dateRangeRef.current;
+
+      if (search) params.search = search;
+      if (dr.from && isValid(dr.from)) params.data_inicio = format(dr.from, 'yyyy-MM-dd');
+      if (dr.to && isValid(dr.to)) params.data_fim = format(dr.to, 'yyyy-MM-dd');
+
+      const response = await api.get('/api/vendas', { params });
+
+      // Ignorar respostas obsoletas (se outra requisição já foi disparada)
+      if (fetchCounterRef.current !== fetchId) return;
+
+      const paginatedData = response?.data?.data;
+
+      if (paginatedData) {
+        const vendasArray = Array.isArray(paginatedData.data) ? paginatedData.data : [];
+
+        setPagination({
+          current_page: paginatedData.current_page || page,
+          last_page: paginatedData.last_page || 1,
+          total: paginatedData.total || 0,
+          per_page: paginatedData.per_page || PER_PAGE,
+          from: paginatedData.from || 0,
+          to: paginatedData.to || 0,
         });
-        vendasArray = response.data?.data?.data || [];
-        if (!Array.isArray(vendasArray)) vendasArray = [];
-      } catch (apiError) {
-        console.error('Erro ao buscar vendas da API:', apiError);
-        // Fallback: tentar o serviço PDV e localStorage
-        try {
-          vendasArray = await pdvService.getHistoricoVendas();
-          if (!Array.isArray(vendasArray)) vendasArray = [];
-        } catch (pdvError) {
-          const vendasData = await apiDataManager.getItem('historico_vendas_pdv');
-          vendasArray = safeJsonParse(vendasData || '[]', []);
-          if (!Array.isArray(vendasArray)) vendasArray = [];
-        }
-      }
-      
-      // Separar orçamentos e vendas, formatando adequadamente
-      const orcamentosDerivados = [];
-      const vendasNormais = [];
-      
-      (Array.isArray(vendasArray) ? vendasArray : []).forEach(venda => {
-        if (venda && venda.tipo_documento === 'orcamento') {
-          // É um orçamento
-          orcamentosDerivados.push({
+
+        // Mapear documentos para o formato de exibição
+        const todosDocumentos = vendasArray.map(venda => {
+          if (venda.tipo_documento === 'orcamento') {
+            return {
+              ...venda,
+              tipo: 'Orçamento PDV',
+              data_emissao: venda.data_emissao || venda.data_venda,
+              valor_total: venda.valor_total,
+              cliente: venda.cliente || {
+                id: venda.cliente_id,
+                nome: venda.cliente_nome,
+                cpf_cnpj: venda.cliente_cpf_cnpj,
+                telefone: venda.cliente_telefone,
+                email: venda.cliente_email
+              },
+              vendedor_nome: venda.vendedor_nome,
+              status: 'Pendente'
+            };
+          }
+          const isPreVenda = venda.status === 'pre_venda' || venda.metadados?.origem === 'catalogo_publico';
+          return {
             ...venda,
-            tipo: 'Orçamento PDV',
-            data_emissao: venda.data_venda || venda.data_emissao,
-            valor_total: venda.valor_total, // Garantir que o valor_total seja preservado
-            cliente: venda.cliente || {
-              id: venda.cliente_id,
-              nome: venda.cliente_nome,
-              cpf_cnpj: venda.cliente_cpf_cnpj,
-              telefone: venda.cliente_telefone,
-              email: venda.cliente_email
-            },
-            vendedor_nome: venda.vendedor_nome,
-            status: 'Pendente'
-          });
-        } else if (venda) {
-          // É uma venda normal
-          vendasNormais.push({
-            ...venda,
-            tipo: venda.metadados?.origem === 'catalogo_publico' ? 'Pré-venda Catálogo' : 'Venda PDV',
-            data_emissao: venda.data_venda || venda.data_emissao,
-            valor_total: venda.valor_total, // Garantir que o valor_total seja preservado
+            tipo: isPreVenda ? 'Pré-venda Catálogo' : 'Venda PDV',
+            data_emissao: venda.data_emissao || venda.data_venda,
+            valor_total: venda.valor_total,
             cliente: venda.cliente || {
               id: venda.cliente_id,
               nome: venda.cliente_nome,
@@ -111,31 +133,20 @@ const PDVHistoricoPage = ({ logoUrl, nomeEmpresa, vendedorAtual }) => {
               email: venda.cliente_email
             },
             status: venda.status === 'concluida' ? 'concluída' : (venda.status || 'pendente')
-          });
-        }
-      });
-      
-      orcamentosArray = orcamentosDerivados;
-      vendasArray = vendasNormais;
-      
-      const todosDocumentos = [...(Array.isArray(vendasArray) ? vendasArray : []), ...orcamentosArray]
-        .sort((a, b) => new Date(b.data_emissao || b.data_venda || 0) - new Date(a.data_emissao || a.data_venda || 0));
-      
-      // Debug: Log documentos para verificar formas de pagamento
-      console.log('📋 Documentos carregados:', todosDocumentos.map(doc => ({
-        id: doc.id,
-        tipo: doc.tipo,
-        forma_pagamento: doc.forma_pagamento,
-        cliente_forma_pagamento: doc.cliente?.forma_pagamento,
-        dados_pagamento: doc.dados_pagamento,
-        status: doc.status
-      })));
-      
-      setDocumentos(todosDocumentos);
+          };
+        });
+
+        setDocumentos(todosDocumentos);
+        setCurrentPage(page);
+      }
     } catch (error) {
-      console.error('Erro ao carregar documentos:', error);
-      // Não zerar a lista em caso de erro: evita que a tela "some" após exclusão ou falha de rede
-      // setDocumentos(prev => prev);
+      if (fetchCounterRef.current === fetchId) {
+        console.error('Erro ao carregar documentos:', error);
+      }
+    } finally {
+      if (fetchCounterRef.current === fetchId) {
+        setIsLoading(false);
+      }
     }
   }, []);
 
@@ -149,96 +160,71 @@ const PDVHistoricoPage = ({ logoUrl, nomeEmpresa, vendedorAtual }) => {
     }
   }, []);
 
+  // Carga inicial: buscar documentos paginados, produtos e configurações
   useEffect(() => {
-    const loadData = async () => {
-    loadDocumentos();
+    fetchDocumentos(1);
     loadProdutos();
-    const settings = safeJsonParse(await apiDataManager.getItem('empresaSettings') || '{}', {});
-    setEmpresaSettings(settings);
-  
-        };
-        
-        loadData();
-    }, [loadDocumentos, loadProdutos]);
+    const loadSettings = async () => {
+      const settings = safeJsonParse(await apiDataManager.getItem('empresaSettings') || '{}', {});
+      setEmpresaSettings(settings);
+    };
+    loadSettings();
+  }, [fetchDocumentos, loadProdutos]);
+
+  // Busca debounced: ao digitar, espera 500ms antes de buscar no servidor
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => {
+      fetchDocumentos(1);
+    }, 500);
+    return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
+  }, [searchTerm, fetchDocumentos]);
+
+  // Filtro de data: busca imediata no servidor ao mudar o range
+  const dateRangeChangedRef = useRef(false);
+  useEffect(() => {
+    // Pular a primeira renderização (já coberta pelo load inicial)
+    if (!dateRangeChangedRef.current) {
+      dateRangeChangedRef.current = true;
+      return;
+    }
+    fetchDocumentos(1);
+  }, [dateRange, fetchDocumentos]);
 
   // Abrir venda específica quando vier do Feed de Vendas (state.openVendaId)
   useEffect(() => {
     const openVendaId = location.state?.openVendaId;
-    if (openVendaId == null || !documentos.length) return;
+    if (openVendaId == null) return;
+    // Tentar encontrar na página atual
     const doc = documentos.find(d => String(d.id) === String(openVendaId));
     if (doc) {
       handleViewRecibo(doc);
       navigate(location.pathname, { replace: true, state: {} });
+    } else if (documentos.length > 0) {
+      // Não está na página atual - buscar diretamente por ID
+      handleViewRecibo({ id: openVendaId });
+      navigate(location.pathname, { replace: true, state: {} });
     }
   }, [documentos, location.state?.openVendaId]);
 
-    // Recarregar documentos quando o usuário volta para a aba (visibilitychange), não no focus.
-    // O focus dispara ao clicar no botão de excluir (antes do click handler), causando GET /api/vendas à toa.
-    useEffect(() => {
-        const handleVisibilityChange = () => {
-            if (document.visibilityState === 'visible') loadDocumentos();
-        };
-        document.addEventListener('visibilitychange', handleVisibilityChange);
-        return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-    }, [loadDocumentos]);
-
+  // Recarregar documentos quando o usuário volta para a aba (visibilitychange)
   useEffect(() => {
-    const lowerSearchTerm = searchTerm.toLowerCase();
-    
-    // Garantir que documentos seja sempre um array
-    const documentosArray = Array.isArray(documentos) ? documentos : [];
-    
-    let results = documentosArray.filter(doc => {
-      if (!doc || typeof doc !== 'object') return false;
-      
-      const clienteNome = (doc.cliente_nome || doc.cliente?.nome || '').toString().toLowerCase();
-      const id = (doc.id || '').toString().toLowerCase();
-      const status = (doc.status || '').toString().toLowerCase();
-      const tipo = (doc.tipo || '').toString().toLowerCase();
-      const vendedorNome = (doc.vendedor_nome || '').toString().toLowerCase();
-      const observacoes = (doc.observacoes || '').toString().toLowerCase();
-      const itens = Array.isArray(doc.itens) ? doc.itens : [];
-      
-      return clienteNome.includes(lowerSearchTerm) ||
-             id.includes(lowerSearchTerm) ||
-             status.includes(lowerSearchTerm) ||
-             tipo.includes(lowerSearchTerm) ||
-             vendedorNome.includes(lowerSearchTerm) ||
-             observacoes.includes(lowerSearchTerm) ||
-             itens.some(item => 
-               (item.nome || '').toLowerCase().includes(lowerSearchTerm) || 
-               (item.codigo_produto || '').toLowerCase().includes(lowerSearchTerm)
-             );
-    });
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') fetchDocumentos(currentPageRef.current);
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [fetchDocumentos]);
 
-    if (dateRange.from && isValid(dateRange.from)) {
-        results = results.filter(doc => {
-            try {
-                const docDate = parseISO(doc.data_emissao);
-                return isValid(docDate) && docDate >= startOfDay(dateRange.from);
-            } catch (e) {
-                return false;
-            }
-        });
-    }
-    if (dateRange.to && isValid(dateRange.to)) {
-        results = results.filter(doc => {
-            try {
-                const docDate = parseISO(doc.data_emissao);
-                return isValid(docDate) && docDate <= endOfDay(dateRange.to);
-            } catch (e) {
-                return false;
-            }
-        });
-    }
-    setFilteredDocumentos(results);
-    if (Array.isArray(results) && results.length > 0) lastFilteredDocumentosRef.current = results;
-  }, [searchTerm, documentos, dateRange]);
-
-  // Enquanto o modal de exclusão estiver aberto, não mostrar lista vazia: usar última lista conhecida
-  const documentosParaExibir = (isDeleteModalOpen && (Array.isArray(filteredDocumentos) ? filteredDocumentos : []).length === 0 && lastFilteredDocumentosRef.current.length > 0)
-    ? lastFilteredDocumentosRef.current
-    : (Array.isArray(filteredDocumentos) ? filteredDocumentos : []);
+  // Handler de mudança de página
+  const handlePageChange = useCallback((page) => {
+    fetchDocumentos(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [fetchDocumentos]);
 
   const handleDeleteDocumento = (doc) => {
     if (doc && typeof doc === 'object') {
@@ -328,7 +314,7 @@ const PDVHistoricoPage = ({ logoUrl, nomeEmpresa, vendedorAtual }) => {
           }
           
           // Sincronizar lista com a API em background (não bloqueia a UI já atualizada)
-          loadDocumentos().catch(err => console.error('Erro ao recarregar lista após exclusão:', err));
+          fetchDocumentos(currentPageRef.current).catch(err => console.error('Erro ao recarregar lista após exclusão:', err));
           toast({ title: 'Documento Movido para Lixeira', description: `O documento ${documentoToDelete.id ? String(documentoToDelete.id).slice(-6) : 'N/A'} foi movido e o estoque foi atualizado.` });
         } catch (error) {
           console.error('Erro ao mover documento para lixeira:', error);
@@ -813,7 +799,7 @@ const PDVHistoricoPage = ({ logoUrl, nomeEmpresa, vendedorAtual }) => {
       className="p-4 md:p-6 space-y-6"
     >
       <div className="flex flex-col md:flex-row justify-between items-center">
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100">Histórico de Vendas e Orçamentos (PDV)</h1>
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100">Histórico de Lançamentos (PDV)</h1>
         <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 mt-4 md:mt-0 w-full md:w-auto">
           <Input
             type="search"
@@ -864,7 +850,16 @@ const PDVHistoricoPage = ({ logoUrl, nomeEmpresa, vendedorAtual }) => {
               variant="outline" 
               size="icon"
               onClick={() => setDateRange({ from: startOfToday(), to: startOfToday() })}
-              title="Voltar para hoje"
+              title="Filtrar apenas hoje"
+              className="flex-shrink-0"
+            >
+              <CalendarDays className="h-4 w-4" />
+            </Button>
+            <Button 
+              variant="outline" 
+              size="icon"
+              onClick={() => setDateRange({ from: undefined, to: undefined })}
+              title="Limpar filtro de data (mostrar todos)"
               className="flex-shrink-0"
             >
               <RotateCcw className="h-4 w-4" />
@@ -878,10 +873,16 @@ const PDVHistoricoPage = ({ logoUrl, nomeEmpresa, vendedorAtual }) => {
 
       {/* Visualização em Cards para Mobile */}
       <div className="md:hidden">
-        <ScrollArea className="h-[calc(100vh-200px)]">
+        {isLoading ? (
+          <div className="flex justify-center items-center py-16">
+            <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+            <span className="ml-2 text-gray-500">Carregando...</span>
+          </div>
+        ) : (
+        <ScrollArea className="h-[calc(100vh-260px)]">
           <div className="space-y-4">
-            {(Array.isArray(filteredDocumentos) ? filteredDocumentos : []).length > 0 ? (
-              (Array.isArray(filteredDocumentos) ? filteredDocumentos : []).map((doc) => (
+            {documentos.length > 0 ? (
+              documentos.map((doc) => (
                 <motion.div
                   key={doc.id + doc.tipo}
                   initial={{ opacity: 0, y: 10 }}
@@ -1050,16 +1051,51 @@ const PDVHistoricoPage = ({ logoUrl, nomeEmpresa, vendedorAtual }) => {
             )}
           </div>
         </ScrollArea>
+        )}
+        {/* Paginação Mobile */}
+        {pagination && pagination.total > 0 && (
+          <div className="flex flex-col items-center gap-3 pt-4 pb-2 border-t border-gray-200 dark:border-gray-700 mt-2">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              {pagination.from}–{pagination.to} de {pagination.total} registros
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage <= 1 || isLoading}
+              >
+                <ChevronLeft className="h-4 w-4 mr-1" /> Anterior
+              </Button>
+              <span className="text-sm font-medium px-2">
+                {currentPage} / {pagination.last_page}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage >= pagination.last_page || isLoading}
+              >
+                Próxima <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Visualização em Tabela para Desktop */}
       <div className="hidden md:block">
-        <ScrollArea className="h-[calc(100vh-200px)] md:h-[calc(100vh-220px)]">
+        {isLoading ? (
+          <div className="flex justify-center items-center py-16">
+            <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+            <span className="ml-2 text-gray-500">Carregando documentos...</span>
+          </div>
+        ) : (
+        <ScrollArea className="h-[calc(100vh-260px)] md:h-[calc(100vh-280px)]">
           <Table>
             <TableHeader className="sticky top-0 bg-gray-100 dark:bg-gray-800">
               <TableRow>
                 <TableHead>ID</TableHead>
-                {/* <TableHead>Data</TableHead> */}
                 <TableHead>Tipo</TableHead>
                 <TableHead>Cliente</TableHead>
                 <TableHead>Data/Hora</TableHead>
@@ -1069,8 +1105,8 @@ const PDVHistoricoPage = ({ logoUrl, nomeEmpresa, vendedorAtual }) => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {documentosParaExibir.length > 0 ? (
-                documentosParaExibir.map((doc) => (
+              {documentos.length > 0 ? (
+                documentos.map((doc) => (
                   <TableRow key={doc.id + doc.tipo} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                                                 <TableCell className="font-medium">{doc.id ? String(doc.id).slice(-6) : 'N/A'}</TableCell>
                     {/* <TableCell>
@@ -1170,7 +1206,7 @@ const PDVHistoricoPage = ({ logoUrl, nomeEmpresa, vendedorAtual }) => {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-10 text-gray-500 dark:text-gray-400">
+                  <TableCell colSpan={7} className="text-center py-10 text-gray-500 dark:text-gray-400">
                     Nenhum documento encontrado.
                   </TableCell>
                 </TableRow>
@@ -1178,6 +1214,54 @@ const PDVHistoricoPage = ({ logoUrl, nomeEmpresa, vendedorAtual }) => {
             </TableBody>
           </Table>
         </ScrollArea>
+        )}
+        {/* Paginação Desktop */}
+        {pagination && pagination.total > 0 && (
+          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-b-lg">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Exibindo {pagination.from}–{pagination.to} de {pagination.total} registros
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(1)}
+                disabled={currentPage <= 1 || isLoading}
+                title="Primeira página"
+              >
+                Primeira
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage <= 1 || isLoading}
+              >
+                <ChevronLeft className="h-4 w-4 mr-1" /> Anterior
+              </Button>
+              <span className="text-sm font-medium px-3">
+                Página {currentPage} de {pagination.last_page}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage >= pagination.last_page || isLoading}
+              >
+                Próxima <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(pagination.last_page)}
+                disabled={currentPage >= pagination.last_page || isLoading}
+                title="Última página"
+              >
+                Última
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
       {documentoSelecionado && (
         <PDVReciboModal

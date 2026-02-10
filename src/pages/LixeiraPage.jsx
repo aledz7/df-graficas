@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Eye, RotateCcw, Trash2, Filter, CalendarDays, Loader2 } from 'lucide-react';
+import { Eye, RotateCcw, Trash2, Filter, CalendarDays, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { motion } from 'framer-motion';
 import DeleteWithJustificationModal from '@/components/utils/DeleteWithJustificationModal.jsx';
@@ -14,82 +14,84 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { lixeiraService } from '@/services/api';
+import api from '@/services/api';
+
+const PER_PAGE = 20;
 
 const LixeiraPage = ({ vendedorAtual }) => {
   const { toast } = useToast();
   const [lixeiraItens, setLixeiraItens] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filteredItens, setFilteredItens] = useState([]);
   const [itemParaAcao, setItemParaAcao] = useState(null);
   const [isDeletePermanenteModalOpen, setIsDeletePermanenteModalOpen] = useState(false);
   const [isViewDetailsModalOpen, setIsViewDetailsModalOpen] = useState(false);
   const [dateRange, setDateRange] = useState({ from: undefined, to: undefined });
   const [loading, setLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pagination, setPagination] = useState(null);
 
-  const loadLixeiraItens = useCallback(async () => {
+  const searchTimerRef = useRef(null);
+  const fetchCounterRef = useRef(0);
+  const currentPageRef = useRef(1);
+  const isInitialMount = useRef(true);
+  const searchTermRef = useRef('');
+
+  currentPageRef.current = currentPage;
+  searchTermRef.current = searchTerm;
+
+  const fetchLixeiraItens = useCallback(async (page = 1) => {
+    const fetchId = ++fetchCounterRef.current;
     setLoading(true);
     try {
-      const response = await lixeiraService.getAll();
-      if (response.success) {
-        setLixeiraItens(response.data || []);
+      const params = { page, per_page: PER_PAGE };
+      const search = searchTermRef.current;
+      if (search) params.search = search;
+
+      const response = await api.get('/api/lixeira', { params });
+      if (fetchCounterRef.current !== fetchId) return;
+
+      const result = response?.data;
+      if (result?.success) {
+        const paginatedData = result.data;
+        const itens = Array.isArray(paginatedData?.data) ? paginatedData.data : (Array.isArray(paginatedData) ? paginatedData : []);
+        setLixeiraItens(itens);
+        if (paginatedData?.total !== undefined) {
+          setPagination({
+            current_page: paginatedData.current_page || page,
+            last_page: paginatedData.last_page || 1,
+            total: paginatedData.total || 0,
+            from: paginatedData.from || 0,
+            to: paginatedData.to || 0,
+          });
+        }
+        setCurrentPage(page);
       } else {
-        toast({ 
-          title: "Erro", 
-          description: response.message || "Erro ao carregar registros excluídos", 
-          variant: "destructive" 
-        });
+        toast({ title: "Erro", description: result?.message || "Erro ao carregar registros excluídos", variant: "destructive" });
       }
     } catch (error) {
+      if (fetchCounterRef.current !== fetchId) return;
       console.error('Erro ao carregar lixeira:', error);
-      toast({ 
-        title: "Erro", 
-        description: "Erro ao carregar registros excluídos", 
-        variant: "destructive" 
-      });
+      toast({ title: "Erro", description: "Erro ao carregar registros excluídos", variant: "destructive" });
     } finally {
-      setLoading(false);
+      if (fetchCounterRef.current === fetchId) setLoading(false);
     }
   }, [toast]);
 
   useEffect(() => {
-    loadLixeiraItens();
-  }, [loadLixeiraItens]);
+    fetchLixeiraItens(1);
+  }, [fetchLixeiraItens]);
 
+  // Busca debounced
   useEffect(() => {
-    let results = lixeiraItens.filter(item => {
-      const lowerSearchTerm = searchTerm.toLowerCase();
-      const nome = (item.nome || '').toLowerCase();
-      const tipo = (item.tipo || '').toLowerCase();
-      const codigo = (item.codigo || '').toLowerCase();
-      const email = (item.email || '').toLowerCase();
-      const telefone = (item.telefone || '').toLowerCase();
-      const valor = (item.valor || '').toString().toLowerCase();
+    if (isInitialMount.current) { isInitialMount.current = false; return; }
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => { fetchLixeiraItens(1); }, 500);
+    return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
+  }, [searchTerm, fetchLixeiraItens]);
 
-      return (
-        nome.includes(lowerSearchTerm) ||
-        tipo.includes(lowerSearchTerm) ||
-        codigo.includes(lowerSearchTerm) ||
-        email.includes(lowerSearchTerm) ||
-        telefone.includes(lowerSearchTerm) ||
-        valor.includes(lowerSearchTerm)
-      );
-    });
-
-    if (dateRange.from && isValid(dateRange.from)) {
-        results = results.filter(item => {
-            const itemDate = parseISO(item.data_exclusao);
-            return isValid(itemDate) && itemDate >= startOfDay(dateRange.from);
-        });
-    }
-    if (dateRange.to && isValid(dateRange.to)) {
-        results = results.filter(item => {
-            const itemDate = parseISO(item.data_exclusao);
-            return isValid(itemDate) && itemDate <= endOfDay(dateRange.to);
-        });
-    }
-
-    setFilteredItens(results);
-  }, [searchTerm, lixeiraItens, dateRange]);
+  const handlePageChange = useCallback((page) => {
+    fetchLixeiraItens(page);
+  }, [fetchLixeiraItens]);
 
   const handleRestaurarItem = async (itemParaRestaurar) => {
     try {
@@ -97,7 +99,7 @@ const LixeiraPage = ({ vendedorAtual }) => {
       
       if (response.success) {
         // Recarregar a lista após restaurar
-        await loadLixeiraItens();
+        await fetchLixeiraItens(currentPageRef.current);
         toast({ 
           title: 'Item Restaurado!', 
           description: `O item "${itemParaRestaurar.nome || itemParaRestaurar.id}" foi restaurado com sucesso.` 
@@ -132,7 +134,7 @@ const LixeiraPage = ({ vendedorAtual }) => {
       
       if (response.success) {
         // Recarregar a lista após excluir
-        await loadLixeiraItens();
+        await fetchLixeiraItens(currentPageRef.current);
         toast({ 
           title: 'Item Excluído Permanentemente', 
           description: `O item foi removido permanentemente.` 
@@ -234,8 +236,8 @@ const LixeiraPage = ({ vendedorAtual }) => {
                     <span>Carregando registros excluídos...</span>
                   </div>
                 </div>
-              ) : filteredItens.length > 0 ? (
-                filteredItens.map((item, index) => (
+              ) : lixeiraItens.length > 0 ? (
+                lixeiraItens.map((item, index) => (
                   <motion.div
                     key={`${item.tabela}-${item.id}`}
                     initial={{ opacity: 0, y: 20 }}
@@ -344,8 +346,8 @@ const LixeiraPage = ({ vendedorAtual }) => {
                     </div>
                   </TableCell>
                 </TableRow>
-              ) : filteredItens.length > 0 ? (
-                filteredItens.map((item) => (
+              ) : lixeiraItens.length > 0 ? (
+                lixeiraItens.map((item) => (
                   <TableRow key={`${item.tabela}-${item.id}`} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                     <TableCell>{item.tipo}</TableCell>
                     <TableCell className="font-medium">
@@ -409,6 +411,26 @@ const LixeiraPage = ({ vendedorAtual }) => {
           </Table>
         </div>
       </ScrollArea>
+
+      {/* Paginação */}
+      {pagination && pagination.total > 0 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between px-4 py-3 mt-2 border-t border-gray-200 dark:border-gray-700 gap-3">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Exibindo {pagination.from}–{pagination.to} de {pagination.total} registros
+          </p>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage <= 1 || loading}>
+              <ChevronLeft className="h-4 w-4 mr-1" /> Anterior
+            </Button>
+            <span className="text-sm font-medium px-3">
+              Página {currentPage} de {pagination.last_page}
+            </span>
+            <Button variant="outline" size="sm" onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage >= pagination.last_page || loading}>
+              Próxima <ChevronRight className="h-4 w-4 ml-1" />
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Modal para exclusão permanente */}
       <DeleteWithJustificationModal

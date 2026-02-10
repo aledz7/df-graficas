@@ -751,15 +751,24 @@ class VendaController extends ResourceController
             $query->where('valor_total', '<=', $request->input('valor_max'));
         }
         
-        // Busca por termo
+        // Busca por termo (pesquisa em múltiplos campos)
         if ($request->has('search')) {
             $search = $request->input('search');
             $query->where(function($q) use ($search) {
                 $q->where('id', 'like', "%{$search}%")
+                  ->orWhere('codigo', 'like', "%{$search}%")
+                  ->orWhere('cliente_nome', 'like', "%{$search}%")
+                  ->orWhere('vendedor_nome', 'like', "%{$search}%")
+                  ->orWhere('observacoes', 'like', "%{$search}%")
                   ->orWhereHas('cliente', function($q) use ($search) {
                       $q->where('nome', 'like', "%{$search}%");
                   });
             });
+        }
+        
+        // Filtrar por tipo de documento
+        if ($request->has('tipo_documento')) {
+            $query->where('tipo_documento', $request->input('tipo_documento'));
         }
         
         // Filtrar por origem (PDV, etc.)

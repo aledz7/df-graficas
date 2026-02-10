@@ -1,5 +1,5 @@
 import React, { useState, useEffect, Suspense, lazy, useCallback } from 'react';
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Toaster } from '@/components/ui/toaster';
 import { useToast } from "@/components/ui/use-toast";
 import Sidebar from '@/components/Sidebar.jsx';
@@ -458,6 +458,16 @@ function AppContent() {
   };
   
   const location = useLocation();
+  const navigateApp = useNavigate();
+
+  // Handler para clique em notificação de pré-venda - navega para o Histórico PDV
+  const handleNotificacaoClick = useCallback((notificacao, vendaId) => {
+    if (notificacao.tipo === 'pre_venda' && vendaId) {
+      if (marcarComoLida) marcarComoLida(notificacao.id);
+      fecharNotificacoes();
+      navigateApp('/operacional/pdv-historico', { state: { openVendaId: vendaId } });
+    }
+  }, [navigateApp, marcarComoLida, fecharNotificacoes]);
   
   const renderWithLayout = (Component, props = {}) => (
     <ProtectedRoute>
@@ -496,6 +506,7 @@ function AppContent() {
             marcarComoLida={marcarComoLida}
             marcarTodasComoLidas={marcarTodasComoLidas}
             deletarNotificacao={deletarNotificacao}
+            onNotificacaoClick={handleNotificacaoClick}
           />
           
           <Toaster />
@@ -625,6 +636,7 @@ function AppContent() {
                       marcarComoLida={marcarComoLida}
                       marcarTodasComoLidas={marcarTodasComoLidas}
                       deletarNotificacao={deletarNotificacao}
+                      onNotificacaoClick={handleNotificacaoClick}
                     />
                     
                     <Toaster />

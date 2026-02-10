@@ -13,11 +13,15 @@ class LixeiraController extends BaseController
     /**
      * Obtém todos os registros excluídos (soft deleted)
      */
-    public function index()
+    public function index(Request $request)
     {
         try {
             $registrosExcluidos = [];
             $tenantId = auth()->user()->tenant_id ?? null;
+            $search = $request->input('search');
+            $tipoFiltro = $request->input('tipo');
+            $perPage = min($request->input('per_page', 20), 200);
+            $page = max($request->input('page', 1), 1);
             
             // Buscar produtos excluídos
             $produtosExcluidos = DB::table('produtos')
@@ -301,12 +305,45 @@ class LixeiraController extends BaseController
                 ];
             }
             
+            // Filtrar por tipo se solicitado
+            if ($tipoFiltro) {
+                $registrosExcluidos = array_filter($registrosExcluidos, function($item) use ($tipoFiltro) {
+                    return $item['tipo'] === $tipoFiltro;
+                });
+            }
+
+            // Filtrar por busca se solicitado
+            if ($search) {
+                $searchLower = mb_strtolower($search);
+                $registrosExcluidos = array_filter($registrosExcluidos, function($item) use ($searchLower) {
+                    return str_contains(mb_strtolower($item['nome'] ?? ''), $searchLower) ||
+                           str_contains(mb_strtolower($item['tipo'] ?? ''), $searchLower) ||
+                           str_contains(mb_strtolower($item['codigo'] ?? ''), $searchLower) ||
+                           str_contains(mb_strtolower($item['email'] ?? ''), $searchLower) ||
+                           str_contains(mb_strtolower($item['telefone'] ?? ''), $searchLower);
+                });
+            }
+
             // Ordenar por data de exclusão (mais recente primeiro)
             usort($registrosExcluidos, function($a, $b) {
                 return strtotime($b['data_exclusao']) - strtotime($a['data_exclusao']);
             });
             
-            return $this->success($registrosExcluidos);
+            // Paginação manual
+            $total = count($registrosExcluidos);
+            $lastPage = max(ceil($total / $perPage), 1);
+            $offset = ($page - 1) * $perPage;
+            $items = array_slice($registrosExcluidos, $offset, $perPage);
+
+            return $this->success([
+                'data' => array_values($items),
+                'current_page' => (int) $page,
+                'last_page' => (int) $lastPage,
+                'per_page' => (int) $perPage,
+                'total' => $total,
+                'from' => $total > 0 ? $offset + 1 : 0,
+                'to' => min($offset + $perPage, $total),
+            ]);
         } catch (\Exception $e) {
             return $this->error('Erro ao buscar registros excluídos: ' . $e->getMessage());
         }

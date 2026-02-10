@@ -12,14 +12,15 @@ import {
   X, 
   Trash2,
   Clock,
-  Check
+  Check,
+  ExternalLink
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { notificacaoService } from '@/services/notificacaoService';
 import { useToast } from '@/components/ui/use-toast';
 
-const NotificacoesPanel = ({ isOpen, onClose, notificacoes = [], loading = false, marcarComoLida, marcarTodasComoLidas, deletarNotificacao }) => {
+const NotificacoesPanel = ({ isOpen, onClose, notificacoes = [], loading = false, marcarComoLida, marcarTodasComoLidas, deletarNotificacao, onNotificacaoClick }) => {
   const { toast } = useToast();
 
   // As notificações agora vêm como props do hook
@@ -121,7 +122,19 @@ const NotificacoesPanel = ({ isOpen, onClose, notificacoes = [], loading = false
                           : 'bg-background shadow-sm'
                       }`}
                     >
-                      <div className="flex items-start gap-3">
+                      <div 
+                        className={`flex items-start gap-3 ${
+                          notificacao.tipo === 'pre_venda' && onNotificacaoClick ? 'cursor-pointer hover:opacity-80' : ''
+                        }`}
+                        onClick={() => {
+                          if (notificacao.tipo === 'pre_venda' && onNotificacaoClick) {
+                            // Extrair o ID da venda da mensagem (formato: "Pré-venda #XXX - ...")
+                            const match = notificacao.mensagem?.match(/#(\d+)/);
+                            const vendaId = match ? match[1] : null;
+                            onNotificacaoClick(notificacao, vendaId);
+                          }
+                        }}
+                      >
                         <div className="flex-shrink-0 mt-1">
                           {getIconeNotificacao(notificacao.tipo)}
                         </div>
@@ -133,6 +146,9 @@ const NotificacoesPanel = ({ isOpen, onClose, notificacoes = [], loading = false
                                 notificacao.lida ? 'text-muted-foreground' : 'text-foreground'
                               }`}>
                                 {notificacao.titulo}
+                                {notificacao.tipo === 'pre_venda' && onNotificacaoClick && (
+                                  <ExternalLink className="inline h-3 w-3 ml-1 text-blue-500" />
+                                )}
                               </h4>
                               <p className={`text-xs mt-1 ${
                                 notificacao.lida ? 'text-muted-foreground' : 'text-muted-foreground'

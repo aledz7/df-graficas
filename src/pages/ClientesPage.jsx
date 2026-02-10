@@ -1,15 +1,16 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import ClienteList from '@/components/clientes/ClienteList';
 import ClienteForm from '@/components/clientes/ClienteForm';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { PlusCircle, Search, Upload, Download, Trash2, Loader2, RefreshCw } from 'lucide-react';
+import { PlusCircle, Search, Upload, Download, Trash2, Loader2, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { safeJsonParse } from '@/lib/utils';
 import { useToast } from '@/components/ui/use-toast';
 import { motion } from 'framer-motion';
 import { exportToExcel, importFromExcel } from '@/lib/utils';
 import { clienteService } from '@/services/api';
+import api from '@/services/api';
 import PermissionGate, { useActionPermissions } from '@/components/PermissionGate';
 import {
   AlertDialog,
@@ -23,6 +24,8 @@ import {
 } from "@/components/ui/alert-dialog";
 
 
+const PER_PAGE = 20;
+
 const ClientesPage = ({ vendedorAtual }) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -33,6 +36,18 @@ const ClientesPage = ({ vendedorAtual }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [clienteParaDeletar, setClienteParaDeletar] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pagination, setPagination] = useState(null);
+
+  // Refs para paginação server-side
+  const searchTimerRef = useRef(null);
+  const fetchCounterRef = useRef(0);
+  const currentPageRef = useRef(1);
+  const isInitialMount = useRef(true);
+  const searchTermRef = useRef('');
+
+  currentPageRef.current = currentPage;
+  searchTermRef.current = searchTerm;
   
   // Verificar permissões para ações específicas
   const { canCreate, canEdit, canDelete } = useActionPermissions('gerenciar_clientes', {
@@ -41,64 +56,78 @@ const ClientesPage = ({ vendedorAtual }) => {
     delete: 'clientes_excluir'
   });
 
-  const loadData = useCallback(async () => {
+  // Busca paginada no servidor
+  const fetchClientes = useCallback(async (page = 1) => {
+    const fetchId = ++fetchCounterRef.current;
     setIsLoading(true);
+
     try {
-      // Buscar clientes da API - sempre do Laravel, sem fallback
-      const response = await clienteService.getAll();
-      
-      // O backend retorna dados paginados: { success: true, message: "...", data: { data: [...], current_page: 1, ... } }
-      const clientesData = response.data?.data?.data || response.data?.data || response.data || [];
-      const clientesArray = Array.isArray(clientesData) ? clientesData : [];
-      setClientes(clientesArray);
-      
-      if (location.state?.openModal) {
+      const params = {
+        page,
+        per_page: PER_PAGE,
+        sort_by: 'nome',
+        sort_order: 'asc',
+      };
+
+      const search = searchTermRef.current;
+      if (search) params.search = search;
+
+      const response = await api.get('/api/clientes', { params });
+
+      if (fetchCounterRef.current !== fetchId) return;
+
+      const paginatedData = response?.data?.data;
+
+      if (paginatedData) {
+        const clientesArray = Array.isArray(paginatedData.data) ? paginatedData.data : [];
+        setPagination({
+          current_page: paginatedData.current_page || page,
+          last_page: paginatedData.last_page || 1,
+          total: paginatedData.total || 0,
+          per_page: paginatedData.per_page || PER_PAGE,
+          from: paginatedData.from || 0,
+          to: paginatedData.to || 0,
+        });
+        setClientes(clientesArray);
+        setCurrentPage(page);
+      }
+
+      if (page === 1 && location.state?.openModal) {
         handleNovoCliente();
-        navigate(location.pathname, { replace: true, state: {} }); 
+        navigate(location.pathname, { replace: true, state: {} });
       }
     } catch (error) {
+      if (fetchCounterRef.current !== fetchId) return;
       console.error("Erro ao carregar dados de clientes da API:", error);
-      
-      // Em caso de erro, definir como array vazio
       setClientes([]);
-      
-      // Verificar se é um erro de autenticação
+
       if (error.response?.status === 401) {
-        toast({ 
-          title: "Erro de Autenticação", 
-          description: "Sua sessão expirou. Por favor, faça login novamente.", 
-          variant: "destructive" 
-        });
+        toast({ title: "Erro de Autenticação", description: "Sua sessão expirou.", variant: "destructive" });
       } else {
-        toast({ 
-          title: "Erro ao carregar dados", 
-          description: "Não foi possível carregar os clientes do servidor.", 
-          variant: "destructive" 
-        });
+        toast({ title: "Erro ao carregar dados", description: "Não foi possível carregar os clientes.", variant: "destructive" });
       }
     } finally {
-      setIsLoading(false);
+      if (fetchCounterRef.current === fetchId) setIsLoading(false);
     }
   }, [toast, location.state, navigate]);
-  
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
 
+  // Carga inicial
   useEffect(() => {
-    const lowerSearchTerm = searchTerm.toLowerCase();
-    const results = clientes.filter(cliente =>
-      (cliente.nome_completo?.toLowerCase() || cliente.nome?.toLowerCase() || '').includes(lowerSearchTerm) ||
-      (cliente.apelido_fantasia?.toLowerCase() || '').includes(lowerSearchTerm) ||
-      (cliente.codigo_cliente?.toLowerCase() || '').includes(lowerSearchTerm) ||
-      (cliente.cpf_cnpj?.toLowerCase() || '').includes(lowerSearchTerm) ||
-      (cliente.email?.toLowerCase() || '').includes(lowerSearchTerm) ||
-      (cliente.telefone_principal?.toLowerCase() || '').includes(lowerSearchTerm)
-    );
-    setFilteredClientes(results);
-  }, [searchTerm, clientes]);
-  
-  const [filteredClientes, setFilteredClientes] = useState(clientes);
+    fetchClientes(1);
+  }, [fetchClientes]);
+
+  // Busca debounced
+  useEffect(() => {
+    if (isInitialMount.current) { isInitialMount.current = false; return; }
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => { fetchClientes(1); }, 500);
+    return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
+  }, [searchTerm, fetchClientes]);
+
+  const handlePageChange = useCallback((page) => {
+    fetchClientes(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [fetchClientes]);
 
 
   const handleNovoCliente = () => {
@@ -137,7 +166,7 @@ const ClientesPage = ({ vendedorAtual }) => {
       }
       
       // Recarregar a lista de clientes para refletir as mudanças
-      await loadData();
+      await fetchClientes(currentPageRef.current);
       
       toast({ 
         title: "Sucesso!", 
@@ -202,7 +231,7 @@ const ClientesPage = ({ vendedorAtual }) => {
       });
       
       // Recarregar a lista de clientes para refletir as mudanças
-      await loadData();
+      await fetchClientes(currentPageRef.current);
     } catch (error) {
       console.error('Erro ao excluir cliente:', error);
       
@@ -269,7 +298,7 @@ const ClientesPage = ({ vendedorAtual }) => {
               description: `${data.length} clientes importados para o banco de dados.` 
             });
             // Recarregar a lista de clientes
-            await loadData();
+            await fetchClientes(1);
           } catch (error) {
             toast({ 
               title: "Erro na Importação", 
@@ -291,8 +320,15 @@ const ClientesPage = ({ vendedorAtual }) => {
     }
   };
 
-  const handleExportExcel = () => {
-    exportToExcel(clientes, 'clientes', 'Lista_Clientes.xlsx');
+  const handleExportExcel = async () => {
+    try {
+      // Para exportação, buscar todos os clientes
+      const response = await api.get('/api/clientes', { params: { per_page: 1000 } });
+      const allClientes = response?.data?.data?.data || clientes;
+      exportToExcel(allClientes, 'clientes', 'Lista_Clientes.xlsx');
+    } catch {
+      exportToExcel(clientes, 'clientes', 'Lista_Clientes.xlsx');
+    }
     toast({ title: "Exportação Iniciada", description: "O download da planilha de clientes começará em breve." });
   };
 
@@ -318,7 +354,7 @@ const ClientesPage = ({ vendedorAtual }) => {
             />
           </div>
           <Button 
-            onClick={loadData} 
+            onClick={() => fetchClientes(currentPageRef.current)} 
             variant="outline" 
             className="ml-2"
             disabled={isLoading}
@@ -372,17 +408,44 @@ const ClientesPage = ({ vendedorAtual }) => {
       
       {isLoading ? (
          <div className="flex justify-center items-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-gray-400 mr-2" />
           <p>Carregando clientes...</p>
         </div>
       ) : (
         <ClienteList 
-          clientes={filteredClientes} 
+          clientes={clientes} 
           searchTerm={searchTerm}
           handleEditCliente={handleEditCliente}
           handleDeleteCliente={handleDeleteCliente}
           canEdit={canEdit}
           canDelete={canDelete}
         />
+      )}
+
+      {/* Paginação */}
+      {pagination && pagination.total > 0 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between px-4 py-3 mt-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-b-lg gap-3">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Exibindo {pagination.from}–{pagination.to} de {pagination.total} clientes
+          </p>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => handlePageChange(1)} disabled={currentPage <= 1 || isLoading}>
+              Primeira
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage <= 1 || isLoading}>
+              <ChevronLeft className="h-4 w-4 mr-1" /> Anterior
+            </Button>
+            <span className="text-sm font-medium px-3">
+              Página {currentPage} de {pagination.last_page}
+            </span>
+            <Button variant="outline" size="sm" onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage >= pagination.last_page || isLoading}>
+              Próxima <ChevronRight className="h-4 w-4 ml-1" />
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => handlePageChange(pagination.last_page)} disabled={currentPage >= pagination.last_page || isLoading}>
+              Última
+            </Button>
+          </div>
+        </div>
       )}
 
       {isModalOpen && (
