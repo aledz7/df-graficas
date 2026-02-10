@@ -116,6 +116,27 @@ class ConfiguracoesIniciaisSeeder extends Seeder
         $this->criarConfiguracao('nfe', 'caminho_evento', 'Caminho dos Eventos', 'texto', '', false, true, false, 160, $tenant->id);
         $this->criarConfiguracao('nfe', 'caminho_imagens', 'Caminho das Imagens', 'texto', '', false, true, false, 170, $tenant->id);
 
+        // Configurações de integração com API de emissão
+        $this->criarConfiguracao('nfe', 'token_api', 'Token da API de Emissão', 'password', '', true, true, false, 5, $tenant->id);
+        $this->criarConfiguracao('nfe', 'regime_tributario', 'Regime Tributário', 'select', '1', true, true, true, 15, $tenant->id, [
+            'opcoes' => [
+                '1' => 'Simples Nacional',
+                '2' => 'Simples Nacional - Excesso de sublimite',
+                '3' => 'Regime Normal',
+            ]
+        ]);
+        $this->criarConfiguracao('nfe', 'natureza_operacao', 'Natureza da Operação Padrão', 'texto', 'Venda', true, true, false, 25, $tenant->id);
+        $this->criarConfiguracao('nfe', 'cfop_padrao', 'CFOP Padrão', 'texto', '5102', true, true, false, 26, $tenant->id);
+        $this->criarConfiguracao('nfe', 'codigo_ncm_padrao', 'NCM Padrão', 'texto', '49111090', true, true, false, 27, $tenant->id);
+        $this->criarConfiguracao('nfe', 'icms_situacao_tributaria', 'Situação Tributária ICMS', 'texto', '102', true, true, false, 28, $tenant->id);
+        $this->criarConfiguracao('nfe', 'pis_situacao_tributaria', 'Situação Tributária PIS', 'texto', '07', true, true, false, 29, $tenant->id);
+        $this->criarConfiguracao('nfe', 'cofins_situacao_tributaria', 'Situação Tributária COFINS', 'texto', '07', true, true, false, 30, $tenant->id);
+
+        // Configurações específicas NFSe
+        $this->criarConfiguracao('nfe', 'codigo_tributario_municipio', 'Código Tributário do Município (NFSe)', 'texto', '', true, true, false, 180, $tenant->id);
+        $this->criarConfiguracao('nfe', 'item_lista_servico', 'Item da Lista de Serviço (NFSe)', 'texto', '', true, true, false, 190, $tenant->id);
+        $this->criarConfiguracao('nfe', 'aliquota_iss', 'Alíquota ISS % (NFSe)', 'texto', '5', true, true, false, 200, $tenant->id);
+
         // Configurações de E-mail
         $this->criarConfiguracao('email', 'driver', 'Driver', 'select', 'smtp', true, true, true, 10, $tenant->id, [
             'opcoes' => [

@@ -1589,3 +1589,96 @@ export const vendaPreVendaService = {
     }
   }
 };
+
+// Serviço de Notas Fiscais (NFe / NFSe)
+export const notaFiscalService = {
+  // Emitir nota fiscal
+  emitir: async (data) => {
+    try {
+      const response = await api.post('/api/notas-fiscais/emitir', data);
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao emitir nota fiscal:', error);
+      throw error;
+    }
+  },
+
+  // Consultar status de uma nota fiscal
+  consultar: async (id) => {
+    try {
+      const response = await api.get(`/api/notas-fiscais/${id}/consultar`);
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao consultar nota fiscal:', error);
+      throw error;
+    }
+  },
+
+  // Cancelar nota fiscal
+  cancelar: async (id, justificativa) => {
+    try {
+      const response = await api.delete(`/api/notas-fiscais/${id}/cancelar`, {
+        data: { justificativa }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao cancelar nota fiscal:', error);
+      throw error;
+    }
+  },
+
+  // Listar notas fiscais
+  listar: async (params = {}) => {
+    try {
+      const response = await api.get('/api/notas-fiscais', { params });
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao listar notas fiscais:', error);
+      throw error;
+    }
+  },
+
+  // Buscar notas fiscais de uma OS
+  porOrdemServico: async (osId) => {
+    try {
+      const response = await api.get(`/api/notas-fiscais/por-os/${osId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao buscar notas da OS:', error);
+      throw error;
+    }
+  },
+
+  // Testar conexão com a API de emissão
+  testarConexao: async () => {
+    try {
+      const response = await api.post('/api/notas-fiscais/testar-conexao');
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao testar conexão:', error);
+      throw error;
+    }
+  },
+
+  // Carregar configurações de Nota Fiscal
+  carregarConfiguracoes: async () => {
+    try {
+      const response = await api.get('/api/notas-fiscais/configuracoes');
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao carregar configurações NFe:', error);
+      throw error;
+    }
+  },
+
+  // Salvar configurações de Nota Fiscal (upsert)
+  salvarConfiguracoes: async (data) => {
+    try {
+      const response = await api.post('/api/notas-fiscais/configuracoes', data);
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao salvar configurações NFe:', error);
+      throw error;
+    }
+  },
+};

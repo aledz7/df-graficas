@@ -28,6 +28,7 @@ use App\Http\Controllers\Api\CompromissoController;
 use App\Http\Controllers\Api\PDVController;
 use App\Http\Controllers\Api\MarketplaceController;
 use App\Http\Controllers\Api\OrdemServicoController;
+use App\Http\Controllers\Api\NotaFiscalController;
 use App\Http\Controllers\Api\ComissaoOSController;
 use App\Http\Controllers\Api\UserNotificationPreferencesController;
 use App\Http\Controllers\Api\CatalogoParteController;
@@ -486,6 +487,18 @@ Route::middleware(['api.auth'])->group(function () {
         Route::post('corrigir-758', [OrdemServicoController::class, 'corrigirOS758']);
     });
     Route::apiResource('ordens-servico', OrdemServicoController::class);
+
+    // Notas Fiscais (NFe / NFSe)
+    Route::prefix('notas-fiscais')->group(function () {
+        Route::get('/', [NotaFiscalController::class, 'index']);
+        Route::post('emitir', [NotaFiscalController::class, 'emitir']);
+        Route::get('por-os/{ordemServicoId}', [NotaFiscalController::class, 'porOrdemServico']);
+        Route::get('{id}/consultar', [NotaFiscalController::class, 'consultar']);
+        Route::delete('{id}/cancelar', [NotaFiscalController::class, 'cancelar']);
+        Route::post('testar-conexao', [NotaFiscalController::class, 'testarConexao']);
+        Route::get('configuracoes', [NotaFiscalController::class, 'carregarConfiguracoes']);
+        Route::post('configuracoes', [NotaFiscalController::class, 'salvarConfiguracoes']);
+    });
 
     // Catálogo de Partes
     Route::apiResource('catalogo-partes', CatalogoParteController::class);

@@ -60,6 +60,7 @@ const CorrigirOS758Page = lazy(() => import('@/pages/CorrigirOS758Page'));
 const AparenciaSettingsPage = lazy(() => import('@/pages/AparenciaSettingsPage'));
 const ProdutoConfigPage = lazy(() => import('@/pages/ProdutoConfigPage'));
 const ConfiguracaoPontosPage = lazy(() => import('@/pages/ConfiguracaoPontosPage'));
+const NfeSettingsPage = lazy(() => import('@/pages/NfeSettingsPage'));
 
 // Relatórios Financeiros
 const FaturamentoDetalhadoPage = lazy(() => import('@/components/relatorios/financeiros/RelatorioFaturamento'));
@@ -188,6 +189,7 @@ const AppRoutes = ({ logoUrl, nomeEmpresa, vendedorAtual, theme, setTheme, setAp
       <Route path="/configuracoes/aparencia" element={<AparenciaSettingsPage theme={theme} setTheme={setTheme} />} />
       <Route path="/configuracoes/produtos-estoque" element={<ProdutoConfigPage />} />
       <Route path="/configuracoes/pontos" element={<ConfiguracaoPontosPage />} />
+      <Route path="/configuracoes/nota-fiscal" element={<NfeSettingsPage />} />
       <Route path="/configuracoes/modelos" element={<AdminSettingsPage section="modelos" />} />
       <Route path="/configuracoes/taxas" element={<AdminSettingsPage section="taxas" />} />
       <Route path="/configuracoes/impressao" element={<AdminSettingsPage section="impressao" />} />

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Settings, Building, Palette, Package, CreditCard, Barcode, Trash2, SlidersHorizontal, Download, Upload, ShieldAlert, Loader2, Star } from 'lucide-react';
+import { Settings, Building, Palette, Package, CreditCard, Barcode, Trash2, SlidersHorizontal, Download, Upload, ShieldAlert, Loader2, Star, Receipt } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useToast } from "@/components/ui/use-toast";
 import { safeJsonParse } from '@/lib/utils';
@@ -15,6 +15,7 @@ const settingsOptionsBase = [
   { id: 'produtos_conf', title: 'Produtos e Estoque (Conf.)', description: 'Defina padrões para produtos e estoque.', icon: Package, path: '/configuracoes/produtos-estoque' },
   { id: 'financeiro_conf', title: 'Financeiro (Conf.)', description: 'Contas bancárias, formas de pagamento.', icon: CreditCard, path: '/configuracoes/financeiro' },
   { id: 'pontos', title: 'Programa de Pontos', description: 'Configure o programa de fidelidade e pontos.', icon: Star, path: '/configuracoes/pontos' },
+  { id: 'nota_fiscal', title: 'Nota Fiscal', description: 'Configure token, ambiente e parâmetros fiscais.', icon: Receipt, path: '/configuracoes/nota-fiscal' },
   { id: 'etiquetas', title: 'Gerador de Etiquetas', description: 'Crie e imprima etiquetas de produtos.', icon: Barcode, path: '/operacional/gerador-etiquetas' },
   { id: 'lixeira', title: 'Lixeira', description: 'Recupere itens excluídos.', icon: Trash2, path: '/ferramentas/lixeira' },
   { id: 'acabamentos', title: 'Acabamentos e Serviços', description: 'Gerencie tipos de acabamentos e serviços.', icon: SlidersHorizontal, path: '/cadastros/acabamentos-servicos' },

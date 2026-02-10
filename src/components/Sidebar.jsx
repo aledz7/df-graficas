@@ -5,7 +5,7 @@ import { useNomeSistema } from '@/hooks/useNomeSistema.jsx';
 import {
   LayoutDashboard, ShoppingCart, Package, Users, Truck, Banknote,
   Settings, BarChart3, FileText, SprayCan, Calculator,
-  Palette, Boxes, BookOpen, Wrench, HardHat, FileClock, CheckCircle2, History, SlidersHorizontal, Trash2, Barcode, Store, Activity, CalendarDays, FileSpreadsheet, Box, LogIn, LogOut, PackagePlus, ListChecks, Printer, DollarSign, ShieldAlert, Ruler, Star, TrendingUp, CreditCard, Ticket, Gift
+  Palette, Boxes, BookOpen, Wrench, HardHat, FileClock, CheckCircle2, History, SlidersHorizontal, Trash2, Barcode, Store, Activity, CalendarDays, FileSpreadsheet, Box, LogIn, LogOut, PackagePlus, ListChecks, Printer, DollarSign, ShieldAlert, Ruler, Star, TrendingUp, CreditCard, Ticket, Gift, Receipt
 } from 'lucide-react';
 import IndiqueGanheModal from '@/components/IndiqueGanheModal';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -112,6 +112,7 @@ const menuItems = [
       { path: '/configuracoes/empresa', label: 'Dados da Empresa', icon: Settings },
       { path: '/configuracoes/aparencia', label: 'Aparência e Tema', icon: Palette },
       { path: '/configuracoes/produtos-estoque', label: 'Produtos e Estoque', icon: Package },
+      { path: '/configuracoes/nota-fiscal', label: 'Nota Fiscal', icon: Receipt },
       { path: '/configuracoes/pontos', label: 'Programa de Pontos', icon: Star },
       { path: '/operacional/gerador-etiquetas', label: 'Gerador de Etiquetas', icon: Barcode },
       { path: '/ferramentas/lixeira', label: 'Lixeira', icon: Trash2 },

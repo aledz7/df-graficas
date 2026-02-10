@@ -6,9 +6,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format, parseISO, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Search, Truck, Calendar, User, DollarSign, Eye, FileText, PackageCheck, UserCheck, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Truck, Calendar, User, DollarSign, Eye, FileText, PackageCheck, UserCheck, ChevronLeft, ChevronRight, Receipt } from 'lucide-react';
 import OSEntregaReciboModal from '@/components/os/entrega/OSEntregaReciboModal';
 import OSAnexosThumbnail from '@/components/os/entrega/OSAnexosThumbnail';
+import EmitirNotaFiscalModal from '@/components/os/EmitirNotaFiscalModal';
 import { safeJsonParse } from '@/lib/utils';
 import { apiDataManager } from '@/lib/apiDataManager';
 import { osService, empresaService } from '@/services/api';
@@ -19,6 +20,8 @@ const OSPedidosEntreguesPage = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [reciboModalOpen, setReciboModalOpen] = useState(false);
     const [osParaRecibo, setOsParaRecibo] = useState(null);
+    const [isNotaFiscalModalOpen, setIsNotaFiscalModalOpen] = useState(false);
+    const [selectedOsForNota, setSelectedOsForNota] = useState(null);
 
     const [empresa, setEmpresa] = useState({});
     const [isLoading, setIsLoading] = useState(false);
@@ -233,9 +236,14 @@ const OSPedidosEntreguesPage = () => {
                                         <TableCell>{os.dados_producao?.recebido_por || 'Não informado'}</TableCell>
                                         <TableCell className="text-right font-bold">R$ {parseFloat(os.valor_total_os || 0).toFixed(2)}</TableCell>
                                         <TableCell className="text-center">
-                                            <Button variant="ghost" size="icon" onClick={() => handleViewRecibo(os)}>
-                                                <Eye className="h-4 w-4" />
-                                            </Button>
+                                            <div className="flex justify-center gap-1">
+                                                <Button variant="ghost" size="icon" onClick={() => handleViewRecibo(os)} title="Ver Recibo">
+                                                    <Eye className="h-4 w-4" />
+                                                </Button>
+                                                <Button variant="ghost" size="icon" onClick={() => { setSelectedOsForNota(os); setIsNotaFiscalModalOpen(true); }} title="Emitir Nota Fiscal" className="text-emerald-600 hover:text-emerald-700">
+                                                    <Receipt className="h-4 w-4" />
+                                                </Button>
+                                            </div>
                                         </TableCell>
                                         <TableCell className="text-center">
                                             <OSAnexosThumbnail os={os} />
@@ -322,6 +330,14 @@ const OSPedidosEntreguesPage = () => {
                 />
             )}
 
+            {selectedOsForNota && (
+                <EmitirNotaFiscalModal
+                    isOpen={isNotaFiscalModalOpen}
+                    onClose={() => { setIsNotaFiscalModalOpen(false); setSelectedOsForNota(null); }}
+                    ordemServico={selectedOsForNota}
+                    clienteSelecionado={selectedOsForNota?.cliente || null}
+                />
+            )}
 
         </div>
     );

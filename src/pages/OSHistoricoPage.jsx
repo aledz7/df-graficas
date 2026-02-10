@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Eye, Trash2, Search, FileText, Printer, CircleDollarSign, CheckCircle2, PackageCheck, AlertTriangle, FilePlus, History, CalendarDays, CalendarClock, Loader2, FileEdit, ChevronLeft, ChevronRight, Play, Calculator, Info } from 'lucide-react';
+import { Eye, Trash2, Search, FileText, Printer, CircleDollarSign, CheckCircle2, PackageCheck, AlertTriangle, FilePlus, History, CalendarDays, CalendarClock, Loader2, FileEdit, ChevronLeft, ChevronRight, Play, Calculator, Info, Receipt } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { safeJsonParse, cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
@@ -16,6 +16,7 @@ import { useReactToPrint } from 'react-to-print';
 import { apiDataManager } from '@/lib/apiDataManager';
 import { osService, empresaService } from '@/services/api';
 import { calcularSubtotalItem } from '@/hooks/os/osLogic.js';
+import EmitirNotaFiscalModal from '@/components/os/EmitirNotaFiscalModal';
 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -48,6 +49,8 @@ const OSHistoricoPage = ({ vendedorAtual }) => {
   const [filteredOS, setFilteredOS] = useState([]);
   const [osToDelete, setOsToDelete] = useState(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isNotaFiscalModalOpen, setIsNotaFiscalModalOpen] = useState(false);
+  const [selectedOsForNota, setSelectedOsForNota] = useState(null);
   const [dateRange, setDateRange] = useState({ from: undefined, to: undefined });
   const [statusFilter, setStatusFilter] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -1203,6 +1206,17 @@ const OSHistoricoPage = ({ vendedorAtual }) => {
                           <Printer className="mr-1 h-4 w-4" />
                           Imprimir
                         </Button>
+                        {(os.status_os === 'Finalizada' || os.status_os === 'Entregue') && (
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => { setSelectedOsForNota(os); setIsNotaFiscalModalOpen(true); }}
+                            className="flex-1 text-emerald-600 hover:text-emerald-700 border-emerald-300 hover:border-emerald-400"
+                          >
+                            <Receipt className="mr-1 h-4 w-4" />
+                            Nota Fiscal
+                          </Button>
+                        )}
                         {canChangeStatus && os.status_os !== 'Finalizada' && os.status_os !== 'Entregue' && (
                           <Button 
                             variant="outline" 
@@ -1319,6 +1333,11 @@ const OSHistoricoPage = ({ vendedorAtual }) => {
                         <Button variant="ghost" size="icon" onClick={() => handleOpenNotinhaModal(os)} title="Imprimir Notinha" className="text-blue-500 hover:text-blue-600">
                           <Printer className="h-4 w-4" />
                         </Button>
+                        {(os.status_os === 'Finalizada' || os.status_os === 'Entregue') && (
+                          <Button variant="ghost" size="icon" onClick={() => { setSelectedOsForNota(os); setIsNotaFiscalModalOpen(true); }} title="Emitir Nota Fiscal" className="text-emerald-600 hover:text-emerald-700">
+                            <Receipt className="h-4 w-4" />
+                          </Button>
+                        )}
                         {canChangeStatus && os.status_os !== 'Finalizada' && os.status_os !== 'Entregue' && (
                           <Button variant="ghost" size="icon" onClick={() => handleFinalizeOS(os)} title="Finalizar OS" className="text-green-500 hover:text-green-600">
                              <CircleDollarSign className="h-4 w-4" />
@@ -1438,6 +1457,16 @@ const OSHistoricoPage = ({ vendedorAtual }) => {
           empresaSettings={empresaSettings}
           contasBancarias={contasBancarias}
           maquinas={maquinas}
+        />
+      )}
+
+      {/* Modal de Emissão de Nota Fiscal */}
+      {selectedOsForNota && (
+        <EmitirNotaFiscalModal
+          isOpen={isNotaFiscalModalOpen}
+          onClose={() => { setIsNotaFiscalModalOpen(false); setSelectedOsForNota(null); }}
+          ordemServico={selectedOsForNota}
+          clienteSelecionado={selectedOsForNota?.cliente || null}
         />
       )}
 

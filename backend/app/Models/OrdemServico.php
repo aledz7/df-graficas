@@ -105,4 +105,12 @@ class OrdemServico extends Model
     {
         return $this->belongsTo(User::class, 'funcionario_id');
     }
+
+    /**
+     * Relacionamento com notas fiscais
+     */
+    public function notasFiscais()
+    {
+        return $this->hasMany(NotaFiscal::class, 'ordem_servico_id');
+    }
 }

@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { DollarSign, Printer, Save, CheckCircle, FileText, RotateCcw, CalendarDays, Sparkles, Percent, Tag, BadgeAlert, AlertTriangle, Plus, Search } from 'lucide-react';
+import { DollarSign, Printer, Save, CheckCircle, FileText, RotateCcw, CalendarDays, Sparkles, Percent, Tag, BadgeAlert, AlertTriangle, Plus, Search, Receipt } from 'lucide-react';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
@@ -18,6 +18,7 @@ import { apiDataManager } from '@/lib/apiDataManager';
 import SenhaMasterModal from '@/components/SenhaMasterModal';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { maquinaService } from '@/services/api';
+import EmitirNotaFiscalModal from '@/components/os/EmitirNotaFiscalModal';
 
 const safeParseFloat = (value, defaultValue = 0) => {
   if (value === null || value === undefined || String(value).trim() === '') {
@@ -59,6 +60,9 @@ const OSResumoSide = ({
     const [isSenhaModalOpen, setIsSenhaModalOpen] = useState(false);
     const [senhaAction, setSenhaAction] = useState(null); // 'save' | 'updateFinal'
     
+    // Estado para modal de emissão de nota fiscal
+    const [isNotaFiscalModalOpen, setIsNotaFiscalModalOpen] = useState(false);
+
     // Estados para modal de cadastro de máquina
     const [isMaquinaModalOpen, setIsMaquinaModalOpen] = useState(false);
     const [novaMaquina, setNovaMaquina] = useState({ nome: '', funcao: '', largura: '' });
@@ -624,6 +628,16 @@ const OSResumoSide = ({
                         <Button onClick={onGerarPdf} variant="outline" className="w-full" disabled={isSaving}><FileText className="mr-2 h-4 w-4"/>Gerar PDF</Button>
                         <Button onClick={onImprimir} variant="outline" className="w-full" disabled={isSaving}><Printer className="mr-2 h-4 w-4"/>Imprimir</Button>
                     </div>
+                    {isOSFinalizada && (
+                        <Button 
+                            onClick={() => setIsNotaFiscalModalOpen(true)} 
+                            variant="outline" 
+                            className="w-full border-blue-500 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950"
+                            disabled={isSaving}
+                        >
+                            <Receipt className="mr-2 h-4 w-4"/>Emitir Nota Fiscal
+                        </Button>
+                    )}
                     <Button onClick={onNovaOS} variant="destructive" className="w-full" disabled={isSaving || viewOnly}><RotateCcw className="mr-2 h-4 w-4"/>Nova OS / Limpar</Button>
                 </CardContent>
             </Card>
@@ -692,6 +706,13 @@ const OSResumoSide = ({
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+            {/* Modal de Emissão de Nota Fiscal */}
+            <EmitirNotaFiscalModal
+                isOpen={isNotaFiscalModalOpen}
+                onClose={() => setIsNotaFiscalModalOpen(false)}
+                ordemServico={ordemServico}
+                clienteSelecionado={clienteSelecionado}
+            />
         </ScrollArea>
     );
 };

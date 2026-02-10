@@ -692,7 +692,7 @@ const ProdutosPage = ({ vendedorAtual }) => {
     >
       <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
         <div className="flex flex-col">
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100">Gerenciamento de Produtos</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100">Produtos</h1>
           {isFilteringEstoqueBaixo && (
             <div className="flex items-center gap-2 mt-2">
               <Badge variant="secondary" className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">

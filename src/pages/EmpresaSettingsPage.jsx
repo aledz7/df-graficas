@@ -6,7 +6,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from '@/components/ui/use-toast';
-import { Upload, Save, Building, Phone, Mail, Globe, Lock, Eye, EyeOff, Info } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Upload, Save, Building, Phone, Mail, Globe, Lock, Eye, EyeOff, Info, MapPin } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { safeJsonParse } from '@/lib/utils';
 import { empresaService } from '@/services/api';
@@ -53,6 +54,15 @@ const EmpresaSettingsPage = ({ logoUrl: appLogoUrl, setAppLogoUrl, setAppNomeEmp
     whatsapp: '',
     email: '',
     enderecoCompleto: '',
+    logradouro: '',
+    numeroEndereco: '',
+    complemento: '',
+    bairro: '',
+    cidade: '',
+    estado: '',
+    cep: '',
+    codigoMunicipioIbge: '',
+    regimeTributario: '',
     instagram: '',
     site: '',
     logoUrl: '',
@@ -95,6 +105,15 @@ const EmpresaSettingsPage = ({ logoUrl: appLogoUrl, setAppLogoUrl, setAppNomeEmp
           whatsapp: empresaData.whatsapp || '',
           email: empresaData.email || '',
           enderecoCompleto: empresaData.endereco_completo || '',
+          logradouro: empresaData.logradouro || '',
+          numeroEndereco: empresaData.numero_endereco || '',
+          complemento: empresaData.complemento || '',
+          bairro: empresaData.bairro || '',
+          cidade: empresaData.cidade || '',
+          estado: empresaData.estado || '',
+          cep: empresaData.cep || '',
+          codigoMunicipioIbge: empresaData.codigo_municipio_ibge || '',
+          regimeTributario: empresaData.regime_tributario || '',
           instagram: empresaData.instagram || '',
           site: empresaData.site || '',
           logoUrl: empresaData.logo_url || appLogoUrl || '',
@@ -126,6 +145,15 @@ const EmpresaSettingsPage = ({ logoUrl: appLogoUrl, setAppLogoUrl, setAppNomeEmp
           whatsapp: '',
           email: '',
           enderecoCompleto: '',
+          logradouro: '',
+          numeroEndereco: '',
+          complemento: '',
+          bairro: '',
+          cidade: '',
+          estado: '',
+          cep: '',
+          codigoMunicipioIbge: '',
+          regimeTributario: '',
           instagram: '',
           site: '',
           logoUrl: appLogoUrl || '',
@@ -195,6 +223,15 @@ const EmpresaSettingsPage = ({ logoUrl: appLogoUrl, setAppLogoUrl, setAppNomeEmp
         whatsapp: settings.whatsapp,
         email: settings.email,
         endereco_completo: settings.enderecoCompleto,
+        logradouro: settings.logradouro,
+        numero_endereco: settings.numeroEndereco,
+        complemento: settings.complemento,
+        bairro: settings.bairro,
+        cidade: settings.cidade,
+        estado: settings.estado,
+        cep: settings.cep,
+        codigo_municipio_ibge: settings.codigoMunicipioIbge,
+        regime_tributario: settings.regimeTributario,
         instagram: settings.instagram,
         site: settings.site,
         logo_url: settings.logoUrl,
@@ -324,10 +361,6 @@ const EmpresaSettingsPage = ({ logoUrl: appLogoUrl, setAppLogoUrl, setAppNomeEmp
                     <Input id="whatsapp" name="whatsapp" value={settings.whatsapp} onChange={handleInputChange} placeholder="(00) 90000-0000" className="pl-10"/>
                   </div>
                 </div>
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="enderecoCompleto" className="text-md font-medium">Endereço Completo</Label>
-                  <Textarea id="enderecoCompleto" name="enderecoCompleto" value={settings.enderecoCompleto} onChange={handleInputChange} placeholder="Rua, Número, Bairro, Cidade, Estado, CEP" />
-                </div>
                 <div className="space-y-2">
                   <Label htmlFor="instagram" className="text-md font-medium">Instagram</Label>
                   <Input id="instagram" name="instagram" value={settings.instagram} onChange={handleInputChange} placeholder="@seuinstagram" />
@@ -339,6 +372,77 @@ const EmpresaSettingsPage = ({ logoUrl: appLogoUrl, setAppLogoUrl, setAppNomeEmp
                     <Input id="site" name="site" value={settings.site} onChange={handleInputChange} placeholder="https://www.suaempresa.com.br" className="pl-10"/>
                   </div>
                   <p className="text-xs text-muted-foreground">Obrigatório incluir <strong>http://</strong> ou <strong>https://</strong> no início da URL.</p>
+                </div>
+              </div>
+
+              {/* Endereço Fiscal */}
+              <div className="mt-8 mb-2">
+                <div className="flex items-center gap-2 mb-1">
+                  <MapPin className="h-5 w-5 text-primary" />
+                  <h3 className="text-lg font-semibold text-foreground">Endereço Fiscal</h3>
+                </div>
+                <p className="text-sm text-muted-foreground">Dados obrigatórios para emissão de notas fiscais (NFe/NFSe). Preencha todos os campos.</p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="logradouro" className="text-md font-medium">Logradouro <span className="text-red-500">*</span></Label>
+                  <Input id="logradouro" name="logradouro" value={settings.logradouro} onChange={handleInputChange} placeholder="Rua, Avenida, etc." />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="numeroEndereco" className="text-md font-medium">Número <span className="text-red-500">*</span></Label>
+                  <Input id="numeroEndereco" name="numeroEndereco" value={settings.numeroEndereco} onChange={handleInputChange} placeholder="123" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="complemento" className="text-md font-medium">Complemento</Label>
+                  <Input id="complemento" name="complemento" value={settings.complemento} onChange={handleInputChange} placeholder="Sala, Andar, etc." />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="bairro" className="text-md font-medium">Bairro <span className="text-red-500">*</span></Label>
+                  <Input id="bairro" name="bairro" value={settings.bairro} onChange={handleInputChange} placeholder="Nome do bairro" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="cidade" className="text-md font-medium">Cidade <span className="text-red-500">*</span></Label>
+                  <Input id="cidade" name="cidade" value={settings.cidade} onChange={handleInputChange} placeholder="Nome da cidade" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="estado" className="text-md font-medium">Estado (UF) <span className="text-red-500">*</span></Label>
+                  <Select value={settings.estado} onValueChange={(value) => setSettings(prev => ({ ...prev, estado: value }))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o estado" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'].map(uf => (
+                        <SelectItem key={uf} value={uf}>{uf}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="cep" className="text-md font-medium">CEP <span className="text-red-500">*</span></Label>
+                  <Input id="cep" name="cep" value={settings.cep} onChange={handleInputChange} placeholder="00000-000" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="codigoMunicipioIbge" className="text-md font-medium">Código Município IBGE <span className="text-red-500">*</span></Label>
+                  <Input id="codigoMunicipioIbge" name="codigoMunicipioIbge" value={settings.codigoMunicipioIbge} onChange={handleInputChange} placeholder="Ex: 3550308 (São Paulo)" />
+                  <p className="text-xs text-muted-foreground">Código IBGE de 7 dígitos do município. Consulte em <a href="https://www.ibge.gov.br/explica/codigos-dos-municipios.php" target="_blank" rel="noopener noreferrer" className="text-primary underline">ibge.gov.br</a></p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="regimeTributario" className="text-md font-medium">Regime Tributário</Label>
+                  <Select value={settings.regimeTributario} onValueChange={(value) => setSettings(prev => ({ ...prev, regimeTributario: value }))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o regime" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">Simples Nacional</SelectItem>
+                      <SelectItem value="2">Simples Nacional - Excesso de Sublimite</SelectItem>
+                      <SelectItem value="3">Regime Normal</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="enderecoCompleto" className="text-md font-medium">Endereço Completo (exibição)</Label>
+                  <Textarea id="enderecoCompleto" name="enderecoCompleto" value={settings.enderecoCompleto} onChange={handleInputChange} placeholder="Endereço livre para exibição em documentos (opcional)" rows={2} />
+                  <p className="text-xs text-muted-foreground">Campo livre para exibição em documentos. Os campos acima são usados para emissão de notas fiscais.</p>
                 </div>
               </div>
             </TabsContent>
