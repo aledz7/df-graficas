@@ -140,6 +140,9 @@ export const authService = {
     try {
       await api.post('/api/logout');
     } finally {
+      // Limpar todo o cache (produtos, acabamentos, etc.) além do token
+      // Isso evita que dados de um tenant anterior fiquem no cache em memória
+      apiDataManager.clearCache();
       apiDataManager.removeToken();
     }
   },

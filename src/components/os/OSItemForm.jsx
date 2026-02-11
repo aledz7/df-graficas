@@ -1749,6 +1749,9 @@ const OSItemForm = ({
     const precoChapa = safeParseFloat(produtoBaseInfo.preco_chapa, 0);
     if (precoChapa > 0) candidatosValor.push(precoChapa);
 
+    const precoMetroLinearConsumo = safeParseFloat(produtoBaseInfo.preco_metro_linear, 0);
+    if (precoMetroLinearConsumo > 0) candidatosValor.push(precoMetroLinearConsumo);
+
     const precoVenda = safeParseFloat(produtoBaseInfo.preco_venda ?? produtoBaseInfo.precoVenda, 0);
     if (precoVenda > 0) candidatosValor.push(precoVenda);
 
@@ -1843,12 +1846,19 @@ const OSItemForm = ({
 
       const precoM2 = safeParseFloat(produto.preco_m2);
       const precoVenda = safeParseFloat(produto.preco_venda);
+      const precoMetroLinear = safeParseFloat(produto.preco_metro_linear);
+      const tipoPrecificacaoProduto = (produto.tipo_precificacao || '').toLowerCase();
 
       if (produtoEhM2 && precoM2 > 0) {
         novoValorProduto = formatToDisplay(precoM2, 2);
         valorBloqueado = true;
         valorOrigem = "preço por m²";
         toastMessage = `${produto.nome}. Valor (R$ ${novoValorProduto}) originado do ${valorOrigem}) carregado e bloqueado. Informe as medidas (m).`;
+      } else if (tipoPrecificacaoProduto === 'metro_linear' && precoMetroLinear > 0) {
+        novoValorProduto = formatToDisplay(precoMetroLinear, 2);
+        valorBloqueado = true;
+        valorOrigem = "preço por metro linear";
+        toastMessage = `${produto.nome}. Valor (R$ ${novoValorProduto}/m) originado do ${valorOrigem}. Informe o comprimento (m).`;
       } else if (precoVenda > 0) { 
          novoValorProduto = formatToDisplay(precoVenda, 2);
          valorBloqueado = true; 
@@ -1875,6 +1885,8 @@ const OSItemForm = ({
       onItemChange('variacao_selecionada', null);
       // Passar valor mínimo do produto para aplicar no cálculo de subtotal
       onItemChange('valor_minimo', produto.valor_minimo || null);
+      // Armazenar o tipo de precificação para cálculos corretos (metro_linear, m2, unidade, etc.)
+      onItemChange('tipo_precificacao', tipoPrecificacaoProduto || '');
       
       toast({ 
         title: novoTipoItem === 'm2' ? "Produto Selecionado como Base (Serviço M²)" : "Produto Selecionado (Unidade)", 
@@ -1992,10 +2004,11 @@ const OSItemForm = ({
       }
       
       // Preencher o valor por m² do produto - verificar todos os campos possíveis
-      // Prioridade: preco_m2 > valor_chapa > preco_venda
+      // Prioridade: preco_m2 > valor_chapa > preco_metro_linear > preco_venda
       // IMPORTANTE: Buscar o valor da coluna preco_m2 do banco de dados
       const precoM2Raw = produtoCompleto.preco_m2;
       const valorChapaRaw = produtoCompleto.valor_chapa;
+      const precoMetroLinearRaw = produtoCompleto.preco_metro_linear;
       const precoVendaRaw = produtoCompleto.preco_venda;
       
       // Converter valores para número, considerando null/undefined/vazio como inválido
@@ -2006,11 +2019,14 @@ const OSItemForm = ({
       const valorChapa = (valorChapaRaw !== null && valorChapaRaw !== undefined && valorChapaRaw !== '' && parseFloat(valorChapaRaw) > 0) 
         ? safeParseFloat(valorChapaRaw, 0) 
         : null;
+      const precoMetroLinear = (precoMetroLinearRaw !== null && precoMetroLinearRaw !== undefined && precoMetroLinearRaw !== '' && parseFloat(precoMetroLinearRaw) > 0) 
+        ? safeParseFloat(precoMetroLinearRaw, 0) 
+        : null;
       const precoVenda = (precoVendaRaw !== null && precoVendaRaw !== undefined && precoVendaRaw !== '' && parseFloat(precoVendaRaw) > 0) 
         ? safeParseFloat(precoVendaRaw, 0) 
         : null;
       
-      // Determinar qual valor usar (prioridade: preco_m2 > valor_chapa > preco_venda)
+      // Determinar qual valor usar (prioridade: preco_m2 > valor_chapa > preco_metro_linear > preco_venda)
       // IMPORTANTE: Usar apenas valores maiores que 0
       let valorParaPreencher = null;
       let origemValor = '';
@@ -2020,6 +2036,9 @@ const OSItemForm = ({
       } else if (valorChapa !== null && valorChapa > 0) {
         valorParaPreencher = valorChapa;
         origemValor = 'valor_chapa';
+      } else if (precoMetroLinear !== null && precoMetroLinear > 0) {
+        valorParaPreencher = precoMetroLinear;
+        origemValor = 'preco_metro_linear';
       } else if (precoVenda !== null && precoVenda > 0) {
         valorParaPreencher = precoVenda;
         origemValor = 'preco_venda';
@@ -2038,6 +2057,8 @@ const OSItemForm = ({
           preco_m2_parsed: precoM2,
           valor_chapa_raw: valorChapaRaw,
           valor_chapa_parsed: valorChapa,
+          preco_metro_linear_raw: precoMetroLinearRaw,
+          preco_metro_linear_parsed: precoMetroLinear,
           preco_venda_raw: precoVendaRaw,
           preco_venda_parsed: precoVenda,
           valor_usado: valorParaPreencher,
@@ -2051,6 +2072,7 @@ const OSItemForm = ({
           produto_id: produtoCompleto.id,
           preco_m2: precoM2Raw,
           valor_chapa: valorChapaRaw,
+          preco_metro_linear: precoMetroLinearRaw,
           preco_venda: precoVendaRaw,
           todos_campos_produto: Object.keys(produtoCompleto)
         });
@@ -2081,7 +2103,7 @@ const OSItemForm = ({
       materialFoiEditadoRef.current = false;
       // Se a variação tem preço específico, usar ele. Senão, usar o preço do produto (que já considera promoção)
       const precoVariacao = parseFloat(variacao.preco_var || 0);
-      const precoProduto = parseFloat(produtoBaseInfo.preco_m2 || produtoBaseInfo.preco_venda || 0);
+      const precoProduto = parseFloat(produtoBaseInfo.preco_m2 || produtoBaseInfo.preco_metro_linear || produtoBaseInfo.preco_venda || 0);
       const precoPromocional = parseFloat(produtoBaseInfo.preco_promocional || 0);
       
       // Determinar qual preço usar
@@ -2234,11 +2256,18 @@ const OSItemForm = ({
     const temConsumoCustoTotalValidoSubmit = consumoCustoTotalSubmit > 0;
     
     let subtotalCorrigido;
+    const tipoPrecificacaoSubmit = (currentServico.tipo_precificacao || '').toLowerCase();
     if (temConsumoMaterialSubmit && temConsumoCustoTotalValidoSubmit) {
       subtotalCorrigido = consumoCustoTotalSubmit;
     } else {
       const valorUnitarioM2Submit = safeParseFloat(currentServico.valor_unitario_m2, 0);
-      subtotalCorrigido = areaTotalSubmit * valorUnitarioM2Submit;
+      if (tipoPrecificacaoSubmit === 'metro_linear') {
+        // Para metro linear: comprimento (maior dimensão) × quantidade × preço por metro
+        const comprimentoSubmit = Math.max(larguraParsed, alturaParsed);
+        subtotalCorrigido = comprimentoSubmit * quantidadeValidaSubmit * valorUnitarioM2Submit;
+      } else {
+        subtotalCorrigido = areaTotalSubmit * valorUnitarioM2Submit;
+      }
       
       // Adicionar acabamentos se houver
       if (currentServico.acabamentos_selecionados && 
@@ -2298,7 +2327,11 @@ const OSItemForm = ({
   const quantidade = safeParseFloat(currentServico.quantidade, 1);
   const quantidadeValida = Number.isFinite(quantidade) && quantidade > 0 ? quantidade : 1;
   const areaTotal = areaUnitaria * quantidadeValida;
-  const areaDisplay = Number.isFinite(areaTotal) ? areaTotal.toFixed(3).replace('.', ',') : '0,000';
+  const ehMetroLinear = (currentServico.tipo_precificacao || '').toLowerCase() === 'metro_linear';
+  const comprimentoMetroLinear = Math.max(larguraNumerica, alturaNumerica);
+  const areaDisplay = ehMetroLinear 
+    ? (Number.isFinite(comprimentoMetroLinear) ? comprimentoMetroLinear.toFixed(3).replace('.', ',') : '0,000')
+    : (Number.isFinite(areaTotal) ? areaTotal.toFixed(3).replace('.', ',') : '0,000');
   
   // CORREÇÃO: Calcular o subtotal localmente para exibição imediata
   // Isso garante que o valor exibido sempre reflita os valores atuais de altura, largura, quantidade e valor_m2
@@ -2316,9 +2349,18 @@ const OSItemForm = ({
       return consumoCustoTotal;
     }
     
-    // Caso contrário, calcular por área (usando valores locais já parseados)
+    // Caso contrário, calcular usando valores locais já parseados
     const valorUnitarioM2 = safeParseFloat(currentServico.valor_unitario_m2, 0);
-    let subtotal = areaTotal * valorUnitarioM2;
+    const tipoPrecificacaoCalc = (currentServico.tipo_precificacao || '').toLowerCase();
+    
+    let subtotal;
+    if (tipoPrecificacaoCalc === 'metro_linear') {
+      // Para metro linear: comprimento (maior dimensão) × quantidade × preço por metro
+      const comprimento = Math.max(larguraNumerica, alturaNumerica);
+      subtotal = comprimento * quantidadeValida * valorUnitarioM2;
+    } else {
+      subtotal = areaTotal * valorUnitarioM2;
+    }
     
     // Adicionar acabamentos se houver
     if (currentServico.acabamentos_selecionados && 
@@ -2352,6 +2394,7 @@ const OSItemForm = ({
       currentServico.valor_unitario_m2, currentServico.acabamentos_selecionados,
       currentServico.consumo_material_utilizado, currentServico.consumo_largura_peca,
       currentServico.consumo_altura_peca, currentServico.consumo_custo_total,
+      currentServico.tipo_precificacao,
       areaTotal, larguraNumerica, alturaNumerica, quantidadeValida, acabamentosConfig]);
   
   const subtotalItemDisplay = Number.isFinite(subtotalCalculadoLocal) 
@@ -2440,7 +2483,7 @@ const OSItemForm = ({
             <Input id="largura" name="largura" type="text" value={String(currentServico.largura || '').replace('.',',')} onChange={handleDimensionChange} onBlur={handleDimensionBlur} placeholder="0,00" disabled={isDisabled} />
           </div>
           <div>
-            <Label htmlFor="area_calculada_item">Área Total (m²)</Label>
+            <Label htmlFor="area_calculada_item">{ehMetroLinear ? 'Comprimento (m)' : 'Área Total (m²)'}</Label>
             <Input id="area_calculada_item" name="area_calculada_item" type="text" value={areaDisplay} readOnly className="bg-muted dark:bg-muted/50" />
           </div>
           <div>
@@ -2460,7 +2503,7 @@ const OSItemForm = ({
 
         <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
             <div>
-              <Label htmlFor="valor_unitario_m2">Valor do Produto (R$/m²) <span className="text-red-500">*</span></Label>
+              <Label htmlFor="valor_unitario_m2">{ehMetroLinear ? 'Valor do Produto (R$/m)' : 'Valor do Produto (R$/m²)'} <span className="text-red-500">*</span></Label>
               <Input 
                 id="valor_unitario_m2" 
                 name="valor_unitario_m2" 
@@ -2978,7 +3021,7 @@ const OSItemForm = ({
                   valorUnitarioFormatado = valorUnitarioM2.toFixed(2).replace('.', ',');
                 } else if (produtoEncontrado) {
                   // Se não calculou pelo custo, usar o preço de venda do produto
-                  const valorProduto = safeParseFloat(produtoEncontrado.preco_m2 || produtoEncontrado.preco_venda || 0);
+                  const valorProduto = safeParseFloat(produtoEncontrado.preco_m2 || produtoEncontrado.preco_metro_linear || produtoEncontrado.preco_venda || 0);
                   if (valorProduto > 0) {
                     valorUnitarioM2Final = valorProduto;
                     valorUnitarioFormatado = valorProduto.toFixed(2).replace('.', ',');

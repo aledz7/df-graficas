@@ -75,6 +75,9 @@ export const AuthProvider = ({ children }) => {
       setToken(null);
       setUser(null);
       
+      // Limpar cache para evitar vazamento de dados entre tenants
+      apiDataManager.clearCache();
+      
       // Resetar tema para o padrão
       document.documentElement.className = 'light';
       
@@ -97,6 +100,9 @@ export const AuthProvider = ({ children }) => {
     const handleSessionTimeout = (event) => {
       setToken(null);
       setUser(null);
+      
+      // Limpar cache para evitar vazamento de dados entre tenants
+      apiDataManager.clearCache();
       
       // Resetar tema para o padrão
       document.documentElement.className = 'light';
@@ -189,6 +195,10 @@ export const AuthProvider = ({ children }) => {
       }
       
       // Login normal (sem 2FA)
+      // Limpar cache de dados do usuário anterior antes de definir novo token
+      // Evita que produtos/dados de outro tenant fiquem no cache em memória
+      apiDataManager.clearCache();
+      
       setToken(response.access_token);
       setUser(response.user);
       
@@ -282,6 +292,9 @@ export const AuthProvider = ({ children }) => {
       const response = await authService.completeTwoFactorLogin(email, code);
       
       if (response.success) {
+        // Limpar cache de dados do usuário anterior
+        apiDataManager.clearCache();
+        
         setToken(response.access_token);
         setUser(response.user);
         
@@ -435,9 +448,13 @@ export const AuthProvider = ({ children }) => {
         console.error('Logout error:', error);
       })
       .finally(() => {
-        // authService.logout já remove o token do localStorage
+        // authService.logout já remove o token e limpa o cache do apiDataManager
         setToken(null);
         setUser(null);
+        
+        // Garantir que o cache em memória seja completamente limpo
+        // para evitar que dados de um tenant vazem para outro usuário
+        apiDataManager.clearCache();
         
         // Resetar tema para o padrão ao fazer logout
         document.documentElement.className = 'light';

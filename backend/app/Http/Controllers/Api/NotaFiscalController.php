@@ -129,6 +129,7 @@ class NotaFiscalController extends Controller
                     'message' => $resultado['erro'] ?? 'Erro ao emitir nota fiscal.',
                     'detalhes' => $resultado['erros'] ?? [],
                     'dados' => $resultado['dados'] ?? null,
+                    'debug' => $resultado['debug'] ?? null,
                 ], 400);
             }
 
@@ -149,6 +150,7 @@ class NotaFiscalController extends Controller
             return response()->json([
                 'message' => 'Nota fiscal enviada para processamento.',
                 'nota_fiscal' => $nota,
+                'debug' => $resultado['debug'] ?? null,
             ], 201);
 
         } catch (\Exception $e) {

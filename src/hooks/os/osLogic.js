@@ -138,23 +138,40 @@ export const calcularSubtotalItem = (item, acabamentosConfig) => {
                 observacao: 'Subtotal baseado no custo total do material (item já foi editado e salvo). O consumo_custo_total JÁ inclui acabamentos.'
             });
         } else {
-            // Item ainda não foi editado ou não tem consumo de material - calcular por área normalmente
+            // Item ainda não foi editado ou não tem consumo de material - calcular normalmente
             const largura = safeParseFloat(item.largura);
             const altura = safeParseFloat(item.altura);
             const valorUnitarioM2 = safeParseFloat(item.valor_unitario_m2);
-            const area = largura * altura;
-            subtotalBase = area * quantidade * valorUnitarioM2;
-            console.log('📐 [calcularSubtotalItem] Calculando subtotal por área:', {
-                largura,
-                altura,
-                area,
-                quantidade,
-                valorUnitarioM2,
-                subtotalBase,
-                temConsumoMaterial,
-                temConsumoCustoTotalValido,
-                observacao: temConsumoMaterial ? 'Item com consumo de material mas ainda não editado - calculando por área' : 'Subtotal calculado por área × quantidade × valor_unitario_m2'
-            });
+            const tipoPrecificacao = (item.tipo_precificacao || '').toLowerCase();
+            
+            if (tipoPrecificacao === 'metro_linear') {
+                // Para metro linear: comprimento (maior dimensão) × quantidade × preço por metro
+                const comprimento = Math.max(largura, altura);
+                subtotalBase = comprimento * quantidade * valorUnitarioM2;
+                console.log('📏 [calcularSubtotalItem] Calculando subtotal por metro linear:', {
+                    largura,
+                    altura,
+                    comprimento,
+                    quantidade,
+                    valorUnitarioM2,
+                    subtotalBase,
+                    observacao: 'Subtotal calculado por comprimento × quantidade × valor_unitario (metro linear)'
+                });
+            } else {
+                const area = largura * altura;
+                subtotalBase = area * quantidade * valorUnitarioM2;
+                console.log('📐 [calcularSubtotalItem] Calculando subtotal por área:', {
+                    largura,
+                    altura,
+                    area,
+                    quantidade,
+                    valorUnitarioM2,
+                    subtotalBase,
+                    temConsumoMaterial,
+                    temConsumoCustoTotalValido,
+                    observacao: temConsumoMaterial ? 'Item com consumo de material mas ainda não editado - calculando por área' : 'Subtotal calculado por área × quantidade × valor_unitario_m2'
+                });
+            }
         }
         
         // IMPORTANTE: Para itens de consumo de material EDITADOS, o consumo_custo_total JÁ inclui acabamentos

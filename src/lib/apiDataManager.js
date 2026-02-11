@@ -484,11 +484,20 @@ class ApiDataManager {
 
   /**
    * Limpa o cache (útil ao fazer logout)
+   * Remove dados em memória para evitar que dados de um tenant anterior
+   * sejam exibidos quando outro usuário fizer login
    */
   clearCache() {
     this.cache.clear();
     this.loadPromises.clear();
     this.tokenCache = null;
+    
+    // Atualizar referência global
+    if (window.__apiDataManagerInstance) {
+      window.__apiDataManagerInstance.cache = new Map();
+      window.__apiDataManagerInstance.loadPromises = new Map();
+      window.__apiDataManagerInstance.tokenCache = null;
+    }
   }
 
   /**

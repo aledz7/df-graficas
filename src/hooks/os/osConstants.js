@@ -14,6 +14,7 @@ export const initialServicoM2State = () => ({
   valor_unitario_m2: '0.00',
   valor_unitario_bloqueado: false,
   valor_produto_origem: '',
+  tipo_precificacao: '',
   acabamentos_selecionados: [],
   subtotal_acabamentos: 0,
   subtotal_item: 0,

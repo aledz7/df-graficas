@@ -49,6 +49,16 @@ class FocusNfeService
         }
 
         $url = $this->getBaseUrl() . $endpoint;
+        $tokenMasked = substr($token, 0, 6) . '...' . substr($token, -4);
+
+        // Montar info de debug (curl equivalente)
+        $debugInfo = [
+            'method' => $method,
+            'url' => $url,
+            'token_masked' => $tokenMasked,
+            'payload_enviado' => $data,
+            'curl_equivalente' => $this->gerarCurlEquivalente($method, $url, $token, $data),
+        ];
 
         try {
             $response = Http::withBasicAuth($token, '')
@@ -65,9 +75,15 @@ class FocusNfeService
 
             $body = $response->json() ?? [];
 
+            $debugInfo['status_http'] = $response->status();
+            $debugInfo['response_headers'] = $response->headers();
+            $debugInfo['response_body'] = $body;
+
             Log::info("API Fiscal [{$method}] {$endpoint}", [
                 'status' => $response->status(),
                 'body' => $body,
+                'payload' => $data,
+                'url' => $url,
             ]);
 
             if ($response->successful()) {
@@ -75,6 +91,7 @@ class FocusNfeService
                     'sucesso' => true,
                     'status_http' => $response->status(),
                     'dados' => $body,
+                    'debug' => $debugInfo,
                 ];
             }
 
@@ -85,6 +102,7 @@ class FocusNfeService
                 'codigo' => $body['codigo'] ?? null,
                 'erros' => $body['erros'] ?? [],
                 'dados' => $body,
+                'debug' => $debugInfo,
             ];
         } catch (\Exception $e) {
             Log::error("API Fiscal - Exceção: {$e->getMessage()}", [
@@ -92,9 +110,12 @@ class FocusNfeService
                 'method' => $method,
             ]);
 
+            $debugInfo['exception'] = $e->getMessage();
+
             return [
                 'sucesso' => false,
                 'erro' => 'Erro de comunicação com a API de emissão: ' . $e->getMessage(),
+                'debug' => $debugInfo,
             ];
         }
     }
@@ -524,7 +545,7 @@ class FocusNfeService
     }
 
     /**
-     * Monta o payload da NFSe
+     * Monta o payload da NFSe (formato v2 da API - objetos aninhados)
      */
     protected function montarPayloadNFSe(Empresa $empresa, $cliente, OrdemServico $os, array $configs, array $dadosAdicionais = []): array
     {
@@ -543,23 +564,48 @@ class FocusNfeService
         // Montar discriminação dos serviços
         $discriminacao = $this->montarDiscriminacaoNFSe($os);
 
-        $payload = [
-            // Prestador
-            'razao_social' => $empresa->razao_social ?? $empresa->nome_fantasia,
+        // Prestador (empresa emissora)
+        $prestador = [
             'cnpj' => $cnpjPrestador,
             'inscricao_municipal' => preg_replace('/\D/', '', $empresa->inscricao_municipal ?? ''),
             'codigo_municipio' => $empresa->codigo_municipio_ibge ?? '',
+        ];
 
-            // Tomador
-            'tomador_razao_social' => $cliente->nome_completo ?? $cliente->apelido_fantasia ?? '',
-            'tomador_logradouro' => $cliente->logradouro ?? '',
-            'tomador_numero' => $cliente->numero ?? 'S/N',
-            'tomador_bairro' => $cliente->bairro ?? '',
-            'tomador_codigo_municipio' => $cliente->codigo_municipio_ibge ?? '',
-            'tomador_uf' => $cliente->estado ?? '',
-            'tomador_cep' => preg_replace('/\D/', '', $cliente->cep ?? ''),
+        // Tomador (cliente)
+        $tomador = [
+            'razao_social' => $cliente->nome_completo ?? $cliente->apelido_fantasia ?? '',
+            'endereco' => [
+                'logradouro' => $cliente->logradouro ?? '',
+                'numero' => $cliente->numero ?? $cliente->numero_endereco ?? 'S/N',
+                'bairro' => $cliente->bairro ?? '',
+                'codigo_municipio' => $cliente->codigo_municipio_ibge ?? '',
+                'uf' => $cliente->estado ?? '',
+                'cep' => preg_replace('/\D/', '', $cliente->cep ?? ''),
+            ],
+        ];
 
-            // Serviço
+        // CPF/CNPJ do tomador
+        if ($isTomadorPJ) {
+            $tomador['cnpj'] = $cpfCnpjTomador;
+        } else {
+            $tomador['cpf'] = $cpfCnpjTomador;
+        }
+
+        // Email do tomador
+        if ($cliente->email) {
+            $tomador['email'] = $cliente->email;
+        }
+        if ($cliente->telefone_principal) {
+            $tomador['telefone'] = preg_replace('/\D/', '', $cliente->telefone_principal);
+        }
+
+        // Complemento do endereço do tomador
+        if (!empty($cliente->complemento)) {
+            $tomador['endereco']['complemento'] = $cliente->complemento;
+        }
+
+        // Serviço
+        $servico = [
             'discriminacao' => $discriminacao,
             'valor_servicos' => round($valorServicos, 2),
             'base_calculo' => round($valorLiquido, 2),
@@ -569,24 +615,22 @@ class FocusNfeService
             'item_lista_servico' => $dadosAdicionais['item_lista_servico'] ?? $configs['item_lista_servico'] ?? '',
         ];
 
-        // CPF/CNPJ do tomador
-        if ($isTomadorPJ) {
-            $payload['tomador_cnpj'] = $cpfCnpjTomador;
-        } else {
-            $payload['tomador_cpf'] = $cpfCnpjTomador;
-        }
-
-        // Email do tomador
-        if ($cliente->email) {
-            $payload['tomador_email'] = $cliente->email;
-        }
-        if ($cliente->telefone_principal) {
-            $payload['tomador_telefone'] = preg_replace('/\D/', '', $cliente->telefone_principal);
-        }
-
         // Desconto
         if ($desconto > 0) {
-            $payload['desconto_condicionado'] = round($desconto, 2);
+            $servico['desconto_condicionado'] = round($desconto, 2);
+        }
+
+        $payload = [
+            'data_emissao' => now()->toIso8601String(),
+            'prestador' => $prestador,
+            'tomador' => $tomador,
+            'servico' => $servico,
+        ];
+
+        // Natureza da operação (se configurado)
+        $naturezaOperacao = $dadosAdicionais['natureza_operacao'] ?? $configs['natureza_operacao'] ?? '';
+        if (!empty($naturezaOperacao)) {
+            $payload['natureza_operacao'] = $naturezaOperacao;
         }
 
         return $payload;
@@ -751,6 +795,28 @@ class FocusNfeService
         $nota->save();
 
         return $nota;
+    }
+
+    /**
+     * Gera o comando curl equivalente para debug
+     */
+    protected function gerarCurlEquivalente(string $method, string $url, string $token, array $data = []): string
+    {
+        $tokenMasked = substr($token, 0, 6) . '...' . substr($token, -4);
+        $authBase64 = base64_encode($token . ':');
+        $authBase64Masked = substr($authBase64, 0, 10) . '...';
+
+        $curl = "curl -X {$method} \"{$url}\"";
+        $curl .= " \\\n  -H \"Authorization: Basic {$authBase64Masked}\"";
+        $curl .= " \\\n  -H \"Content-Type: application/json\"";
+        $curl .= " \\\n  -H \"Accept: application/json\"";
+
+        if (!empty($data) && in_array($method, ['POST', 'PUT', 'DELETE'])) {
+            $jsonData = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+            $curl .= " \\\n  -d '" . $jsonData . "'";
+        }
+
+        return $curl;
     }
 
     /**
