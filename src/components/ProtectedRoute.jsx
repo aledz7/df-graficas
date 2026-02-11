@@ -3,9 +3,52 @@ import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import { AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useEffect, useState } from 'react';
 
 // Componente para exibir quando não tem permissão
+// Redireciona automaticamente para a primeira rota permitida
 const AccessDenied = () => {
+  const { getFirstAllowedRoute, isOwner } = usePermissions();
+  const { user, loading: authLoading } = useAuth();
+  const [redirectTo, setRedirectTo] = useState(null);
+
+  useEffect(() => {
+    // Aguardar até que as permissões estejam carregadas
+    if (authLoading || !user) {
+      return;
+    }
+
+    // Se for dono, não deveria chegar aqui, mas por segurança redireciona para dashboard
+    if (isOwner) {
+      setRedirectTo('/dashboard');
+      return;
+    }
+
+    // Aguardar um pouco para garantir que as permissões estejam disponíveis
+    const timer = setTimeout(() => {
+      // Encontrar a primeira rota permitida
+      const firstRoute = getFirstAllowedRoute();
+      
+      // Se encontrou uma rota permitida, redirecionar
+      if (firstRoute) {
+        setRedirectTo(firstRoute);
+      }
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [getFirstAllowedRoute, isOwner, user, authLoading]);
+
+  // Se encontrou uma rota para redirecionar, redirecionar
+  if (redirectTo) {
+    return <Navigate to={redirectTo} replace />;
+  }
+
+  // Se ainda está processando, mostrar loading
+  if (authLoading || !user) {
+    return <div className="flex items-center justify-center min-h-[60vh]">Carregando...</div>;
+  }
+
+  // Fallback: mostrar mensagem de erro (não deveria chegar aqui)
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] p-8">
       <div className="bg-destructive/10 p-6 rounded-full mb-6">

@@ -115,6 +115,45 @@ export const usePermissions = () => {
     return hasPermission(actionPermission);
   }, [isOwner, hasPermission]);
 
+  // Encontra a primeira rota permitida para o usuário
+  const getFirstAllowedRoute = useCallback(() => {
+    // Donos sempre vão para o dashboard
+    if (isOwner) return '/dashboard';
+    
+    // Ordem de prioridade das rotas (mais importantes primeiro)
+    const routePriority = [
+      '/dashboard',
+      '/ferramentas/agenda',
+      '/operacional/pdv',
+      '/operacional/ordens-servico',
+      '/operacional/envelopamento',
+      '/cadastros/clientes',
+      '/cadastros/produtos',
+      '/financeiro/contas-receber',
+      '/caixa/fluxo-caixa',
+      '/relatorios',
+      '/ferramentas/feed-atividades',
+    ];
+    
+    // Verificar rotas na ordem de prioridade
+    for (const route of routePriority) {
+      if (canAccessRoute(route)) {
+        return route;
+      }
+    }
+    
+    // Se não encontrou nenhuma rota prioritária, procurar qualquer rota permitida
+    for (const route of Object.keys(routePermissions)) {
+      if (canAccessRoute(route)) {
+        return route;
+      }
+    }
+    
+    // Se não encontrou nenhuma rota permitida, retornar null
+    // O componente que chama deve tratar isso
+    return null;
+  }, [isOwner, canAccessRoute]);
+
   return {
     permissions,
     hasPermission,
@@ -122,6 +161,7 @@ export const usePermissions = () => {
     hasAllPermissions,
     canAccessRoute,
     canPerformAction,
+    getFirstAllowedRoute,
     isOwner,
     // isAdmin sempre false - funcionários não podem ser admin do sistema
     // A administração de tenants é feita por um sistema separado

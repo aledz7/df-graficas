@@ -201,8 +201,71 @@ export const AuthProvider = ({ children }) => {
       // Carregar tema do usuário após login bem-sucedido
       await loadUserTheme();
       
-      // Redirect to dashboard
-      navigate('/dashboard', { replace: true });
+      // Encontrar a primeira rota permitida para o usuário
+      // Importar dinamicamente para evitar dependência circular
+      const { routePermissions } = await import('@/hooks/usePermissions');
+      
+      // Verificar permissões do usuário
+      const userPermissions = response.user?.permissions || {};
+      const isOwner = response.user?.is_owner === true || response.user?.role === 'owner';
+      
+      let redirectRoute = '/dashboard'; // Rota padrão
+      
+      if (!isOwner) {
+        // Ordem de prioridade das rotas (mais importantes primeiro)
+        const routePriority = [
+          '/dashboard',
+          '/ferramentas/agenda',
+          '/operacional/pdv',
+          '/operacional/ordens-servico',
+          '/operacional/envelopamento',
+          '/cadastros/clientes',
+          '/cadastros/produtos',
+          '/financeiro/contas-receber',
+          '/caixa/fluxo-caixa',
+          '/relatorios',
+          '/ferramentas/feed-atividades',
+        ];
+        
+        // Função auxiliar para verificar se tem permissão
+        const hasAnyPermission = (permissionList) => {
+          if (!permissionList || permissionList.length === 0) return true;
+          return permissionList.some(permission => !!userPermissions[permission]);
+        };
+        
+        // Função auxiliar para verificar acesso à rota
+        const canAccessRoute = (path) => {
+          const routeKey = Object.keys(routePermissions).find(route => 
+            path === route || path.startsWith(route + '/')
+          );
+          
+          if (!routeKey) return true; // Rota sem restrição
+          
+          const requiredPermissions = routePermissions[routeKey];
+          return hasAnyPermission(requiredPermissions);
+        };
+        
+        // Verificar rotas na ordem de prioridade
+        for (const route of routePriority) {
+          if (canAccessRoute(route)) {
+            redirectRoute = route;
+            break;
+          }
+        }
+        
+        // Se não encontrou nenhuma rota prioritária, procurar qualquer rota permitida
+        if (redirectRoute === '/dashboard' && !canAccessRoute('/dashboard')) {
+          for (const route of Object.keys(routePermissions)) {
+            if (canAccessRoute(route)) {
+              redirectRoute = route;
+              break;
+            }
+          }
+        }
+      }
+      
+      // Redirect to first allowed route
+      navigate(redirectRoute, { replace: true });
       
       return { success: true };
     } catch (error) {
@@ -242,8 +305,70 @@ export const AuthProvider = ({ children }) => {
           return { success: false, message: 'Erro ao salvar token de autenticação' };
         }
         
-        // Redirect to dashboard
-        navigate('/dashboard', { replace: true });
+        // Encontrar a primeira rota permitida para o usuário
+        const { routePermissions } = await import('@/hooks/usePermissions');
+        
+        // Verificar permissões do usuário
+        const userPermissions = response.user?.permissions || {};
+        const isOwner = response.user?.is_owner === true || response.user?.role === 'owner';
+        
+        let redirectRoute = '/dashboard'; // Rota padrão
+        
+        if (!isOwner) {
+          // Ordem de prioridade das rotas (mais importantes primeiro)
+          const routePriority = [
+            '/dashboard',
+            '/ferramentas/agenda',
+            '/operacional/pdv',
+            '/operacional/ordens-servico',
+            '/operacional/envelopamento',
+            '/cadastros/clientes',
+            '/cadastros/produtos',
+            '/financeiro/contas-receber',
+            '/caixa/fluxo-caixa',
+            '/relatorios',
+            '/ferramentas/feed-atividades',
+          ];
+          
+          // Função auxiliar para verificar se tem permissão
+          const hasAnyPermission = (permissionList) => {
+            if (!permissionList || permissionList.length === 0) return true;
+            return permissionList.some(permission => !!userPermissions[permission]);
+          };
+          
+          // Função auxiliar para verificar acesso à rota
+          const canAccessRoute = (path) => {
+            const routeKey = Object.keys(routePermissions).find(route => 
+              path === route || path.startsWith(route + '/')
+            );
+            
+            if (!routeKey) return true; // Rota sem restrição
+            
+            const requiredPermissions = routePermissions[routeKey];
+            return hasAnyPermission(requiredPermissions);
+          };
+          
+          // Verificar rotas na ordem de prioridade
+          for (const route of routePriority) {
+            if (canAccessRoute(route)) {
+              redirectRoute = route;
+              break;
+            }
+          }
+          
+          // Se não encontrou nenhuma rota prioritária, procurar qualquer rota permitida
+          if (redirectRoute === '/dashboard' && !canAccessRoute('/dashboard')) {
+            for (const route of Object.keys(routePermissions)) {
+              if (canAccessRoute(route)) {
+                redirectRoute = route;
+                break;
+              }
+            }
+          }
+        }
+        
+        // Redirect to first allowed route
+        navigate(redirectRoute, { replace: true });
         
         return { success: true };
       } else {

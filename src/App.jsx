@@ -14,6 +14,7 @@ import { OSCountProvider } from '@/contexts/OSCountContext';
 import LoginPage from '@/pages/auth/LoginPage';
 import SignUpPage from '@/pages/auth/SignUpPage';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import { RedirectToFirstAllowedRoute } from '@/components/RedirectToFirstAllowedRoute';
 import TestApiPage from '@/pages/TestApiPage';
 import ApiDebugPage from '@/pages/debug/ApiDebugPage';
 import { clienteService, produtoService, dadosUsuarioService, aparenciaService } from '@/services/api';
@@ -586,8 +587,8 @@ function AppContent() {
           <Route path="/caixa/fechamento-caixa" element={renderWithLayout(FechamentoCaixaPage, { vendedorAtual })} />
           <Route path="/caixa/historico-caixa" element={renderWithLayout(HistoricoCaixaPage)} />
           
-          {/* Root route - Redirect to dashboard */}
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          {/* Root route - Redirect to first allowed route */}
+          <Route path="/" element={<RedirectToFirstAllowedRoute />} />
           
           {/* Catch-all route - Protected */}
           <Route path="*" element={

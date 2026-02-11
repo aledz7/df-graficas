@@ -1,5 +1,6 @@
 import React, { lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { RedirectToFirstAllowedRoute } from '@/components/RedirectToFirstAllowedRoute';
 
 const DashboardPage = lazy(() => import('@/pages/DashboardPage'));
 const ProdutosPage = lazy(() => import('@/pages/ProdutosPage'));
@@ -88,7 +89,7 @@ const RelatorioRecebimentosClientesPage = lazy(() => import('@/components/relato
 const AppRoutes = ({ logoUrl, nomeEmpresa, vendedorAtual, theme, setTheme, setAppLogoUrl, setAppNomeEmpresa, setAppNomeSistema }) => {
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/" element={<RedirectToFirstAllowedRoute />} />
       <Route path="/dashboard" element={<DashboardPage vendedorAtual={vendedorAtual} />} />
       
       {/* Cadastros */}
