@@ -2,12 +2,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ProdutoForm from '@/components/produtos/ProdutoForm';
 import { useToast } from '@/components/ui/use-toast';
-import { safeJsonParse } from '@/lib/utils';
-import { apiDataManager } from '@/lib/apiDataManager';
 import { motion } from 'framer-motion';
 import { PackagePlus, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { productCategoryService } from '@/services/api';
+import { productCategoryService, produtoService } from '@/services/api';
 
 const NovoProdutoPage = ({ vendedorAtual }) => {
   const navigate = useNavigate();
@@ -30,18 +28,31 @@ const NovoProdutoPage = ({ vendedorAtual }) => {
   }, [loadInitialData]);
 
   const handleSaveProduto = async (produtoData, cadastrarOutro = false) => {
-    const produtos = safeJsonParse(await apiDataManager.getItem('produtos'), []);
-    const novosProdutos = [...produtos, { ...produtoData, id: produtoData.id || `prod-${Date.now()}` }];
-    await apiDataManager.setItem('produtos', novosProdutos);
-    
-    toast({ title: "Sucesso!", description: `Produto "${produtoData.nome}" cadastrado com sucesso.` });
+    try {
+      // Criar produto via API
+      const response = await produtoService.create(produtoData);
+      
+      toast({ 
+        title: "Sucesso!", 
+        description: `Produto "${produtoData.nome}" cadastrado com sucesso.`,
+        variant: "default"
+      });
 
-    if (cadastrarOutro) {
-      setIsModalOpen(false); // Fecha e reabre para resetar o form pelo ProdutoForm
-      setTimeout(() => setIsModalOpen(true), 0);
-    } else {
-      setIsModalOpen(false);
-      navigate('/cadastros/produtos'); // Volta para a lista de produtos
+      if (cadastrarOutro) {
+        setIsModalOpen(false); // Fecha e reabre para resetar o form pelo ProdutoForm
+        setTimeout(() => setIsModalOpen(true), 0);
+      } else {
+        setIsModalOpen(false);
+        navigate('/cadastros/produtos'); // Volta para a lista de produtos
+      }
+    } catch (error) {
+      console.error('Erro ao criar produto:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Erro ao cadastrar produto';
+      toast({ 
+        title: "Erro ao cadastrar produto", 
+        description: errorMessage,
+        variant: "destructive"
+      });
     }
   };
 
@@ -70,12 +81,10 @@ const NovoProdutoPage = ({ vendedorAtual }) => {
 
       {isModalOpen && (
         <ProdutoForm
-          produto={null} // Para garantir que é um novo produto
+          isOpen={isModalOpen}
+          produtoEmEdicao={null} // Para garantir que é um novo produto
           onSave={handleSaveProduto}
           onClose={handleCloseForm}
-          categorias={categorias}
-          setCategorias={setCategorias}
-          vendedorAtual={vendedorAtual}
           showSaveAndNewButton={true} // Prop para mostrar o botão "Salvar e Cadastrar Outro"
         />
       )}

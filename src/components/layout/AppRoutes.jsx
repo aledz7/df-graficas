@@ -62,6 +62,7 @@ const AparenciaSettingsPage = lazy(() => import('@/pages/AparenciaSettingsPage')
 const ProdutoConfigPage = lazy(() => import('@/pages/ProdutoConfigPage'));
 const ConfiguracaoPontosPage = lazy(() => import('@/pages/ConfiguracaoPontosPage'));
 const NfeSettingsPage = lazy(() => import('@/pages/NfeSettingsPage'));
+const NovoProdutoPage = lazy(() => import('@/pages/NovoProdutoPage'));
 
 // Relatórios Financeiros
 const FaturamentoDetalhadoPage = lazy(() => import('@/components/relatorios/financeiros/RelatorioFaturamento'));
@@ -84,6 +85,10 @@ const EstoqueRelatorioPage = lazy(() => import('@/components/relatorios/operacio
 const DesempenhoVendedorPage = lazy(() => import('@/components/relatorios/gerenciais/RelatorioVendasVendedor')); // Reutilizando
 const DividasClientesPage = lazy(() => import('@/components/relatorios/gerenciais/RelatorioDividasClientes'));
 const RelatorioRecebimentosClientesPage = lazy(() => import('@/components/relatorios/gerenciais/RelatorioRecebimentosClientes'));
+const RelatorioAnaliticoPage = lazy(() => import('@/pages/RelatorioAnaliticoPage'));
+const RelatorioVendasComMetasPage = lazy(() => import('@/pages/RelatorioVendasComMetasPage'));
+const RelatorioAniversariantesPage = lazy(() => import('@/pages/RelatorioAniversariantesPage'));
+const RelatorioClientesQueMaisCompraramPage = lazy(() => import('@/pages/RelatorioClientesQueMaisCompraramPage'));
 
 
 const AppRoutes = ({ logoUrl, nomeEmpresa, vendedorAtual, theme, setTheme, setAppLogoUrl, setAppNomeEmpresa, setAppNomeSistema }) => {
@@ -94,6 +99,7 @@ const AppRoutes = ({ logoUrl, nomeEmpresa, vendedorAtual, theme, setTheme, setAp
       
       {/* Cadastros */}
       <Route path="/cadastros/produtos" element={<ProdutosPage />} />
+      <Route path="/cadastros/novo-produto" element={<NovoProdutoPage vendedorAtual={vendedorAtual} />} />
       <Route path="/cadastros/clientes" element={<ClientesPage />} />
       <Route path="/cadastros/categorias" element={<CategoriasPage />} />
       <Route path="/cadastros/cores" element={<CoresPage />} />
@@ -161,11 +167,15 @@ const AppRoutes = ({ logoUrl, nomeEmpresa, vendedorAtual, theme, setTheme, setAp
       <Route path="/relatorios/operacional/envelopamentos" element={<EnvelopamentosRelatorioPage />} />
       <Route path="/relatorios/operacional/produtos-e-estoque" element={<EstoqueRelatorioPage />} />
       <Route path="/relatorios/operacional/lucratividade-por-produto" element={<RelatorioLucratividadeProdutosPage />} />
+      <Route path="/relatorios/operacional/analitico" element={<RelatorioAnaliticoPage />} />
+      <Route path="/relatorios/operacional/vendas-com-metas" element={<RelatorioVendasComMetasPage />} />
       
       <Route path="/relatorios/gerencial/comissoes" element={<RelatorioComissoesPage />} />
       <Route path="/relatorios/gerencial/desempenho-por-vendedor" element={<DesempenhoVendedorPage />} />
       <Route path="/relatorios/gerencial/dividas-de-clientes" element={<DividasClientesPage />} />
       <Route path="/relatorios/gerencial/recebimentos-por-cliente" element={<RelatorioRecebimentosClientesPage />} />
+      <Route path="/relatorios/gerencial/aniversariantes-mes" element={<RelatorioAniversariantesPage />} />
+      <Route path="/relatorios/gerencial/clientes-que-mais-compraram" element={<RelatorioClientesQueMaisCompraramPage />} />
 
 
       {/* Ferramentas */}

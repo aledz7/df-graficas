@@ -11,7 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('historico_fechamento_mes', function (Blueprint $table) {
+        if (!Schema::hasTable('historico_fechamento_mes')) {
+            Schema::create('historico_fechamento_mes', function (Blueprint $table) {
             $table->id();
             $table->foreignId('tenant_id')->constrained('tenants')->onDelete('cascade');
             
@@ -44,7 +45,8 @@ return new class extends Migration
             $table->index('tipo');
             $table->index(['mes', 'ano']);
             $table->index('data_acao');
-        });
+            });
+        }
     }
 
     /**

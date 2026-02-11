@@ -11,29 +11,56 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('itens_venda', function (Blueprint $table) {
-            // Primeiro, remover a foreign key constraint de venda_id (se existir)
-            // Isso é necessário antes de tornar a coluna nullable
-            $table->dropForeign(['venda_id']);
-        });
+        // Verificar e remover foreign key se necessário
+        try {
+            Schema::table('itens_venda', function (Blueprint $table) {
+                $table->dropForeign(['venda_id']);
+            });
+        } catch (\Exception $e) {
+            // Foreign key não existe ou já foi removida, ignorar
+        }
         
+        // Tornar venda_id nullable e adicionar novos campos
         Schema::table('itens_venda', function (Blueprint $table) {
             // Tornar venda_id nullable (para OS, Envelopamento, Marketplace que não estão na tabela vendas)
-            $table->foreignId('venda_id')->nullable()->change();
+            if (Schema::hasColumn('itens_venda', 'venda_id')) {
+                $table->foreignId('venda_id')->nullable()->change();
+            }
             
             // Recriar a foreign key constraint, mas permitindo null
-            $table->foreign('venda_id')->references('id')->on('vendas')->onDelete('cascade');
+            try {
+                $table->foreign('venda_id')->references('id')->on('vendas')->onDelete('cascade');
+            } catch (\Exception $e) {
+                // Foreign key já existe, ignorar
+            }
             
             // Adicionar campo para referenciar o ID da venda original (OS, Envelopamento, etc)
-            $table->unsignedBigInteger('venda_referencia_id')->nullable()->after('venda_id');
+            if (!Schema::hasColumn('itens_venda', 'venda_referencia_id')) {
+                $table->unsignedBigInteger('venda_referencia_id')->nullable()->after('venda_id');
+            }
             
             // Adicionar campo para identificar o tipo de venda
-            $table->string('tipo_venda', 20)->default('pdv')->after('venda_referencia_id');
-            
-            // Índice para melhorar consultas por tipo
-            $table->index(['tenant_id', 'tipo_venda']);
-            $table->index(['tenant_id', 'venda_referencia_id']);
+            if (!Schema::hasColumn('itens_venda', 'tipo_venda')) {
+                $table->string('tipo_venda', 20)->default('pdv')->after('venda_referencia_id');
+            }
         });
+        
+        // Adicionar índices separadamente para evitar erros se já existirem
+        try {
+            Schema::table('itens_venda', function (Blueprint $table) {
+                $table->index(['tenant_id', 'tipo_venda'], 'itens_venda_tenant_id_tipo_venda_index');
+            });
+        } catch (\Exception $e) {
+            // Índice já existe, ignorar
+        }
+        
+        try {
+            Schema::table('itens_venda', function (Blueprint $table) {
+                $table->index(['tenant_id', 'venda_referencia_id'], 'itens_venda_tenant_id_venda_referencia_id_index');
+            });
+        } catch (\Exception $e) {
+            // Índice já existe, ignorar
+        }
     }
 
     /**

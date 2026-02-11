@@ -3,10 +3,13 @@
 namespace App\Http\Controllers\Api;
 
 use App\Models\Cliente;
+use App\Models\Venda;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 class ClienteController extends ResourceController
 {
@@ -407,5 +410,139 @@ class ClienteController extends ResourceController
         $digito2 = $resto < 2 ? 0 : 11 - $resto;
         
         return $cnpj[13] == $digito2;
+    }
+
+    /**
+     * Relatório de aniversariantes do mês
+     * 
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function aniversariantesDoMes(Request $request): JsonResponse
+    {
+        try {
+            $tenantId = $request->user()->tenant_id;
+            $mes = $request->input('mes', Carbon::now()->month);
+            $ano = $request->input('ano', Carbon::now()->year);
+
+            // Buscar clientes que fazem aniversário no mês selecionado
+            $clientes = Cliente::where('tenant_id', $tenantId)
+                ->where('status', true)
+                ->whereNotNull('data_nascimento_abertura')
+                ->whereMonth('data_nascimento_abertura', $mes)
+                ->orderByRaw('DAY(data_nascimento_abertura)')
+                ->get()
+                ->map(function($cliente) use ($ano) {
+                    $dataNascimento = Carbon::parse($cliente->data_nascimento_abertura);
+                    $dataAniversario = Carbon::create($ano, $dataNascimento->month, $dataNascimento->day);
+                    
+                    // Calcular idade ou anos de empresa
+                    $idadeOuAnos = null;
+                    if ($cliente->tipo_pessoa === 'Pessoa Física') {
+                        $idadeOuAnos = $dataNascimento->diffInYears(Carbon::now());
+                    } else {
+                        // Para empresas, calcular anos desde a fundação
+                        $idadeOuAnos = $dataNascimento->diffInYears(Carbon::now());
+                    }
+                    
+                    return [
+                        'id' => $cliente->id,
+                        'nome' => $cliente->nome_completo ?? $cliente->apelido_fantasia ?? $cliente->nome ?? 'Cliente não identificado',
+                        'tipo_pessoa' => $cliente->tipo_pessoa ?? 'Pessoa Física',
+                        'data_nascimento_abertura' => $cliente->data_nascimento_abertura->format('Y-m-d'),
+                        'data_aniversario' => $dataAniversario->format('Y-m-d'),
+                        'dia_aniversario' => $dataNascimento->day,
+                        'idade' => $cliente->tipo_pessoa === 'Pessoa Física' ? $idadeOuAnos : null,
+                        'anos_empresa' => $cliente->tipo_pessoa === 'Pessoa Jurídica' ? $idadeOuAnos : null,
+                        'email' => $cliente->email,
+                        'telefone' => $cliente->telefone_principal,
+                        'whatsapp' => $cliente->whatsapp,
+                        'cidade' => $cliente->cidade,
+                        'estado' => $cliente->estado,
+                    ];
+                });
+
+            return $this->success([
+                'clientes' => $clientes,
+                'mes' => $mes,
+                'ano' => $ano,
+                'total' => $clientes->count()
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Erro ao buscar aniversariantes do mês', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return $this->error('Erro ao buscar aniversariantes: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Relatório de clientes que mais compraram no ano (por valor)
+     * 
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function clientesQueMaisCompraram(Request $request): JsonResponse
+    {
+        try {
+            $tenantId = $request->user()->tenant_id;
+            $ano = $request->input('ano', Carbon::now()->year);
+
+            // Buscar todas as vendas do ano
+            $vendas = Venda::where('tenant_id', $tenantId)
+                ->where('status', 'concluida')
+                ->whereYear('data_emissao', $ano)
+                ->whereNotNull('cliente_id')
+                ->with('cliente:id,nome_completo,apelido_fantasia,nome,tipo_pessoa,email,telefone_principal')
+                ->get();
+
+            // Agrupar por cliente e calcular totais
+            $clientesCompras = $vendas->groupBy('cliente_id')
+                ->map(function($grupoVendas, $clienteId) {
+                    $cliente = $grupoVendas->first()->cliente;
+                    $totalCompras = $grupoVendas->sum('valor_total');
+                    $quantidadeCompras = $grupoVendas->count();
+                    $ticketMedio = $quantidadeCompras > 0 ? $totalCompras / $quantidadeCompras : 0;
+
+                    return [
+                        'cliente_id' => $clienteId,
+                        'cliente_nome' => $cliente ? ($cliente->nome_completo ?? $cliente->apelido_fantasia ?? $cliente->nome ?? 'Cliente não identificado') : 'Cliente não identificado',
+                        'tipo_pessoa' => $cliente ? ($cliente->tipo_pessoa ?? 'Pessoa Física') : 'Pessoa Física',
+                        'email' => $cliente ? $cliente->email : null,
+                        'telefone' => $cliente ? $cliente->telefone_principal : null,
+                        'total_compras' => $totalCompras,
+                        'quantidade_compras' => $quantidadeCompras,
+                        'ticket_medio' => $ticketMedio,
+                    ];
+                })
+                ->sortByDesc('total_compras')
+                ->values();
+
+            // Calcular total geral
+            $totalGeral = $clientesCompras->sum('total_compras');
+
+            // Adicionar percentual de participação
+            $clientesCompras = $clientesCompras->map(function($cliente) use ($totalGeral) {
+                $percentual = $totalGeral > 0 ? ($cliente['total_compras'] / $totalGeral) * 100 : 0;
+                $cliente['percentual_participacao'] = round($percentual, 2);
+                return $cliente;
+            });
+
+            return $this->success([
+                'clientes' => $clientesCompras,
+                'ano' => $ano,
+                'total_geral' => $totalGeral,
+                'total_clientes' => $clientesCompras->count()
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Erro ao buscar clientes que mais compraram', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return $this->error('Erro ao buscar clientes que mais compraram: ' . $e->getMessage(), 500);
+        }
     }
 }

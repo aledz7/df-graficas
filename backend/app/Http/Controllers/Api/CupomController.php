@@ -71,7 +71,7 @@ class CupomController extends Controller
                 'tipo_desconto' => 'required|in:percentual,valor_fixo',
                 'valor_desconto' => 'required|numeric|min:0.01',
                 'valor_minimo' => 'nullable|numeric|min:0',
-                'limite_uso' => 'required|in:ilimitado,uma_vez_por_cliente,quantidade_fixa',
+                'limite_uso' => 'required|in:ilimitado,uma_vez_por_cliente,primeira_compra,quantidade_fixa',
                 'quantidade_limite' => 'nullable|integer|min:1',
                 'cliente_id' => 'nullable|integer|exists:clientes,id',
                 'produto_ids' => 'nullable|array',

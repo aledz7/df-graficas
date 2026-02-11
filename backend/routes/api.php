@@ -55,6 +55,7 @@ use App\Http\Controllers\Api\Admin\TenantManagerController;
 use App\Http\Controllers\Api\PermissionProfileController;
 use App\Http\Controllers\Api\FormaPagamentoController;
 use App\Http\Controllers\Api\CupomController;
+use App\Http\Controllers\Api\MetaVendaController;
 
 /*
 |--------------------------------------------------------------------------
@@ -160,6 +161,8 @@ Route::middleware(['api.auth'])->group(function () {
     
     // Clientes
     Route::apiResource('clientes', ClienteController::class);
+    Route::get('clientes/relatorio/aniversariantes-mes', [ClienteController::class, 'aniversariantesDoMes']);
+    Route::get('clientes/relatorio/que-mais-compraram', [ClienteController::class, 'clientesQueMaisCompraram']);
     
     // Atendimentos
     Route::apiResource('atendimentos', AtendimentoController::class);
@@ -178,9 +181,15 @@ Route::middleware(['api.auth'])->group(function () {
         Route::get('estatisticas', [VendaController::class, 'estatisticas']);
         Route::get('relatorio-faturamento', [VendaController::class, 'relatorioFaturamento']);
         Route::get('relatorio-geral-recebimentos', [VendaController::class, 'relatorioGeralRecebimentos']);
+        Route::get('relatorio-analitico', [VendaController::class, 'relatorioAnalitico']);
+        Route::get('relatorio-com-metas', [VendaController::class, 'relatorioComMetas']);
         Route::post('{id}/cancelar', [VendaController::class, 'cancelar']);
         Route::post('{id}/estornar', [VendaController::class, 'estornar']);
     });
+    
+    // Metas de Vendas
+    Route::apiResource('metas-vendas', MetaVendaController::class);
+    Route::get('metas-vendas/periodo/meta', [MetaVendaController::class, 'getMetaPeriodo']);
     Route::apiResource('vendas', VendaController::class);
     Route::delete('vendas/codigo/{codigo}', [VendaController::class, 'destroyByCodigo']);
     

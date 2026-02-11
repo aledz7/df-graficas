@@ -12,18 +12,42 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('ordens_servico_itens', function (Blueprint $table) {
-            $table->string('consumo_material_utilizado')->nullable()->after('detalhes');
-            $table->decimal('consumo_largura_peca', 10, 2)->nullable()->after('consumo_material_utilizado');
-            $table->decimal('consumo_altura_peca', 10, 2)->nullable()->after('consumo_largura_peca');
-            $table->integer('consumo_quantidade_solicitada')->nullable()->after('consumo_altura_peca');
-            $table->decimal('consumo_largura_chapa', 10, 2)->nullable()->after('consumo_quantidade_solicitada');
-            $table->decimal('consumo_altura_chapa', 10, 2)->nullable()->after('consumo_largura_chapa');
-            $table->decimal('consumo_valor_unitario_chapa', 10, 2)->nullable()->after('consumo_altura_chapa');
-            $table->integer('consumo_pecas_por_chapa')->nullable()->after('consumo_valor_unitario_chapa');
-            $table->integer('consumo_chapas_necessarias')->nullable()->after('consumo_pecas_por_chapa');
-            $table->decimal('consumo_custo_total', 12, 2)->nullable()->after('consumo_chapas_necessarias');
-            $table->decimal('consumo_custo_unitario', 12, 4)->nullable()->after('consumo_custo_total');
-            $table->decimal('consumo_aproveitamento_percentual', 5, 2)->nullable()->after('consumo_custo_unitario');
+            if (!Schema::hasColumn('ordens_servico_itens', 'consumo_material_utilizado')) {
+                $table->string('consumo_material_utilizado')->nullable()->after('detalhes');
+            }
+            if (!Schema::hasColumn('ordens_servico_itens', 'consumo_largura_peca')) {
+                $table->decimal('consumo_largura_peca', 10, 2)->nullable()->after('consumo_material_utilizado');
+            }
+            if (!Schema::hasColumn('ordens_servico_itens', 'consumo_altura_peca')) {
+                $table->decimal('consumo_altura_peca', 10, 2)->nullable()->after('consumo_largura_peca');
+            }
+            if (!Schema::hasColumn('ordens_servico_itens', 'consumo_quantidade_solicitada')) {
+                $table->integer('consumo_quantidade_solicitada')->nullable()->after('consumo_altura_peca');
+            }
+            if (!Schema::hasColumn('ordens_servico_itens', 'consumo_largura_chapa')) {
+                $table->decimal('consumo_largura_chapa', 10, 2)->nullable()->after('consumo_quantidade_solicitada');
+            }
+            if (!Schema::hasColumn('ordens_servico_itens', 'consumo_altura_chapa')) {
+                $table->decimal('consumo_altura_chapa', 10, 2)->nullable()->after('consumo_largura_chapa');
+            }
+            if (!Schema::hasColumn('ordens_servico_itens', 'consumo_valor_unitario_chapa')) {
+                $table->decimal('consumo_valor_unitario_chapa', 10, 2)->nullable()->after('consumo_altura_chapa');
+            }
+            if (!Schema::hasColumn('ordens_servico_itens', 'consumo_pecas_por_chapa')) {
+                $table->integer('consumo_pecas_por_chapa')->nullable()->after('consumo_valor_unitario_chapa');
+            }
+            if (!Schema::hasColumn('ordens_servico_itens', 'consumo_chapas_necessarias')) {
+                $table->integer('consumo_chapas_necessarias')->nullable()->after('consumo_pecas_por_chapa');
+            }
+            if (!Schema::hasColumn('ordens_servico_itens', 'consumo_custo_total')) {
+                $table->decimal('consumo_custo_total', 12, 2)->nullable()->after('consumo_chapas_necessarias');
+            }
+            if (!Schema::hasColumn('ordens_servico_itens', 'consumo_custo_unitario')) {
+                $table->decimal('consumo_custo_unitario', 12, 4)->nullable()->after('consumo_custo_total');
+            }
+            if (!Schema::hasColumn('ordens_servico_itens', 'consumo_aproveitamento_percentual')) {
+                $table->decimal('consumo_aproveitamento_percentual', 5, 2)->nullable()->after('consumo_custo_unitario');
+            }
         });
     }
 

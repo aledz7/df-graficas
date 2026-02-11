@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Eye, Trash2, Search, FileText, Printer, CircleDollarSign, CheckCircle2, PackageCheck, AlertTriangle, FilePlus, History, CalendarDays, CalendarClock, Loader2, FileEdit, ChevronLeft, ChevronRight, Play, Calculator, Info, Receipt } from 'lucide-react';
+import { Eye, Trash2, Search, FileText, Printer, CircleDollarSign, CheckCircle2, PackageCheck, AlertTriangle, FilePlus, History, CalendarDays, CalendarClock, Loader2, FileEdit, ChevronLeft, ChevronRight, Play, Calculator, Info, Receipt, ChevronDown } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { safeJsonParse, cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
@@ -12,11 +12,18 @@ import { Badge } from '@/components/ui/badge';
 import DeleteWithJustificationModal from '@/components/utils/DeleteWithJustificationModal.jsx';
 import { moverParaLixeiraOS } from '@/hooks/os/osDataService';
 import OSDocumentModal from '@/components/os/OSDocumentModal.jsx';
+import OSPrintProducaoModal from '@/components/os/OSPrintProducaoModal.jsx';
 import { useReactToPrint } from 'react-to-print';
 import { apiDataManager } from '@/lib/apiDataManager';
 import { osService, empresaService } from '@/services/api';
 import { calcularSubtotalItem } from '@/hooks/os/osLogic.js';
 import EmitirNotaFiscalModal from '@/components/os/EmitirNotaFiscalModal';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -76,6 +83,10 @@ const OSHistoricoPage = ({ vendedorAtual }) => {
 
   const [isNotinhaModalOpen, setIsNotinhaModalOpen] = useState(false);
   const [selectedOsForNotinha, setSelectedOsForNotinha] = useState(null);
+  const [isPrintProducaoModalOpen, setIsPrintProducaoModalOpen] = useState(false);
+  const [selectedOsForPrintProducao, setSelectedOsForPrintProducao] = useState(null);
+  const [isDocumentModalOpen, setIsDocumentModalOpen] = useState(false);
+  const [selectedOsForDocument, setSelectedOsForDocument] = useState(null);
   const notinhaRef = useRef();
   const [logoUrl, setLogoUrl] = useState('');
   const [nomeEmpresa, setNomeEmpresa] = useState('');
@@ -739,6 +750,16 @@ const OSHistoricoPage = ({ vendedorAtual }) => {
     setIsNotinhaModalOpen(true);
   };
 
+  const handleOpenPrintProducaoModal = (os) => {
+    setSelectedOsForPrintProducao(os);
+    setIsPrintProducaoModalOpen(true);
+  };
+
+  const handleOpenDocumentModal = (os) => {
+    setSelectedOsForDocument(os);
+    setIsDocumentModalOpen(true);
+  };
+
   const getStatusBadge = (status, dataValidade) => {
     const isOrcamento = status === 'Orçamento Salvo' || status === 'Orçamento Salvo (Editado)';
     let isExpirado = false;
@@ -1197,15 +1218,33 @@ const OSHistoricoPage = ({ vendedorAtual }) => {
                           <Eye className="mr-1 h-4 w-4" />
                           Ver
                         </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={() => handleOpenNotinhaModal(os)} 
-                          className="flex-1 text-blue-500 hover:text-blue-600 border-blue-300 hover:border-blue-400"
-                        >
-                          <Printer className="mr-1 h-4 w-4" />
-                          Imprimir
-                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="flex-1 text-blue-500 hover:text-blue-600 border-blue-300 hover:border-blue-400"
+                            >
+                              <Printer className="mr-1 h-4 w-4" />
+                              Imprimir
+                              <ChevronDown className="ml-1 h-3 w-3" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleOpenDocumentModal(os)}>
+                              <FileText className="mr-2 h-4 w-4" />
+                              Impressão do Pedido
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleOpenNotinhaModal(os)}>
+                              <Receipt className="mr-2 h-4 w-4" />
+                              Impressão do Recibo
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleOpenPrintProducaoModal(os)}>
+                              <PackageCheck className="mr-2 h-4 w-4" />
+                              Impressão do Print de Produção
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                         {(os.status_os === 'Finalizada' || os.status_os === 'Entregue') && (
                           <Button 
                             variant="outline" 
@@ -1330,9 +1369,27 @@ const OSHistoricoPage = ({ vendedorAtual }) => {
                         <Button variant="ghost" size="icon" onClick={() => handleViewOS(os)} title="Visualizar OS">
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleOpenNotinhaModal(os)} title="Imprimir Notinha" className="text-blue-500 hover:text-blue-600">
-                          <Printer className="h-4 w-4" />
-                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" title="Opções de Impressão" className="text-blue-500 hover:text-blue-600">
+                              <Printer className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleOpenDocumentModal(os)}>
+                              <FileText className="mr-2 h-4 w-4" />
+                              Impressão do Pedido
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleOpenNotinhaModal(os)}>
+                              <Receipt className="mr-2 h-4 w-4" />
+                              Impressão do Recibo
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleOpenPrintProducaoModal(os)}>
+                              <PackageCheck className="mr-2 h-4 w-4" />
+                              Impressão do Print de Produção
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                         {(os.status_os === 'Finalizada' || os.status_os === 'Entregue') && (
                           <Button variant="ghost" size="icon" onClick={() => { setSelectedOsForNota(os); setIsNotaFiscalModalOpen(true); }} title="Emitir Nota Fiscal" className="text-emerald-600 hover:text-emerald-700">
                             <Receipt className="h-4 w-4" />
@@ -1457,6 +1514,36 @@ const OSHistoricoPage = ({ vendedorAtual }) => {
           empresaSettings={empresaSettings}
           contasBancarias={contasBancarias}
           maquinas={maquinas}
+        />
+      )}
+
+      {/* Modal de Impressão do Pedido */}
+      {selectedOsForDocument && (
+        <OSDocumentModal
+          isOpen={isDocumentModalOpen}
+          setIsOpen={setIsDocumentModalOpen}
+          documento={selectedOsForDocument}
+          logoUrl={logoUrl}
+          nomeEmpresa={nomeEmpresa}
+          documentRef={notinhaRef}
+          onGerarPdf={() => {
+            toast({ title: "Funcionalidade Indisponível", description: "A geração de PDF será implementada em breve.", variant: "info" });
+          }}
+          empresaSettings={empresaSettings}
+          contasBancarias={contasBancarias}
+          maquinas={maquinas}
+          vendedorAtual={vendedorAtual}
+        />
+      )}
+
+      {/* Modal de Print de Produção */}
+      {selectedOsForPrintProducao && (
+        <OSPrintProducaoModal
+          isOpen={isPrintProducaoModalOpen}
+          setIsOpen={setIsPrintProducaoModalOpen}
+          os={selectedOsForPrintProducao}
+          empresa={empresaSettings}
+          vendedorAtual={vendedorAtual}
         />
       )}
 

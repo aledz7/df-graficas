@@ -227,6 +227,8 @@ const CuponsPage = () => {
                 return 'Ilimitado';
             case 'uma_vez_por_cliente':
                 return '1x por cliente';
+            case 'primeira_compra':
+                return 'Primeira compra';
             case 'quantidade_fixa':
                 return `${cupom.quantidade_usada || 0}/${cupom.quantidade_limite}`;
             default:
@@ -579,6 +581,7 @@ const CuponsPage = () => {
                                     <SelectContent>
                                         <SelectItem value="ilimitado">Ilimitado</SelectItem>
                                         <SelectItem value="uma_vez_por_cliente">Uma vez por cliente</SelectItem>
+                                        <SelectItem value="primeira_compra">Primeira compra (novos clientes)</SelectItem>
                                         <SelectItem value="quantidade_fixa">Quantidade fixa de usos</SelectItem>
                                     </SelectContent>
                                 </Select>

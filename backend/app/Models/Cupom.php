@@ -18,7 +18,7 @@ class Cupom extends Model
         'tipo_desconto',        // 'percentual' ou 'valor_fixo'
         'valor_desconto',       // valor ou porcentagem
         'valor_minimo',         // valor mínimo do pedido para aplicar
-        'limite_uso',           // 'ilimitado', 'uma_vez_por_cliente', 'quantidade_fixa'
+        'limite_uso',           // 'ilimitado', 'uma_vez_por_cliente', 'primeira_compra', 'quantidade_fixa'
         'quantidade_limite',    // se limite_uso = 'quantidade_fixa'
         'quantidade_usada',     // contador de uso
         'cliente_id',           // null = todos os clientes, ou ID específico
@@ -120,6 +120,34 @@ class Cupom extends Model
         // Verifica limite de quantidade
         if ($this->limite_uso === 'quantidade_fixa' && $this->quantidade_usada >= $this->quantidade_limite) {
             return ['valido' => false, 'mensagem' => 'Cupom esgotado.'];
+        }
+        
+        // Verifica se é para primeira compra
+        if ($this->limite_uso === 'primeira_compra') {
+            if (!$clienteId) {
+                return ['valido' => false, 'mensagem' => 'É necessário informar o cliente para usar este cupom.'];
+            }
+            
+            // Verificar se o cliente já fez alguma compra (vendas ou ordens de serviço)
+            // Verificar em vendas (excluindo canceladas)
+            $temComprasAnteriores = \DB::table('vendas')
+                ->where('cliente_id', $clienteId)
+                ->where('tenant_id', $this->tenant_id)
+                ->where('status', '!=', 'cancelada')
+                ->exists();
+            
+            // Se não encontrou em vendas, verificar em ordens de serviço
+            if (!$temComprasAnteriores) {
+                $temComprasAnteriores = \DB::table('ordens_servico')
+                    ->where('cliente_id', $clienteId)
+                    ->where('tenant_id', $this->tenant_id)
+                    ->where('status_os', '!=', 'cancelada')
+                    ->exists();
+            }
+            
+            if ($temComprasAnteriores) {
+                return ['valido' => false, 'mensagem' => 'Este cupom é válido apenas para primeira compra de novos clientes.'];
+            }
         }
         
         // Verifica se é para cliente específico

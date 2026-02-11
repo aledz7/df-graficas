@@ -8,6 +8,7 @@ use App\Models\Produto;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 class VendaController extends ResourceController
 {
@@ -2060,6 +2061,366 @@ class VendaController extends ResourceController
                 'trace' => $e->getTraceAsString()
             ]);
             // Não interrompe o fluxo da venda se houver erro na criação dos lançamentos
+        }
+    }
+
+    /**
+     * Retorna dados analíticos completos para relatórios
+     * Inclui: faturamento, ticket médio, vendas por período/cliente/produto, clientes ativos/inativos, curva ABC, etc.
+     * 
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function relatorioAnalitico(Request $request)
+    {
+        try {
+            $tenantId = $request->user()->tenant_id;
+            $dataInicio = $request->input('data_inicio');
+            $dataFim = $request->input('data_fim');
+            
+            // Construir query base para vendas confirmadas
+            $queryVendas = Venda::where('status', 'concluida')
+                ->where('tenant_id', $tenantId);
+            
+            if ($dataInicio) {
+                $queryVendas->where('data_emissao', '>=', $dataInicio);
+            }
+            if ($dataFim) {
+                $queryVendas->where('data_emissao', '<=', $dataFim . ' 23:59:59');
+            }
+            
+            $vendas = $queryVendas->with(['cliente', 'itens.produto'])->get();
+            
+            // 1. FATURAMENTO
+            $faturamento = $vendas->sum('valor_total');
+            
+            // 2. TICKET MÉDIO
+            $quantidadePedidos = $vendas->count();
+            $ticketMedio = $quantidadePedidos > 0 ? $faturamento / $quantidadePedidos : 0;
+            
+            // 3. VENDAS POR PERÍODO
+            $vendasPorPeriodo = $vendas->groupBy(function($venda) {
+                return \Illuminate\Support\Carbon::parse($venda->data_emissao)->format('Y-m-d');
+            })->map(function($grupo) {
+                return [
+                    'quantidade' => $grupo->count(),
+                    'faturamento' => $grupo->sum('valor_total')
+                ];
+            });
+            
+            // 4. VENDAS POR CLIENTE
+            $vendasPorCliente = $vendas->groupBy('cliente_id')->map(function($grupo) {
+                $cliente = $grupo->first()->cliente;
+                return [
+                    'cliente_id' => $cliente->id ?? null,
+                    'cliente_nome' => $cliente->nome_completo ?? $cliente->apelido_fantasia ?? $cliente->nome ?? 'Cliente não identificado',
+                    'quantidade_vendas' => $grupo->count(),
+                    'faturamento' => $grupo->sum('valor_total')
+                ];
+            })->sortByDesc('faturamento')->values();
+            
+            // 5. VENDAS POR PRODUTO
+            $vendasPorProduto = collect();
+            foreach ($vendas as $venda) {
+                foreach ($venda->itens as $item) {
+                    $produtoId = $item->produto_id;
+                    $produto = $item->produto;
+                    
+                    if (!$vendasPorProduto->has($produtoId)) {
+                        $vendasPorProduto->put($produtoId, [
+                            'produto_id' => $produtoId,
+                            'produto_nome' => $produto->nome ?? 'Produto não identificado',
+                            'quantidade' => 0,
+                            'faturamento' => 0,
+                            'custo_total' => 0,
+                            'lucro' => 0
+                        ]);
+                    }
+                    
+                    $quantidade = floatval($item->quantidade);
+                    $valorUnitario = floatval($item->valor_unitario);
+                    $subtotal = floatval($item->subtotal);
+                    $precoCusto = floatval($produto->preco_custo ?? 0);
+                    
+                    $vendasPorProduto[$produtoId]['quantidade'] += $quantidade;
+                    $vendasPorProduto[$produtoId]['faturamento'] += $subtotal;
+                    $vendasPorProduto[$produtoId]['custo_total'] += ($precoCusto * $quantidade);
+                    $vendasPorProduto[$produtoId]['lucro'] = $vendasPorProduto[$produtoId]['faturamento'] - $vendasPorProduto[$produtoId]['custo_total'];
+                }
+            }
+            $vendasPorProduto = $vendasPorProduto->sortByDesc('faturamento')->values();
+            
+            // 6. CLIENTES ATIVOS (compraram nos últimos 90 dias)
+            $dataLimiteAtivo = now()->subDays(90);
+            $clientesAtivos = DB::table('vendas')
+                ->join('clientes', 'vendas.cliente_id', '=', 'clientes.id')
+                ->where('vendas.tenant_id', $tenantId)
+                ->where('vendas.status', 'concluida')
+                ->where('vendas.data_emissao', '>=', $dataLimiteAtivo)
+                ->select('clientes.id', 'clientes.nome_completo', 'clientes.apelido_fantasia', 'clientes.nome')
+                ->distinct()
+                ->get()
+                ->map(function($cliente) {
+                    return [
+                        'id' => $cliente->id,
+                        'nome' => $cliente->nome_completo ?? $cliente->apelido_fantasia ?? $cliente->nome ?? 'Cliente não identificado'
+                    ];
+                });
+            
+            // 7. CLIENTES INATIVOS (não compram há 90 dias ou mais)
+            $clientesInativos = DB::table('clientes')
+                ->leftJoin('vendas', function($join) use ($tenantId, $dataLimiteAtivo) {
+                    $join->on('clientes.id', '=', 'vendas.cliente_id')
+                         ->where('vendas.tenant_id', $tenantId)
+                         ->where('vendas.status', 'concluida')
+                         ->where('vendas.data_emissao', '>=', $dataLimiteAtivo);
+                })
+                ->where('clientes.tenant_id', $tenantId)
+                ->whereNull('vendas.id')
+                ->select('clientes.id', 'clientes.nome_completo', 'clientes.apelido_fantasia', 'clientes.nome',
+                    DB::raw('(SELECT MAX(data_emissao) FROM vendas WHERE cliente_id = clientes.id AND status = "concluida" AND tenant_id = ' . $tenantId . ') as ultima_compra'))
+                ->get()
+                ->map(function($cliente) {
+                    $ultimaCompra = $cliente->ultima_compra ? Carbon::parse($cliente->ultima_compra) : null;
+                    $diasSemCompra = $ultimaCompra ? now()->diffInDays($ultimaCompra) : null;
+                    
+                    return [
+                        'id' => $cliente->id,
+                        'nome' => $cliente->nome_completo ?? $cliente->apelido_fantasia ?? $cliente->nome ?? 'Cliente não identificado',
+                        'ultima_compra' => $ultimaCompra ? $ultimaCompra->format('Y-m-d') : null,
+                        'dias_sem_compra' => $diasSemCompra
+                    ];
+                })
+                ->sortByDesc('dias_sem_compra');
+            
+            // 8. CURVA ABC DE CLIENTES
+            $totalFaturamentoClientes = $vendasPorCliente->sum('faturamento');
+            $curvaABCClientes = $vendasPorCliente->map(function($cliente, $index) use ($totalFaturamentoClientes, $vendasPorCliente) {
+                $percentual = $totalFaturamentoClientes > 0 ? ($cliente['faturamento'] / $totalFaturamentoClientes) * 100 : 0;
+                $percentualAcumulado = $vendasPorCliente->take($index + 1)->sum('faturamento') / $totalFaturamentoClientes * 100;
+                
+                $classificacao = 'C';
+                if ($percentualAcumulado <= 80) {
+                    $classificacao = 'A';
+                } elseif ($percentualAcumulado <= 95) {
+                    $classificacao = 'B';
+                }
+                
+                return array_merge($cliente, [
+                    'percentual' => round($percentual, 2),
+                    'percentual_acumulado' => round($percentualAcumulado, 2),
+                    'classificacao' => $classificacao
+                ]);
+            });
+            
+            // 9. CURVA ABC DE PRODUTOS
+            $totalFaturamentoProdutos = $vendasPorProduto->sum('faturamento');
+            $curvaABCProdutos = $vendasPorProduto->map(function($produto, $index) use ($totalFaturamentoProdutos, $vendasPorProduto) {
+                $percentual = $totalFaturamentoProdutos > 0 ? ($produto['faturamento'] / $totalFaturamentoProdutos) * 100 : 0;
+                $percentualAcumulado = $vendasPorProduto->take($index + 1)->sum('faturamento') / $totalFaturamentoProdutos * 100;
+                
+                $classificacao = 'C';
+                if ($percentualAcumulado <= 80) {
+                    $classificacao = 'A';
+                } elseif ($percentualAcumulado <= 95) {
+                    $classificacao = 'B';
+                }
+                
+                return array_merge($produto, [
+                    'percentual' => round($percentual, 2),
+                    'percentual_acumulado' => round($percentualAcumulado, 2),
+                    'classificacao' => $classificacao
+                ]);
+            });
+            
+            // 10. PRODUTOS MAIS VENDIDOS (por quantidade)
+            $produtosMaisVendidos = $vendasPorProduto->sortByDesc('quantidade')->values();
+            
+            // 11. PRODUTOS MAIS LUCRATIVOS (por lucro)
+            $produtosMaisLucrativos = $vendasPorProduto->sortByDesc('lucro')->values();
+            
+            // 12. MIX DE PRODUTOS (participação percentual no faturamento)
+            $mixProdutos = $vendasPorProduto->map(function($produto) use ($totalFaturamentoProdutos) {
+                $participacao = $totalFaturamentoProdutos > 0 ? ($produto['faturamento'] / $totalFaturamentoProdutos) * 100 : 0;
+                return array_merge($produto, [
+                    'participacao_percentual' => round($participacao, 2)
+                ]);
+            })->sortByDesc('participacao_percentual')->values();
+            
+            return $this->success([
+                'faturamento' => $faturamento,
+                'ticket_medio' => round($ticketMedio, 2),
+                'quantidade_pedidos' => $quantidadePedidos,
+                'vendas_por_periodo' => $vendasPorPeriodo,
+                'vendas_por_cliente' => $vendasPorCliente,
+                'vendas_por_produto' => $vendasPorProduto,
+                'clientes_ativos' => $clientesAtivos,
+                'clientes_inativos' => $clientesInativos,
+                'curva_abc_clientes' => $curvaABCClientes,
+                'curva_abc_produtos' => $curvaABCProdutos,
+                'produtos_mais_vendidos' => $produtosMaisVendidos,
+                'produtos_mais_lucrativos' => $produtosMaisLucrativos,
+                'mix_produtos' => $mixProdutos,
+                'periodo' => [
+                    'data_inicio' => $dataInicio,
+                    'data_fim' => $dataFim
+                ]
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Erro ao gerar relatório analítico', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return $this->error('Erro ao gerar relatório analítico: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Retorna relatório de vendas com metas (empresa e vendedores)
+     * 
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function relatorioComMetas(Request $request)
+    {
+        try {
+            $tenantId = $request->user()->tenant_id;
+            $dataInicio = $request->input('data_inicio');
+            $dataFim = $request->input('data_fim');
+            $tipoPeriodo = $request->input('tipo_periodo', 'mensal'); // 'diario', 'mensal', 'personalizado'
+            
+            // Se não informado, usar período padrão
+            if (!$dataInicio || !$dataFim) {
+                if ($tipoPeriodo === 'diario') {
+                    $dataInicio = Carbon::today()->format('Y-m-d');
+                    $dataFim = Carbon::today()->format('Y-m-d');
+                } elseif ($tipoPeriodo === 'mensal') {
+                    $dataInicio = Carbon::now()->startOfMonth()->format('Y-m-d');
+                    $dataFim = Carbon::now()->endOfMonth()->format('Y-m-d');
+                } else {
+                    // Personalizado - usar mês atual como padrão
+                    $dataInicio = Carbon::now()->startOfMonth()->format('Y-m-d');
+                    $dataFim = Carbon::now()->endOfMonth()->format('Y-m-d');
+                }
+            }
+            
+            // Buscar meta da empresa para o período
+            $metaEmpresa = \App\Models\MetaVenda::where('tenant_id', $tenantId)
+                ->where('tipo', 'empresa')
+                ->where('ativo', true)
+                ->noPeriodo($dataInicio, $dataFim)
+                ->first();
+            
+            // Buscar todas as vendas do período
+            $vendas = Venda::where('tenant_id', $tenantId)
+                ->where('status', 'concluida')
+                ->whereBetween('data_emissao', [$dataInicio, $dataFim . ' 23:59:59'])
+                ->with(['vendedor:id,name,email', 'cliente:id,nome_completo,apelido_fantasia,nome'])
+                ->get();
+            
+            // Cálculos da Empresa
+            $totalVendidoEmpresa = $vendas->sum('valor_total');
+            $metaEmpresaValor = $metaEmpresa ? floatval($metaEmpresa->valor_meta) : 0;
+            $percentualMetaEmpresa = $metaEmpresaValor > 0 ? ($totalVendidoEmpresa / $metaEmpresaValor) * 100 : 0;
+            $valorFaltaEmpresa = max(0, $metaEmpresaValor - $totalVendidoEmpresa);
+            
+            // Buscar todos os vendedores que têm vendas no período
+            // Filtrar vendas que têm vendedor_id (não nulo)
+            $vendedoresComVendas = $vendas
+                ->filter(function($venda) {
+                    return $venda->vendedor_id !== null;
+                })
+                ->groupBy('vendedor_id')
+                ->map(function($grupoVendas, $vendedorId) use ($tenantId, $dataInicio, $dataFim, $totalVendidoEmpresa) {
+                    $vendedor = $grupoVendas->first()->vendedor;
+                    $totalVendidoVendedor = $grupoVendas->sum('valor_total');
+                    
+                    // Buscar meta do vendedor
+                    $metaVendedor = \App\Models\MetaVenda::where('tenant_id', $tenantId)
+                        ->where('tipo', 'vendedor')
+                        ->where('vendedor_id', $vendedorId)
+                        ->where('ativo', true)
+                        ->noPeriodo($dataInicio, $dataFim)
+                        ->first();
+                    
+                    $metaVendedorValor = $metaVendedor ? floatval($metaVendedor->valor_meta) : 0;
+                    $percentualMetaVendedor = $metaVendedorValor > 0 ? ($totalVendidoVendedor / $metaVendedorValor) * 100 : 0;
+                    $valorFaltaVendedor = max(0, $metaVendedorValor - $totalVendidoVendedor);
+                    $percentualContribuicao = $totalVendidoEmpresa > 0 ? ($totalVendidoVendedor / $totalVendidoEmpresa) * 100 : 0;
+                    
+                    return [
+                        'vendedor_id' => $vendedorId,
+                        'vendedor_nome' => $vendedor ? $vendedor->name : 'Vendedor não identificado',
+                        'vendedor_email' => $vendedor ? $vendedor->email : null,
+                        'meta_individual' => $metaVendedorValor,
+                        'total_vendido' => $totalVendidoVendedor,
+                        'percentual_meta_alcançado' => round($percentualMetaVendedor, 2),
+                        'valor_falta_meta' => round($valorFaltaVendedor, 2),
+                        'percentual_contribuicao' => round($percentualContribuicao, 2),
+                        'quantidade_vendas' => $grupoVendas->count(),
+                        'meta_configurada' => $metaVendedor ? true : false
+                    ];
+                })
+                ->sortByDesc('total_vendido')
+                ->values();
+            
+            // Buscar vendedores que têm meta mas não têm vendas
+            $vendedoresComMeta = \App\Models\MetaVenda::where('tenant_id', $tenantId)
+                ->where('tipo', 'vendedor')
+                ->where('ativo', true)
+                ->noPeriodo($dataInicio, $dataFim)
+                ->with('vendedor:id,name,email')
+                ->get()
+                ->filter(function($meta) use ($vendedoresComVendas) {
+                    return !$vendedoresComVendas->contains('vendedor_id', $meta->vendedor_id);
+                })
+                ->map(function($meta) {
+                    return [
+                        'vendedor_id' => $meta->vendedor_id,
+                        'vendedor_nome' => $meta->vendedor ? $meta->vendedor->name : 'Vendedor não identificado',
+                        'vendedor_email' => $meta->vendedor ? $meta->vendedor->email : null,
+                        'meta_individual' => floatval($meta->valor_meta),
+                        'total_vendido' => 0,
+                        'percentual_meta_alcançado' => 0,
+                        'valor_falta_meta' => floatval($meta->valor_meta),
+                        'percentual_contribuicao' => 0,
+                        'quantidade_vendas' => 0,
+                        'meta_configurada' => true
+                    ];
+                });
+            
+            // Combinar vendedores com vendas e vendedores apenas com meta
+            $todosVendedores = $vendedoresComVendas->concat($vendedoresComMeta)->sortByDesc('total_vendido')->values();
+            
+            return $this->success([
+                'empresa' => [
+                    'meta_total' => $metaEmpresaValor,
+                    'total_vendido' => $totalVendidoEmpresa,
+                    'percentual_meta_alcançado' => round($percentualMetaEmpresa, 2),
+                    'valor_falta_meta' => round($valorFaltaEmpresa, 2),
+                    'quantidade_pedidos' => $vendas->count(),
+                    'meta_configurada' => $metaEmpresa ? true : false
+                ],
+                'vendedores' => $todosVendedores,
+                'periodo' => [
+                    'data_inicio' => $dataInicio,
+                    'data_fim' => $dataFim,
+                    'tipo_periodo' => $tipoPeriodo
+                ],
+                'resumo' => [
+                    'total_vendedores' => $todosVendedores->count(),
+                    'vendedores_com_meta' => $todosVendedores->where('meta_configurada', true)->count(),
+                    'vendedores_sem_meta' => $todosVendedores->where('meta_configurada', false)->count()
+                ]
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Erro ao gerar relatório com metas', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return $this->error('Erro ao gerar relatório com metas: ' . $e->getMessage(), 500);
         }
     }
 }

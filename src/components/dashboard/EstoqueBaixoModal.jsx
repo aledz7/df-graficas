@@ -32,8 +32,37 @@ const EstoqueBaixoModal = ({ isOpen, onClose }) => {
       try {
         console.log('🔍 Modal - Tentando carregar produtos com estoque baixo da API...');
         const estoqueBaixoResponse = await produtoService.getEstoqueBaixo();
-        produtosData = estoqueBaixoResponse.data || [];
-        console.log('✅ Modal - Produtos carregados da API:', produtosData.length);
+        
+        // O backend retorna: { success: true, message: "...", data: [produtos] }
+        // produtoService.getEstoqueBaixo() retorna response.data, então temos o objeto completo
+        let responseData = estoqueBaixoResponse;
+        
+        // Se a resposta tem a estrutura { success, message, data }
+        if (responseData && typeof responseData === 'object' && responseData.data !== undefined) {
+          responseData = responseData.data;
+        }
+        
+        // Garantir que seja um array - tratar diferentes estruturas de resposta
+        if (Array.isArray(responseData)) {
+          produtosData = responseData;
+        } else if (responseData && typeof responseData === 'object') {
+          // Se ainda for um objeto, tentar extrair o array
+          if (Array.isArray(responseData.data)) {
+            produtosData = responseData.data;
+          } else if (Array.isArray(responseData.produtos)) {
+            produtosData = responseData.produtos;
+          } else {
+            // Tentar converter valores do objeto em array (caso seja uma Collection do Laravel)
+            const valores = Object.values(responseData);
+            produtosData = valores.filter(item => 
+              item && typeof item === 'object' && (item.id !== undefined || item.nome !== undefined)
+            );
+          }
+        } else {
+          produtosData = [];
+        }
+        
+        console.log('✅ Modal - Produtos carregados da API:', produtosData.length, 'Formato resposta:', typeof estoqueBaixoResponse);
       } catch (apiError) {
         console.warn('⚠️ Modal - Erro ao carregar da API, usando localStorage:', apiError);
         
@@ -41,14 +70,23 @@ const EstoqueBaixoModal = ({ isOpen, onClose }) => {
         const { loadData } = await import('@/lib/utils');
         const produtosLocal = await loadData('produtos', []);
         
+        // Garantir que produtosLocal seja um array
+        const produtosLocalArray = Array.isArray(produtosLocal) ? produtosLocal : [];
+        
         // Usar função compartilhada para garantir lógica idêntica
         console.log('🔍 Modal - Chamando função compartilhada buscarProdutosEstoqueBaixo...');
-        produtosData = await buscarProdutosEstoqueBaixo(produtosLocal);
+        produtosData = await buscarProdutosEstoqueBaixo(produtosLocalArray);
+        
+        // Garantir que o resultado seja um array
+        produtosData = Array.isArray(produtosData) ? produtosData : [];
       }
 
-      setProdutos(produtosData);
+      // Garantir que produtosData seja sempre um array antes de setar
+      setProdutos(Array.isArray(produtosData) ? produtosData : []);
     } catch (error) {
       console.error('Erro ao carregar produtos com estoque baixo:', error);
+      // Em caso de erro, garantir que produtos seja um array vazio
+      setProdutos([]);
       toast({
         title: "Erro",
         description: "Não foi possível carregar os produtos com estoque baixo.",
@@ -64,7 +102,10 @@ const EstoqueBaixoModal = ({ isOpen, onClose }) => {
     
     // Atualizar localmente IMEDIATAMENTE para feedback instantâneo
     setProdutos(prevProdutos => {
-      const produtosAtualizados = prevProdutos.map(p => 
+      // Garantir que prevProdutos seja um array
+      const produtosArray = Array.isArray(prevProdutos) ? prevProdutos : [];
+      
+      const produtosAtualizados = produtosArray.map(p => 
         p.id === produtoAtualizado.id ? produtoAtualizado : p
       ).filter(p => {
         // Verificar se o produto ainda tem estoque baixo (principal ou variações)
@@ -208,7 +249,7 @@ const EstoqueBaixoModal = ({ isOpen, onClose }) => {
               <ScrollArea className="h-[400px] pr-4">
                 <div className="space-y-3">
                   <AnimatePresence mode="popLayout">
-                    {produtos.map((produto) => (
+                    {Array.isArray(produtos) && produtos.map((produto) => (
                       <motion.div
                         key={produto.id}
                         layout

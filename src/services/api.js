@@ -16,8 +16,28 @@ const api = axios.create({
 // Interceptador para adicionar o token de autenticação a todas as requisições
 api.interceptors.request.use(
   (config) => {
-    const token = apiDataManager.getToken();
+    // Se está redirecionando para login, cancelar requisições não públicas
+    if (isRedirectingToLogin) {
+      const isPublicRoute = config.url && (
+        config.url.includes('/api/public/') ||
+        config.url.includes('/api/login') ||
+        config.url.includes('/api/register') ||
+        config.url.includes('/api/storage/') ||
+        config.url.includes('/api/complete-two-factor-login') ||
+        config.url.includes('/api/send-two-factor-code') ||
+        config.url.includes('/api/verify-two-factor-code')
+      );
+      
+      // Cancelar requisições não públicas se está redirecionando
+      if (!isPublicRoute) {
+        const CancelToken = axios.CancelToken;
+        const source = CancelToken.source();
+        source.cancel('Redirecionando para login - requisição cancelada');
+        config.cancelToken = source.token;
+      }
+    }
     
+    const token = apiDataManager.getToken();
     
     // Verificar se é uma rota pública que não precisa de autenticação
     const isPublicRoute = config.url && (
@@ -74,10 +94,15 @@ api.interceptors.response.use(
       
       // Se havia token e a rota não é pública, o token expirou
       if (hadToken && !isPublicRoute && !isRedirectingToLogin) {
-        console.warn('🔐 Token expirado ou inválido. Redirecionando para login...', { requestUrl });
-        
         isRedirectingToLogin = true;
         apiDataManager.removeToken();
+        
+        // Suprimir logs de erro 401 para evitar poluição do console
+        // Apenas logar o primeiro erro
+        if (!window.__first401Logged) {
+          console.warn('🔐 Token expirado ou inválido. Redirecionando para login...');
+          window.__first401Logged = true;
+        }
         
         // Disparar evento customizado para notificar a aplicação
         window.dispatchEvent(new CustomEvent('tokenExpired', { 
@@ -87,7 +112,14 @@ api.interceptors.response.use(
         // Resetar flag após um tempo para permitir novas tentativas
         setTimeout(() => {
           isRedirectingToLogin = false;
-        }, 2000);
+          window.__first401Logged = false;
+        }, 3000);
+      }
+      
+      // Se já está redirecionando, suprimir o erro para evitar logs desnecessários
+      if (isRedirectingToLogin) {
+        // Retornar um erro silencioso para evitar logs
+        return Promise.reject(new Error('Token expirado - redirecionando para login'));
       }
     } else if (error.response && error.response.status === 404) {
       // 404 é esperado em alguns casos, não logar

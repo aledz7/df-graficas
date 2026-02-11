@@ -12,9 +12,15 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('produtos', function (Blueprint $table) {
-            $table->decimal('medida_chapa_largura_cm', 10, 2)->nullable()->after('preco_m2');
-            $table->decimal('medida_chapa_altura_cm', 10, 2)->nullable()->after('medida_chapa_largura_cm');
-            $table->decimal('valor_chapa', 10, 2)->nullable()->after('medida_chapa_altura_cm');
+            if (!Schema::hasColumn('produtos', 'medida_chapa_largura_cm')) {
+                $table->decimal('medida_chapa_largura_cm', 10, 2)->nullable()->after('preco_m2');
+            }
+            if (!Schema::hasColumn('produtos', 'medida_chapa_altura_cm')) {
+                $table->decimal('medida_chapa_altura_cm', 10, 2)->nullable()->after('medida_chapa_largura_cm');
+            }
+            if (!Schema::hasColumn('produtos', 'valor_chapa')) {
+                $table->decimal('valor_chapa', 10, 2)->nullable()->after('medida_chapa_altura_cm');
+            }
         });
     }
 

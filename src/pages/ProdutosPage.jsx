@@ -144,7 +144,7 @@ const ProdutosPage = ({ vendedorAtual }) => {
         setCategorias(categoriasArray);
       }
 
-      if (location.state?.openModal && page === 1) {
+      if ((location.state?.openModal || location.state?.openNewProductModal) && page === 1) {
         handleNovoProduto();
         navigate(location.pathname, { replace: true, state: {} }); 
       }

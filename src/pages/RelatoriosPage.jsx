@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FileText, BarChart2, PieChart, Users, ShoppingBag, Package, TrendingUp, CreditCard, DollarSign, Printer, Box, Wallet, ArrowDownUp, Award } from 'lucide-react';
+import { FileText, BarChart2, PieChart, Users, ShoppingBag, Package, TrendingUp, CreditCard, DollarSign, Printer, Box, Wallet, ArrowDownUp, Award, Target, Gift, Trophy } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useToast } from "@/components/ui/use-toast";
 
@@ -30,6 +30,8 @@ const reportCategories = [
       { id: 'envelopamento', title: 'Envelopamentos', description: 'Relatório de serviços de envelopamento.', icon: Box, path: '/relatorios/operacional/envelopamentos' },
       { id: 'produtos', title: 'Produtos e Estoque', description: 'Giro de estoque, produtos mais vendidos.', icon: Package, path: '/relatorios/operacional/produtos-e-estoque' },
       { id: 'lucratividade_produtos', title: 'Lucratividade por Produto', description: 'Análise de margens e lucro de cada produto.', icon: TrendingUp, path: '/relatorios/operacional/lucratividade-por-produto' },
+      { id: 'analitico', title: 'Relatório Analítico Completo', description: 'Faturamento, ticket médio, curva ABC, clientes ativos/inativos e mais.', icon: BarChart2, path: '/relatorios/operacional/analitico' },
+      { id: 'vendas_metas', title: 'Vendas com Metas', description: 'Acompanhamento de vendas com metas da empresa e vendedores.', icon: Target, path: '/relatorios/operacional/vendas-com-metas' },
     ]
   },
   {
@@ -40,6 +42,8 @@ const reportCategories = [
       { id: 'desempenho_vendedor', title: 'Desempenho por Vendedor', description: 'Vendas e metas por vendedor.', icon: Users, path: '/relatorios/gerencial/desempenho-por-vendedor' },
       { id: 'dividas_clientes', title: 'Dívidas de Clientes', description: 'Clientes com pagamentos em aberto.', icon: Users, path: '/relatorios/gerencial/dividas-de-clientes' },
       { id: 'recebimentos_clientes', title: 'Recebimentos por Cliente', description: 'Total recebido de cada cliente.', icon: Users, path: '/relatorios/gerencial/recebimentos-por-cliente' },
+      { id: 'aniversariantes', title: 'Aniversariantes do Mês', description: 'Clientes que fazem aniversário no mês selecionado.', icon: Gift, path: '/relatorios/gerencial/aniversariantes-mes' },
+      { id: 'clientes_mais_compraram', title: 'Clientes que Mais Compraram', description: 'Ranking dos clientes que mais compraram no ano por valor.', icon: Trophy, path: '/relatorios/gerencial/clientes-que-mais-compraram' },
     ]
   }
 ];

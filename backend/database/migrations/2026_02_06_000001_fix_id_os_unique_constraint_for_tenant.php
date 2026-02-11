@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
@@ -15,13 +16,21 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('ordens_servico', function (Blueprint $table) {
-            // Remover a constraint unique antiga do id_os
-            $table->dropUnique('ordens_servico_id_os_unique');
-            
-            // Criar nova constraint unique composta (tenant_id + id_os)
-            $table->unique(['tenant_id', 'id_os'], 'ordens_servico_tenant_id_os_unique');
-        });
+        // Verificar se o índice antigo existe e removê-lo
+        $indexExists = DB::select("SHOW INDEX FROM ordens_servico WHERE Key_name = 'ordens_servico_id_os_unique'");
+        if (!empty($indexExists)) {
+            Schema::table('ordens_servico', function (Blueprint $table) {
+                $table->dropUnique('ordens_servico_id_os_unique');
+            });
+        }
+        
+        // Verificar se o novo índice já existe antes de criar
+        $newIndexExists = DB::select("SHOW INDEX FROM ordens_servico WHERE Key_name = 'ordens_servico_tenant_id_os_unique'");
+        if (empty($newIndexExists)) {
+            Schema::table('ordens_servico', function (Blueprint $table) {
+                $table->unique(['tenant_id', 'id_os'], 'ordens_servico_tenant_id_os_unique');
+            });
+        }
     }
 
     /**

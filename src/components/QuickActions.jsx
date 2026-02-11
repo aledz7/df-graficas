@@ -106,7 +106,7 @@ const QuickActions = () => {
   
   const actions = [
     { icon: ShoppingCart, label: 'Novo PDV', colorKey: 'novoPdv', path: '/operacional/pdv', module: 'PDV' },
-    { icon: PackagePlus, label: 'Novo Produto', colorKey: 'novoProduto', path: '/cadastros/produtos', module: 'Produtos', state: { openNewProductModal: true } },
+    { icon: PackagePlus, label: 'Novo Produto', colorKey: 'novoProduto', path: '/cadastros/novo-produto', module: 'Produtos' },
     { icon: FilePlus2, label: 'Nova OS', colorKey: 'novaOs', path: '/operacional/ordens-servico', module: 'Ordens de Serviço' },
     { icon: Palette, label: 'Novo Envelopamento', colorKey: 'novoEnvelopamento', path: '/operacional/envelopamento', module: 'Envelopamentos' },
     { icon: UserPlus, label: 'Novo Cliente', colorKey: 'novoCliente', path: '/cadastros/clientes', module: 'Clientes', state: { openNewClientModal: true } },
