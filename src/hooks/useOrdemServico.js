@@ -97,13 +97,7 @@ export const useOrdemServico = ({ vendedorAtual }) => {
     const loadData = async () => {
       if (!isMounted) return;
       
-      // Debug: verificar state da navegação
-      console.log('🔍 [useOrdemServico] loadData iniciado:', {
-        locationState: location.state,
-        osIdFromUrl: params.id,
-        finalize: location.state?.finalize,
-        osCarregadaParaFinalizar: osCarregadaParaFinalizarRef.current
-      });
+
       
       // Se já carregamos uma OS para finalizar e o modal foi aberto, não recarregar
       // Isso evita que os campos sejam limpos quando o useEffect é executado novamente
@@ -231,13 +225,7 @@ export const useOrdemServico = ({ vendedorAtual }) => {
         // Se veio com finalize: true, abrir o modal de pagamento
         // Fazer isso DEPOIS de carregar a OS e ANTES de limpar o state
         const shouldFinalize = location.state?.finalize === true && !finalizeModalOpenedRef.current;
-        console.log('🔍 [useOrdemServico] Verificando se deve finalizar:', {
-          shouldFinalize,
-          locationStateFinalize: location.state?.finalize,
-          alreadyOpened: finalizeModalOpenedRef.current,
-          hasInitialContext: !!initialContext,
-          hasOrdemServico: !!initialContext?.ordemServico
-        });
+
         
         if (shouldFinalize) {
           const osParaFinalizar = initialContext?.ordemServico;

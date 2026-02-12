@@ -160,14 +160,7 @@ const OSItemTabsSection = ({
       const temConsumoMaterial = (temLarguraAlturaPeca || temLarguraAlturaChapa) && 
                                  (temQuantidadeSolicitada || temPecasPorChapa || temChapasNecessarias);
       
-      console.log('🔍 [OSItemTabsSection] Verificando item:', {
-        id_item_os: itemIdAtual,
-        temConsumoMaterial,
-        isEditing,
-        consumo_material_utilizado: itemAtual.consumo_material_utilizado,
-        jaAbriu: hasOpenedConsumoModalRef.current,
-        pendingOpen: pendingOpenRef.current === itemIdAtual
-      });
+   
       
       // Se o item tem origem "Consumo de Material" e está em modo de edição, abrir o modal
       // Verificar tanto a flag hasOpenedConsumoModalRef quanto pendingOpenRef para garantir abertura

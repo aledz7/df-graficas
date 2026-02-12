@@ -104,16 +104,7 @@ export const calcularSubtotalItem = (item, acabamentosConfig) => {
     const quantidadeSolicitadaConsumo = safeParseInt(item.consumo_quantidade_solicitada, 0);
     const subtotalAcabamentosConsumo = safeParseFloat(item.subtotal_acabamentos, 0);
     
-    console.log('🔍 [calcularSubtotalItem] Verificando consumo de material:', {
-        temConsumoMaterial,
-        consumo_custo_total: item.consumo_custo_total,
-        consumo_custo_unitario: item.consumo_custo_unitario,
-        custoMaterialConsumo,
-        custoUnitarioConsumo,
-        quantidade: quantidade,
-        quantidadeSolicitadaConsumo,
-        tipo_item: item.tipo_item
-    });
+
     
     if (item.tipo_item === 'm2') {
         // IMPORTANTE: Para itens de consumo de material, usar consumo_custo_total APENAS após editar
@@ -148,29 +139,11 @@ export const calcularSubtotalItem = (item, acabamentosConfig) => {
                 // Para metro linear: comprimento (maior dimensão) × quantidade × preço por metro
                 const comprimento = Math.max(largura, altura);
                 subtotalBase = comprimento * quantidade * valorUnitarioM2;
-                console.log('📏 [calcularSubtotalItem] Calculando subtotal por metro linear:', {
-                    largura,
-                    altura,
-                    comprimento,
-                    quantidade,
-                    valorUnitarioM2,
-                    subtotalBase,
-                    observacao: 'Subtotal calculado por comprimento × quantidade × valor_unitario (metro linear)'
-                });
+              
             } else {
                 const area = largura * altura;
                 subtotalBase = area * quantidade * valorUnitarioM2;
-                console.log('📐 [calcularSubtotalItem] Calculando subtotal por área:', {
-                    largura,
-                    altura,
-                    area,
-                    quantidade,
-                    valorUnitarioM2,
-                    subtotalBase,
-                    temConsumoMaterial,
-                    temConsumoCustoTotalValido,
-                    observacao: temConsumoMaterial ? 'Item com consumo de material mas ainda não editado - calculando por área' : 'Subtotal calculado por área × quantidade × valor_unitario_m2'
-                });
+               
             }
         }
         
@@ -264,9 +237,7 @@ export const calcularSubtotalItem = (item, acabamentosConfig) => {
                 quantidadeAcabamentos: acabamentosSelecionados.length,
                 acabamentos: acabamentosSelecionados.map(a => a.nome || a.id)
             });
-        } else {
-            console.log('ℹ️ [calcularSubtotalItem] Nenhum acabamento selecionado, subtotal base:', subtotalBase);
-        }
+        } 
     } else if (item.tipo_item === 'unidade') {
         const valorUnitario = safeParseFloat(item.valor_unitario);
         subtotalBase = quantidade * valorUnitario;
@@ -301,13 +272,7 @@ export const calcularSubtotalItem = (item, acabamentosConfig) => {
 
 
 export const calcularTotalOS = async (ordemServico, clienteSelecionado = null) => {
-    console.log('🚀 [calcularTotalOS] Iniciando cálculo:', {
-        tem_ordemServico: !!ordemServico,
-        itens_array: Array.isArray(ordemServico?.itens),
-        quantidade_itens: ordemServico?.itens?.length || 0,
-        valor_total_os_salvo: ordemServico?.valor_total_os,
-        itens: ordemServico?.itens
-    });
+
     
     const defaultTotals = {
         subtotalServicosM2: 0,
@@ -321,12 +286,12 @@ export const calcularTotalOS = async (ordemServico, clienteSelecionado = null) =
     };
 
     if (!ordemServico || !Array.isArray(ordemServico.itens)) {
-        console.log('⚠️ [calcularTotalOS] Retornando totais padrão: ordemServico ou itens inválidos');
+        
         return defaultTotals;
     }
 
     if (ordemServico.itens.length === 0) {
-        console.log('⚠️ [calcularTotalOS] Retornando totais padrão: nenhum item na OS');
+        
         return defaultTotals;
     }
     

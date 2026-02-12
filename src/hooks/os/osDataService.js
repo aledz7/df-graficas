@@ -994,7 +994,7 @@ export const saveOSToLocalStorage = async (osData, options = {}) => {
 };
 
 export const loadInitialOSContext = async (locationState, currentOSId, vendedorAtual) => {
-  console.log('loadInitialOSContext called with:', locationState, currentOSId, vendedorAtual);
+  
   
   try {
     let ordemServico = null;

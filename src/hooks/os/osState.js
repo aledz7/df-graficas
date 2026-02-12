@@ -278,13 +278,13 @@ export const useOSStateManagement = (vendedorAtual) => {
   useEffect(() => {
     const initializeOS = () => {
       if (!ordemServico) {
-        console.log('🔍 osState - Inicializando nova OS');
+        
         const novaOS = initialOrdemServicoStateSync();
         if (vendedorAtual) {
           novaOS.vendedor_id = vendedorAtual.id;
           novaOS.vendedor_nome = vendedorAtual.nome;
         }
-        console.log('🔍 osState - Nova OS criada:', novaOS);
+       
         setOrdemServico(novaOS);
       }
     };
@@ -490,22 +490,12 @@ export const useOSStateManagement = (vendedorAtual) => {
       calculandoRef.current = true;
       
       try {
-        if (process.env.NODE_ENV === 'development') {
-          console.log('🔄 [useOSStateManagement] Iniciando cálculo de totais:', {
-            isInitialized,
-            quantidade_itens: ordemServico?.itens?.length || 0,
-            tem_cliente: !!clienteSelecionado,
-            tem_ordemServico: !!ordemServico
-          });
-        }
+   
         
         // Calcular mesmo se não estiver inicializado, desde que tenha ordemServico e itens
         if (ordemServico && Array.isArray(ordemServico.itens)) {
           const calculatedTotals = await calcularTotalOS(ordemServico, clienteSelecionado);
-          
-          if (process.env.NODE_ENV === 'development') {
-            console.log('✅ [useOSStateManagement] Totais calculados:', calculatedTotals);
-          }
+
           
           setTotaisCalculados({
             subtotalServicosM2: safeParseFloat(calculatedTotals.subtotalServicosM2),

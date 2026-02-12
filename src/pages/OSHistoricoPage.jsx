@@ -134,16 +134,7 @@ const OSHistoricoPage = ({ vendedorAtual }) => {
   // Usar useRef para evitar recriação desnecessária da função
   const filtersRef = useRef({ searchId, searchCliente, searchProduto, searchAcabamento, searchObs, searchTerm, statusFilter, dateRange });
   filtersRef.current = { searchId, searchCliente, searchProduto, searchAcabamento, searchObs, searchTerm, statusFilter, dateRange };
-  
-  // Debug dos filtros
-  console.log('🔍 [DEBUG] Estado dos filtros:', {
-    searchId,
-    searchTerm,
-    searchCliente,
-    searchProduto,
-    searchAcabamento,
-    searchObs
-  });
+ 
 
   const loadOrdensServico = useCallback(async (page = 1) => {
     setIsLoading(true);
