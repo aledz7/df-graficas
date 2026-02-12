@@ -89,6 +89,8 @@ const RelatorioAnaliticoPage = lazy(() => import('@/pages/RelatorioAnaliticoPage
 const RelatorioVendasComMetasPage = lazy(() => import('@/pages/RelatorioVendasComMetasPage'));
 const RelatorioAniversariantesPage = lazy(() => import('@/pages/RelatorioAniversariantesPage'));
 const RelatorioClientesQueMaisCompraramPage = lazy(() => import('@/pages/RelatorioClientesQueMaisCompraramPage'));
+const RankingVendedoresPage = lazy(() => import('@/pages/RankingVendedoresPage'));
+const MetasGamificadasPage = lazy(() => import('@/pages/MetasGamificadasPage'));
 
 
 const AppRoutes = ({ logoUrl, nomeEmpresa, vendedorAtual, theme, setTheme, setAppLogoUrl, setAppNomeEmpresa, setAppNomeSistema }) => {
@@ -176,6 +178,8 @@ const AppRoutes = ({ logoUrl, nomeEmpresa, vendedorAtual, theme, setTheme, setAp
       <Route path="/relatorios/gerencial/recebimentos-por-cliente" element={<RelatorioRecebimentosClientesPage />} />
       <Route path="/relatorios/gerencial/aniversariantes-mes" element={<RelatorioAniversariantesPage />} />
       <Route path="/relatorios/gerencial/clientes-que-mais-compraram" element={<RelatorioClientesQueMaisCompraramPage />} />
+      <Route path="/relatorios/gerencial/ranking-vendedores" element={<RankingVendedoresPage />} />
+      <Route path="/relatorios/gerencial/metas-gamificadas" element={<MetasGamificadasPage />} />
 
 
       {/* Ferramentas */}

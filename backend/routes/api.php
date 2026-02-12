@@ -56,6 +56,9 @@ use App\Http\Controllers\Api\PermissionProfileController;
 use App\Http\Controllers\Api\FormaPagamentoController;
 use App\Http\Controllers\Api\CupomController;
 use App\Http\Controllers\Api\MetaVendaController;
+use App\Http\Controllers\Api\AlertasController;
+use App\Http\Controllers\Api\RankingVendedoresController;
+use App\Http\Controllers\Api\GamificacaoController;
 
 /*
 |--------------------------------------------------------------------------
@@ -190,6 +193,31 @@ Route::middleware(['api.auth'])->group(function () {
     // Metas de Vendas
     Route::apiResource('metas-vendas', MetaVendaController::class);
     Route::get('metas-vendas/periodo/meta', [MetaVendaController::class, 'getMetaPeriodo']);
+    Route::get('metas-vendas/{id}/progresso', [MetaVendaController::class, 'getProgresso']);
+    
+    // Alertas e Notificações
+    Route::prefix('alertas')->group(function () {
+        Route::post('executar-verificacoes', [AlertasController::class, 'executarVerificacoes']);
+        Route::get('contar-nao-lidas', [AlertasController::class, 'contarNaoLidas']);
+        Route::post('marcar-todas-lidas', [AlertasController::class, 'marcarTodasComoLidas']);
+    });
+    Route::apiResource('alertas', AlertasController::class)->only(['index']);
+    Route::post('alertas/{id}/marcar-lida', [AlertasController::class, 'marcarComoLida']);
+    
+    // Ranking de Vendedores
+    Route::prefix('ranking-vendedores')->group(function () {
+        Route::get('/', [RankingVendedoresController::class, 'index']);
+        Route::get('por-quantidade', [RankingVendedoresController::class, 'porQuantidade']);
+    });
+    
+    // Gamificação
+    Route::prefix('gamificacao')->group(function () {
+        Route::get('ranking', [GamificacaoController::class, 'ranking']);
+        Route::get('meus-pontos', [GamificacaoController::class, 'meusPontos']);
+        Route::get('historico', [GamificacaoController::class, 'historico']);
+        Route::get('premiacoes', [GamificacaoController::class, 'premiacoes']);
+        Route::post('premiacoes/{id}/entregar', [GamificacaoController::class, 'entregarPremiacao']);
+    });
     Route::apiResource('vendas', VendaController::class);
     Route::delete('vendas/codigo/{codigo}', [VendaController::class, 'destroyByCodigo']);
     

@@ -5,7 +5,7 @@ import { useNomeSistema } from '@/hooks/useNomeSistema.jsx';
 import {
   LayoutDashboard, ShoppingCart, Package, Users, Truck, Banknote,
   Settings, BarChart3, FileText, SprayCan, Calculator,
-  Palette, Boxes, BookOpen, Wrench, HardHat, FileClock, CheckCircle2, History, SlidersHorizontal, Trash2, Barcode, Store, Activity, CalendarDays, FileSpreadsheet, Box, LogIn, LogOut, PackagePlus, ListChecks, Printer, DollarSign, ShieldAlert, Ruler, Star, TrendingUp, CreditCard, Ticket, Gift, Receipt
+  Palette, Boxes, BookOpen, Wrench, HardHat, FileClock, CheckCircle2, History, SlidersHorizontal, Trash2, Barcode, Store, Activity, CalendarDays, FileSpreadsheet, Box, LogIn, LogOut, PackagePlus, ListChecks, Printer, DollarSign, ShieldAlert, Ruler, Star, TrendingUp, CreditCard, Ticket, Gift, Receipt, Trophy, Target
 } from 'lucide-react';
 import IndiqueGanheModal from '@/components/IndiqueGanheModal';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -102,6 +102,8 @@ const menuItems = [
     subItems: [
       { path: '/relatorios', label: 'Central de Relatórios', icon: BarChart3 },
       { path: '/relatorio-simplificado', label: 'Relatório Simplificado', icon: FileSpreadsheet },
+      { path: '/relatorios/gerencial/ranking-vendedores', label: 'Ranking de Vendedores', icon: Trophy },
+      { path: '/relatorios/gerencial/metas-gamificadas', label: 'Metas Gamificadas', icon: Target },
     ]
   },
   { path: '/catalogo-publico', label: 'Catálogo Público', icon: BookOpen },

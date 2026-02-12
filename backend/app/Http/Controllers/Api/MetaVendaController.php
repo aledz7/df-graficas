@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\MetaVenda;
+use App\Services\GamificacaoService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Validator;
@@ -11,6 +12,13 @@ use Carbon\Carbon;
 
 class MetaVendaController extends Controller
 {
+    protected $gamificacaoService;
+
+    public function __construct(GamificacaoService $gamificacaoService)
+    {
+        $this->gamificacaoService = $gamificacaoService;
+    }
+
     /**
      * Listar todas as metas
      */
@@ -64,7 +72,10 @@ class MetaVendaController extends Controller
                 'periodo_tipo' => 'required|in:diario,mensal,personalizado',
                 'valor_meta' => 'required|numeric|min:0.01',
                 'observacoes' => 'nullable|string',
-                'ativo' => 'boolean'
+                'ativo' => 'boolean',
+                'pontos_meta' => 'nullable|integer|min:0',
+                'percentual_proximo_alerta' => 'nullable|numeric|min:0|max:100',
+                'premiacao' => 'nullable|array'
             ]);
 
             if ($validator->fails()) {
@@ -116,7 +127,10 @@ class MetaVendaController extends Controller
                 'periodo_tipo' => 'sometimes|in:diario,mensal,personalizado',
                 'valor_meta' => 'sometimes|numeric|min:0.01',
                 'observacoes' => 'nullable|string',
-                'ativo' => 'boolean'
+                'ativo' => 'boolean',
+                'pontos_meta' => 'nullable|integer|min:0',
+                'percentual_proximo_alerta' => 'nullable|numeric|min:0|max:100',
+                'premiacao' => 'nullable|array'
             ]);
 
             if ($validator->fails()) {
@@ -211,6 +225,30 @@ class MetaVendaController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Erro ao buscar meta',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Obter progresso da meta com gamificação
+     */
+    public function getProgresso(Request $request, $id): JsonResponse
+    {
+        try {
+            $tenantId = $request->user()->tenant_id;
+            $meta = MetaVenda::where('tenant_id', $tenantId)->findOrFail($id);
+
+            $progresso = $this->gamificacaoService->obterProgressoMeta($meta);
+
+            return response()->json([
+                'success' => true,
+                'data' => $progresso
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Erro ao obter progresso da meta',
                 'error' => $e->getMessage()
             ], 500);
         }

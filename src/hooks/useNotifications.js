@@ -154,7 +154,7 @@ export const useNotifications = () => {
   // Deletar notificação
   const deletarNotificacao = useCallback(async (notificacaoId) => {
     try {
-      await notificacaoService.deletarNotificacao(notificacaoId);
+      await notificacaoService.removerNotificacao(notificacaoId);
       
       setNotificacoes(prev => prev.filter(n => n.id !== notificacaoId));
       
@@ -178,6 +178,32 @@ export const useNotifications = () => {
     return () => clearInterval(interval);
   }, [carregarNotificacoes, verificarNovasNotificacoes]);
 
+  // Executar verificações de alertas
+  const executarVerificacoes = useCallback(async () => {
+    setLoading(true);
+    try {
+      const resultado = await notificacaoService.executarVerificacoes();
+      await carregarNotificacoes();
+      
+      toast({
+        title: "Verificações executadas",
+        description: `Foram criados ${resultado.data?.estoque_baixo || 0} alertas de estoque, ${resultado.data?.atrasos || 0} de atrasos, ${resultado.data?.clientes_inativos || 0} de clientes inativos e ${resultado.data?.metas_proximas || 0} de metas próximas.`,
+      });
+      
+      return resultado;
+    } catch (error) {
+      console.error('Erro ao executar verificações:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível executar as verificações.",
+        variant: "destructive",
+      });
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  }, [carregarNotificacoes, toast]);
+
   // Fechar toast personalizado
   const fecharToast = useCallback(() => {
     setToastNotification(prev => prev ? { ...prev, isVisible: false } : null);
@@ -194,6 +220,7 @@ export const useNotifications = () => {
     marcarTodasComoLidas,
     deletarNotificacao,
     playNotificationSound,
-    fecharToast
+    fecharToast,
+    executarVerificacoes
   };
 };

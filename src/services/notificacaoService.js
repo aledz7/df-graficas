@@ -1,5 +1,5 @@
 import { apiDataManager } from '@/lib/apiDataManager';
-import { produtoService } from './api';
+import { produtoService, alertasService } from './api';
 import axios from 'axios';
 
 // Configuração base do axios para notificações
@@ -115,19 +115,17 @@ class NotificacaoService {
   }
 
   /**
-   * Obtém todas as notificações
+   * Obtém todas as notificações (usando novos endpoints de alertas)
    */
-  async getNotificacoes() {
+  async getNotificacoes(filtros = {}) {
     try {
-      // Tentar buscar da API primeiro
-      const token = apiDataManager.getToken();
+      // Usar novo endpoint de alertas
+      const response = await alertasService.getAll(filtros);
       
-      if (token) {
-        const response = await api.get('/api/notificacoes');
-        
-        if (response.data.success) {
-          return response.data.data || [];
-        }
+      if (response.data.success) {
+        const data = response.data.data;
+        // Se for paginação, retornar apenas os dados
+        return Array.isArray(data) ? data : (data?.data || []);
       }
       
       // Fallback para localStorage
@@ -148,23 +146,19 @@ class NotificacaoService {
    */
   async getNotificacoesNaoLidas() {
     try {
-      // Tentar buscar da API primeiro
-      const token = apiDataManager.getToken();
+      // Usar novo endpoint de alertas com filtro
+      const response = await alertasService.getAll({ lida: false });
       
-      if (token) {
-        const response = await api.get('/api/notificacoes/nao-lidas');
-        
-        if (response.data.success) {
-          return response.data.data || [];
-        }
+      if (response.data.success) {
+        const data = response.data.data;
+        return Array.isArray(data) ? data : (data?.data || []);
       }
       
-      // Fallback para localStorage
+      // Fallback
       const notificacoes = await this.getNotificacoes();
       return notificacoes.filter(notif => !notif.lida);
     } catch (error) {
       console.error('Erro ao carregar notificações não lidas:', error);
-      // Fallback para localStorage
       const notificacoes = await this.getNotificacoes();
       return notificacoes.filter(notif => !notif.lida);
     }
@@ -175,13 +169,10 @@ class NotificacaoService {
    */
   async marcarComoLida(notificacaoId) {
     try {
-      // Tentar marcar na API primeiro
-      const token = apiDataManager.getToken();
-      if (token) {
-        const response = await api.post(`/api/notificacoes/${notificacaoId}/marcar-como-lida`);
-        if (response.data.success) {
-          return true;
-        }
+      // Usar novo endpoint de alertas
+      const response = await alertasService.marcarComoLida(notificacaoId);
+      if (response.data.success) {
+        return true;
       }
       
       // Fallback para localStorage
@@ -203,13 +194,10 @@ class NotificacaoService {
    */
   async marcarTodasComoLidas() {
     try {
-      // Tentar marcar na API primeiro
-      const token = apiDataManager.getToken();
-      if (token) {
-        const response = await api.post('/api/notificacoes/marcar-todas-como-lidas');
-        if (response.data.success) {
-          return true;
-        }
+      // Usar novo endpoint de alertas
+      const response = await alertasService.marcarTodasComoLidas();
+      if (response.data.success) {
+        return true;
       }
       
       // Fallback para localStorage
@@ -221,6 +209,32 @@ class NotificacaoService {
     } catch (error) {
       console.error('Erro ao marcar todas as notificações como lidas:', error);
       return false;
+    }
+  }
+
+  /**
+   * Executa todas as verificações de alertas
+   */
+  async executarVerificacoes() {
+    try {
+      const response = await alertasService.executarVerificacoes();
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao executar verificações:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Conta notificações não lidas
+   */
+  async contarNaoLidas() {
+    try {
+      const response = await alertasService.contarNaoLidas();
+      return response.data.data?.count || 0;
+    } catch (error) {
+      console.error('Erro ao contar notificações não lidas:', error);
+      return 0;
     }
   }
 

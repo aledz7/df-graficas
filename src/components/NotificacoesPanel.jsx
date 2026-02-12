@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,15 +13,17 @@ import {
   Trash2,
   Clock,
   Check,
-  ExternalLink
+  ExternalLink,
+  RefreshCw
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { notificacaoService } from '@/services/notificacaoService';
 import { useToast } from '@/components/ui/use-toast';
 
-const NotificacoesPanel = ({ isOpen, onClose, notificacoes = [], loading = false, marcarComoLida, marcarTodasComoLidas, deletarNotificacao, onNotificacaoClick }) => {
+const NotificacoesPanel = ({ isOpen, onClose, notificacoes = [], loading = false, marcarComoLida, marcarTodasComoLidas, deletarNotificacao, onNotificacaoClick, executarVerificacoes }) => {
   const { toast } = useToast();
+  const [executando, setExecutando] = useState(false);
 
   // As notificações agora vêm como props do hook
 
@@ -31,6 +33,14 @@ const NotificacoesPanel = ({ isOpen, onClose, notificacoes = [], loading = false
     switch (tipo) {
       case 'estoque_baixo':
         return <Package className="h-4 w-4 text-orange-500" />;
+      case 'atraso':
+        return <AlertTriangle className="h-4 w-4 text-red-500" />;
+      case 'cliente_inativo':
+        return <Clock className="h-4 w-4 text-yellow-500" />;
+      case 'meta_proxima':
+        return <CheckCircle className="h-4 w-4 text-blue-500" />;
+      case 'nivel_alcancado':
+        return <CheckCircle className="h-4 w-4 text-green-500" />;
       case 'alerta':
         return <AlertTriangle className="h-4 w-4 text-red-500" />;
       case 'sucesso':
@@ -78,6 +88,25 @@ const NotificacoesPanel = ({ isOpen, onClose, notificacoes = [], loading = false
               )}
             </CardTitle>
             <div className="flex items-center gap-2">
+              {executarVerificacoes && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={async () => {
+                    setExecutando(true);
+                    try {
+                      await executarVerificacoes();
+                    } finally {
+                      setExecutando(false);
+                    }
+                  }}
+                  disabled={executando}
+                  className="text-xs"
+                >
+                  <RefreshCw className={`h-3 w-3 mr-1 ${executando ? 'animate-spin' : ''}`} />
+                  Verificar
+                </Button>
+              )}
               {notificacoesNaoLidas.length > 0 && (
                 <Button
                   variant="ghost"

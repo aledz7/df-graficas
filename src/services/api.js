@@ -1717,3 +1717,59 @@ export const notaFiscalService = {
     }
   },
 };
+
+// Serviços para Alertas e Notificações
+export const alertasService = {
+  // Listar alertas/notificações
+  getAll: (params = {}) => api.get('/api/alertas', { params }),
+  
+  // Executar todas as verificações de alertas
+  executarVerificacoes: () => api.post('/api/alertas/executar-verificacoes'),
+  
+  // Contar notificações não lidas
+  contarNaoLidas: () => api.get('/api/alertas/contar-nao-lidas'),
+  
+  // Marcar todas como lidas
+  marcarTodasComoLidas: () => api.post('/api/alertas/marcar-todas-lidas'),
+  
+  // Marcar uma notificação como lida
+  marcarComoLida: (id) => api.post(`/api/alertas/${id}/marcar-lida`),
+};
+
+// Serviços para Ranking de Vendedores
+export const rankingVendedoresService = {
+  // Ranking por valor vendido
+  getRanking: (params = {}) => api.get('/api/ranking-vendedores', { params }),
+  
+  // Ranking por quantidade de vendas
+  getRankingPorQuantidade: (params = {}) => api.get('/api/ranking-vendedores/por-quantidade', { params }),
+};
+
+// Serviços para Gamificação
+export const gamificacaoService = {
+  // Ranking de pontos
+  getRanking: (params = {}) => api.get('/api/gamificacao/ranking', { params }),
+  
+  // Pontos do vendedor logado
+  getMeusPontos: () => api.get('/api/gamificacao/meus-pontos'),
+  
+  // Histórico de pontos
+  getHistorico: (params = {}) => api.get('/api/gamificacao/historico', { params }),
+  
+  // Premiações do vendedor
+  getPremiacoes: (params = {}) => api.get('/api/gamificacao/premiacoes', { params }),
+  
+  // Entregar premiação
+  entregarPremiacao: (id) => api.post(`/api/gamificacao/premiacoes/${id}/entregar`),
+};
+
+// Serviços para Metas de Vendas
+export const metaVendaService = {
+  getAll: (params = {}) => api.get('/api/metas-vendas', { params }),
+  getById: (id) => api.get(`/api/metas-vendas/${id}`),
+  create: (data) => api.post('/api/metas-vendas', data),
+  update: (id, data) => api.put(`/api/metas-vendas/${id}`, data),
+  delete: (id) => api.delete(`/api/metas-vendas/${id}`),
+  getMetaPeriodo: (params = {}) => api.get('/api/metas-vendas/periodo/meta', { params }),
+  getProgresso: (id) => api.get(`/api/metas-vendas/${id}/progresso`),
+};

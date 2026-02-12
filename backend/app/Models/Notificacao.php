@@ -26,6 +26,7 @@ class Notificacao extends Model
         'lida',
         'data_criacao',
         'data_leitura',
+        'dados_adicionais',
     ];
 
     protected $casts = [
@@ -35,6 +36,7 @@ class Notificacao extends Model
         'estoque_atual' => 'decimal:2',
         'estoque_minimo' => 'decimal:2',
         'percentual_atual' => 'decimal:2',
+        'dados_adicionais' => 'array',
     ];
 
     /**

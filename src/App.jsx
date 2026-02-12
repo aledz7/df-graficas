@@ -88,7 +88,8 @@ function AppContent() {
     marcarComoLida,
     marcarTodasComoLidas,
     deletarNotificacao,
-    fecharToast
+    fecharToast,
+    executarVerificacoes
   } = useNotifications();
   const { isAuthenticated, loading: authLoading, token, user } = useAuth();
   
@@ -508,6 +509,7 @@ function AppContent() {
             marcarTodasComoLidas={marcarTodasComoLidas}
             deletarNotificacao={deletarNotificacao}
             onNotificacaoClick={handleNotificacaoClick}
+            executarVerificacoes={executarVerificacoes}
           />
           
           <Toaster />
@@ -638,6 +640,7 @@ function AppContent() {
                       marcarTodasComoLidas={marcarTodasComoLidas}
                       deletarNotificacao={deletarNotificacao}
                       onNotificacaoClick={handleNotificacaoClick}
+                      executarVerificacoes={executarVerificacoes}
                     />
                     
                     <Toaster />
