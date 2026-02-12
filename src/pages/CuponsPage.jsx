@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { PlusCircle, Edit, Trash2, Ticket, RefreshCw, Copy, Check, X, Calendar, Percent, DollarSign } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cupomService } from '@/services/cupomService';
+import { categoriaService } from '@/services/api';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -27,6 +28,8 @@ const initialCupomState = {
     quantidade_limite: '',
     cliente_id: null,
     produto_ids: null,
+    tipo_aplicacao: 'todos_itens',
+    categoria_id: null,
     primeira_compra: false,
     data_inicio: '',
     data_fim: '',
@@ -42,6 +45,7 @@ const CuponsPage = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [copiedCode, setCopiedCode] = useState(null);
+    const [categorias, setCategorias] = useState([]);
 
     const loadData = async () => {
         try {
@@ -62,7 +66,18 @@ const CuponsPage = () => {
 
     useEffect(() => {
         loadData();
+        loadCategorias();
     }, []);
+
+    const loadCategorias = async () => {
+        try {
+            const response = await categoriaService.getAll();
+            const categoriasData = response.data?.data || response.data || [];
+            setCategorias(Array.isArray(categoriasData) ? categoriasData : []);
+        } catch (error) {
+            console.error('Erro ao carregar categorias:', error);
+        }
+    };
 
     const gerarNovoCodigo = async () => {
         try {
@@ -78,6 +93,8 @@ const CuponsPage = () => {
             setIsEditing(true);
             setCurrentCupom({
                 ...cupom,
+                tipo_aplicacao: cupom.tipo_aplicacao || 'todos_itens',
+                categoria_id: cupom.categoria_id || null,
                 data_inicio: cupom.data_inicio ? cupom.data_inicio.split('T')[0] : '',
                 data_fim: cupom.data_fim ? cupom.data_fim.split('T')[0] : ''
             });
@@ -119,6 +136,8 @@ const CuponsPage = () => {
                 quantidade_limite: currentCupom.limite_uso === 'quantidade_fixa' ? parseInt(currentCupom.quantidade_limite) : null,
                 cliente_id: currentCupom.cliente_id,
                 produto_ids: currentCupom.produto_ids,
+                tipo_aplicacao: currentCupom.tipo_aplicacao,
+                categoria_id: currentCupom.tipo_aplicacao === 'categoria' ? currentCupom.categoria_id : null,
                 primeira_compra: currentCupom.primeira_compra,
                 data_inicio: currentCupom.data_inicio || null,
                 data_fim: currentCupom.data_fim || null,
@@ -600,6 +619,77 @@ const CuponsPage = () => {
                                     />
                                 </div>
                             )}
+                        </div>
+
+                        {/* Onde se aplica o desconto */}
+                        <div className="space-y-4">
+                            <div>
+                                <Label>Onde se aplica o desconto *</Label>
+                                <Select
+                                    value={currentCupom.tipo_aplicacao}
+                                    onValueChange={(value) => setCurrentCupom({ ...currentCupom, tipo_aplicacao: value, categoria_id: value !== 'categoria' ? null : currentCupom.categoria_id })}
+                                >
+                                    <SelectTrigger className="mt-1">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="todos_itens">Todos os itens</SelectItem>
+                                        <SelectItem value="categoria">Uma categoria específica</SelectItem>
+                                        <SelectItem value="item_especifico">Item específico</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            {currentCupom.tipo_aplicacao === 'categoria' && (
+                                <div>
+                                    <Label htmlFor="cupom-categoria">Categoria *</Label>
+                                    <Select
+                                        value={currentCupom.categoria_id?.toString() || 'none'}
+                                        onValueChange={(value) => setCurrentCupom({ ...currentCupom, categoria_id: value === 'none' ? null : parseInt(value) })}
+                                    >
+                                        <SelectTrigger className="mt-1">
+                                            <SelectValue placeholder="Selecione a categoria" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {categorias.map(cat => (
+                                                <SelectItem key={cat.id} value={cat.id.toString()}>
+                                                    {cat.nome}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            )}
+                            {currentCupom.tipo_aplicacao === 'item_especifico' && (
+                                <div>
+                                    <Label htmlFor="cupom-produtos">IDs dos Produtos (separados por vírgula)</Label>
+                                    <Input 
+                                        id="cupom-produtos"
+                                        value={currentCupom.produto_ids ? currentCupom.produto_ids.join(', ') : ''} 
+                                        onChange={(e) => {
+                                            const ids = e.target.value.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+                                            setCurrentCupom({ ...currentCupom, produto_ids: ids.length > 0 ? ids : null });
+                                        }}
+                                        placeholder="Ex: 1, 5, 10"
+                                        className="mt-1"
+                                    />
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                        Informe os IDs dos produtos separados por vírgula
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Primeira Compra */}
+                        <div className="flex items-center justify-between p-4 border rounded-lg">
+                            <div>
+                                <Label htmlFor="cupom-primeira-compra">Apenas Primeira Compra</Label>
+                                <p className="text-xs text-muted-foreground">Cupom válido apenas para primeira compra do cliente</p>
+                            </div>
+                            <Switch 
+                                id="cupom-primeira-compra"
+                                checked={currentCupom.primeira_compra || false} 
+                                onCheckedChange={(checked) => setCurrentCupom({ ...currentCupom, primeira_compra: checked })}
+                            />
                         </div>
 
                         {/* Validade */}

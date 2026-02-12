@@ -37,7 +37,7 @@ class CupomController extends Controller
                 });
             }
             
-            $query->with('cliente:id,nome');
+            $query->with(['cliente:id,nome', 'categoria:id,nome']);
             $query->orderBy('created_at', 'desc');
             
             if ($request->has('per_page')) {
@@ -75,6 +75,8 @@ class CupomController extends Controller
                 'quantidade_limite' => 'nullable|integer|min:1',
                 'cliente_id' => 'nullable|integer|exists:clientes,id',
                 'produto_ids' => 'nullable|array',
+                'tipo_aplicacao' => 'required|in:todos_itens,categoria,item_especifico',
+                'categoria_id' => 'nullable|integer|exists:categorias,id|required_if:tipo_aplicacao,categoria',
                 'primeira_compra' => 'boolean',
                 'data_inicio' => 'nullable|date',
                 'data_fim' => 'nullable|date|after_or_equal:data_inicio',
@@ -141,7 +143,7 @@ class CupomController extends Controller
             $tenantId = auth()->user()->tenant_id ?? null;
             
             $cupom = Cupom::where('tenant_id', $tenantId)
-                ->with('cliente:id,nome')
+                ->with(['cliente:id,nome', 'categoria:id,nome'])
                 ->findOrFail($id);
 
             return response()->json([

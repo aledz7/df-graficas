@@ -23,6 +23,8 @@ class Cupom extends Model
         'quantidade_usada',     // contador de uso
         'cliente_id',           // null = todos os clientes, ou ID específico
         'produto_ids',          // JSON com IDs de produtos específicos (null = todos)
+        'tipo_aplicacao',      // 'todos_itens', 'categoria', 'item_especifico'
+        'categoria_id',         // ID da categoria (se tipo_aplicacao = 'categoria')
         'primeira_compra',      // true = só para primeira compra do cliente
         'data_inicio',
         'data_fim',
@@ -55,6 +57,14 @@ class Cupom extends Model
     public function cliente()
     {
         return $this->belongsTo(Cliente::class);
+    }
+    
+    /**
+     * Relacionamento com categoria (opcional)
+     */
+    public function categoria()
+    {
+        return $this->belongsTo(Categoria::class);
     }
     
     /**
@@ -160,6 +170,7 @@ class Cupom extends Model
     
     /**
      * Calcula o valor do desconto
+     * @param float $totalPedido - Total do pedido ou total dos itens aplicáveis
      */
     public function calcularDesconto($totalPedido)
     {
@@ -169,6 +180,32 @@ class Cupom extends Model
         
         // Valor fixo não pode ser maior que o total
         return min($this->valor_desconto, $totalPedido);
+    }
+    
+    /**
+     * Verifica se o cupom se aplica a um item específico
+     * @param int $produtoId - ID do produto
+     * @param int|null $categoriaId - ID da categoria do produto
+     */
+    public function seAplicaAoItem($produtoId, $categoriaId = null)
+    {
+        // Se aplica a todos os itens
+        if ($this->tipo_aplicacao === 'todos_itens') {
+            return true;
+        }
+        
+        // Se aplica a uma categoria específica
+        if ($this->tipo_aplicacao === 'categoria') {
+            return $this->categoria_id && $categoriaId == $this->categoria_id;
+        }
+        
+        // Se aplica a um item específico
+        if ($this->tipo_aplicacao === 'item_especifico') {
+            $produtoIds = $this->produto_ids ?? [];
+            return in_array($produtoId, $produtoIds);
+        }
+        
+        return false;
     }
     
     /**

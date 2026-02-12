@@ -720,6 +720,294 @@ SELECT '  - users.setor' AS '';
 SELECT '  - users.nivel_treinamento_liberado' AS '';
 SELECT '  - users.progresso_treinamento' AS '';
 SELECT '  - users.ultimo_acesso_treinamento' AS '';
+-- =====================================================
+-- 15. CRIAR TABELAS DE PÓS-VENDA
+-- =====================================================
+
+CREATE TABLE IF NOT EXISTS `pos_venda` (
+    `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `tenant_id` BIGINT UNSIGNED NOT NULL,
+    `cliente_id` BIGINT UNSIGNED NOT NULL,
+    `venda_id` BIGINT UNSIGNED NULL,
+    `vendedor_id` BIGINT UNSIGNED NULL,
+    `responsavel_atual_id` BIGINT UNSIGNED NOT NULL,
+    `tipo` ENUM('satisfacao', 'reclamacao', 'elogio', 'ajuste_retrabalho', 'nova_oportunidade', 'outro') NOT NULL DEFAULT 'satisfacao',
+    `observacao` TEXT NOT NULL,
+    `nota_satisfacao` INT NULL COMMENT 'Nota de 1 a 5',
+    `status` ENUM('pendente', 'em_andamento', 'resolvido') NOT NULL DEFAULT 'pendente',
+    `data_abertura` DATETIME NOT NULL,
+    `data_resolucao` DATETIME NULL,
+    `usuario_abertura_id` BIGINT UNSIGNED NOT NULL,
+    `usuario_resolucao_id` BIGINT UNSIGNED NULL,
+    `created_at` TIMESTAMP NULL DEFAULT NULL,
+    `updated_at` TIMESTAMP NULL DEFAULT NULL,
+    `deleted_at` TIMESTAMP NULL DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    INDEX `idx_pos_venda_tenant_cliente` (`tenant_id`, `cliente_id`),
+    INDEX `idx_pos_venda_tenant_vendedor` (`tenant_id`, `vendedor_id`),
+    INDEX `idx_pos_venda_tenant_status` (`tenant_id`, `status`),
+    INDEX `idx_pos_venda_tenant_tipo` (`tenant_id`, `tipo`),
+    INDEX `idx_pos_venda_tenant_data_abertura` (`tenant_id`, `data_abertura`),
+    CONSTRAINT `fk_pos_venda_tenant` 
+        FOREIGN KEY (`tenant_id`) 
+        REFERENCES `tenants` (`id`) 
+        ON DELETE CASCADE,
+    CONSTRAINT `fk_pos_venda_cliente` 
+        FOREIGN KEY (`cliente_id`) 
+        REFERENCES `clientes` (`id`) 
+        ON DELETE CASCADE,
+    CONSTRAINT `fk_pos_venda_venda` 
+        FOREIGN KEY (`venda_id`) 
+        REFERENCES `vendas` (`id`) 
+        ON DELETE SET NULL,
+    CONSTRAINT `fk_pos_venda_vendedor` 
+        FOREIGN KEY (`vendedor_id`) 
+        REFERENCES `users` (`id`) 
+        ON DELETE SET NULL,
+    CONSTRAINT `fk_pos_venda_responsavel` 
+        FOREIGN KEY (`responsavel_atual_id`) 
+        REFERENCES `users` (`id`) 
+        ON DELETE RESTRICT,
+    CONSTRAINT `fk_pos_venda_usuario_abertura` 
+        FOREIGN KEY (`usuario_abertura_id`) 
+        REFERENCES `users` (`id`) 
+        ON DELETE RESTRICT,
+    CONSTRAINT `fk_pos_venda_usuario_resolucao` 
+        FOREIGN KEY (`usuario_resolucao_id`) 
+        REFERENCES `users` (`id`) 
+        ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `pos_venda_historico` (
+    `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `tenant_id` BIGINT UNSIGNED NOT NULL,
+    `pos_venda_id` BIGINT UNSIGNED NOT NULL,
+    `tipo_acao` ENUM('criacao', 'status_alterado', 'observacao_adicionada', 'nota_alterada', 'responsavel_alterado', 'agendamento_criado', 'agendamento_concluido') NOT NULL DEFAULT 'observacao_adicionada',
+    `status_anterior` ENUM('pendente', 'em_andamento', 'resolvido') NULL,
+    `status_novo` ENUM('pendente', 'em_andamento', 'resolvido') NULL,
+    `descricao` TEXT NOT NULL,
+    `usuario_id` BIGINT UNSIGNED NOT NULL,
+    `dados_adicionais` JSON NULL,
+    `created_at` TIMESTAMP NULL DEFAULT NULL,
+    `updated_at` TIMESTAMP NULL DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    INDEX `idx_historico_tenant_pos_venda` (`tenant_id`, `pos_venda_id`),
+    INDEX `idx_historico_tenant_usuario` (`tenant_id`, `usuario_id`),
+    INDEX `idx_historico_pos_venda_data` (`pos_venda_id`, `created_at`),
+    CONSTRAINT `fk_pos_venda_historico_tenant` 
+        FOREIGN KEY (`tenant_id`) 
+        REFERENCES `tenants` (`id`) 
+        ON DELETE CASCADE,
+    CONSTRAINT `fk_pos_venda_historico_pos_venda` 
+        FOREIGN KEY (`pos_venda_id`) 
+        REFERENCES `pos_venda` (`id`) 
+        ON DELETE CASCADE,
+    CONSTRAINT `fk_pos_venda_historico_usuario` 
+        FOREIGN KEY (`usuario_id`) 
+        REFERENCES `users` (`id`) 
+        ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `pos_venda_transferencias` (
+    `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `tenant_id` BIGINT UNSIGNED NOT NULL,
+    `pos_venda_id` BIGINT UNSIGNED NOT NULL,
+    `usuario_origem_id` BIGINT UNSIGNED NOT NULL,
+    `usuario_destino_id` BIGINT UNSIGNED NOT NULL,
+    `motivo` TEXT NOT NULL,
+    `usuario_transferencia_id` BIGINT UNSIGNED NOT NULL,
+    `created_at` TIMESTAMP NULL DEFAULT NULL,
+    `updated_at` TIMESTAMP NULL DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    INDEX `idx_transferencias_tenant_pos_venda` (`tenant_id`, `pos_venda_id`),
+    INDEX `idx_transferencias_tenant_destino` (`tenant_id`, `usuario_destino_id`),
+    INDEX `idx_transferencias_pos_venda_data` (`pos_venda_id`, `created_at`),
+    CONSTRAINT `fk_pos_venda_transferencias_tenant` 
+        FOREIGN KEY (`tenant_id`) 
+        REFERENCES `tenants` (`id`) 
+        ON DELETE CASCADE,
+    CONSTRAINT `fk_pos_venda_transferencias_pos_venda` 
+        FOREIGN KEY (`pos_venda_id`) 
+        REFERENCES `pos_venda` (`id`) 
+        ON DELETE CASCADE,
+    CONSTRAINT `fk_pos_venda_transferencias_origem` 
+        FOREIGN KEY (`usuario_origem_id`) 
+        REFERENCES `users` (`id`) 
+        ON DELETE RESTRICT,
+    CONSTRAINT `fk_pos_venda_transferencias_destino` 
+        FOREIGN KEY (`usuario_destino_id`) 
+        REFERENCES `users` (`id`) 
+        ON DELETE RESTRICT,
+    CONSTRAINT `fk_pos_venda_transferencias_usuario` 
+        FOREIGN KEY (`usuario_transferencia_id`) 
+        REFERENCES `users` (`id`) 
+        ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `pos_venda_agendamentos` (
+    `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `tenant_id` BIGINT UNSIGNED NOT NULL,
+    `pos_venda_id` BIGINT UNSIGNED NOT NULL,
+    `responsavel_id` BIGINT UNSIGNED NOT NULL,
+    `data_agendamento` DATETIME NOT NULL,
+    `observacao` TEXT NULL,
+    `concluido` TINYINT(1) NOT NULL DEFAULT 0,
+    `data_conclusao` DATETIME NULL,
+    `usuario_conclusao_id` BIGINT UNSIGNED NULL,
+    `created_at` TIMESTAMP NULL DEFAULT NULL,
+    `updated_at` TIMESTAMP NULL DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    INDEX `idx_agendamentos_tenant_pos_venda` (`tenant_id`, `pos_venda_id`),
+    INDEX `idx_agendamentos_tenant_responsavel` (`tenant_id`, `responsavel_id`),
+    INDEX `idx_pos_venda_agend_tenant_data_concl` (`tenant_id`, `data_agendamento`, `concluido`),
+    CONSTRAINT `fk_pos_venda_agendamentos_tenant` 
+        FOREIGN KEY (`tenant_id`) 
+        REFERENCES `tenants` (`id`) 
+        ON DELETE CASCADE,
+    CONSTRAINT `fk_pos_venda_agendamentos_pos_venda` 
+        FOREIGN KEY (`pos_venda_id`) 
+        REFERENCES `pos_venda` (`id`) 
+        ON DELETE CASCADE,
+    CONSTRAINT `fk_pos_venda_agendamentos_responsavel` 
+        FOREIGN KEY (`responsavel_id`) 
+        REFERENCES `users` (`id`) 
+        ON DELETE RESTRICT,
+    CONSTRAINT `fk_pos_venda_agendamentos_usuario_conclusao` 
+        FOREIGN KEY (`usuario_conclusao_id`) 
+        REFERENCES `users` (`id`) 
+        ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+SELECT '' AS '';
+SELECT 'VERIFICAÇÃO DE TABELAS DE PÓS-VENDA' AS '';
+SELECT 
+    CASE 
+        WHEN COUNT(*) > 0 THEN CONCAT('✓ pos_venda - ', COUNT(*), ' registro(s)')
+        ELSE '✗ pos_venda - Tabela não encontrada'
+    END AS status
+FROM information_schema.tables 
+WHERE table_schema = DATABASE() 
+AND table_name = 'pos_venda';
+
+SELECT 
+    CASE 
+        WHEN COUNT(*) > 0 THEN CONCAT('✓ pos_venda_historico - ', COUNT(*), ' registro(s)')
+        ELSE '✗ pos_venda_historico - Tabela não encontrada'
+    END AS status
+FROM information_schema.tables 
+WHERE table_schema = DATABASE() 
+AND table_name = 'pos_venda_historico';
+
+SELECT 
+    CASE 
+        WHEN COUNT(*) > 0 THEN CONCAT('✓ pos_venda_transferencias - ', COUNT(*), ' registro(s)')
+        ELSE '✗ pos_venda_transferencias - Tabela não encontrada'
+    END AS status
+FROM information_schema.tables 
+WHERE table_schema = DATABASE() 
+AND table_name = 'pos_venda_transferencias';
+
+SELECT 
+    CASE 
+        WHEN COUNT(*) > 0 THEN CONCAT('✓ pos_venda_agendamentos - ', COUNT(*), ' registro(s)')
+        ELSE '✗ pos_venda_agendamentos - Tabela não encontrada'
+    END AS status
+FROM information_schema.tables 
+WHERE table_schema = DATABASE() 
+AND table_name = 'pos_venda_agendamentos';
+
+-- =====================================================
+-- 16. ADICIONAR CAMPOS DE APLICAÇÃO EM CUPONS
+-- =====================================================
+
+SET @col_tipo_aplicacao = (
+    SELECT COUNT(*) 
+    FROM information_schema.columns 
+    WHERE table_schema = DATABASE() 
+    AND table_name = 'cupons' 
+    AND column_name = 'tipo_aplicacao'
+);
+
+SET @sql = IF(@col_tipo_aplicacao = 0,
+    'ALTER TABLE `cupons` ADD COLUMN `tipo_aplicacao` ENUM(''todos_itens'', ''categoria'', ''item_especifico'') NOT NULL DEFAULT ''todos_itens'' AFTER `produto_ids`;',
+    'SELECT ''Coluna tipo_aplicacao já existe em cupons.'' AS mensagem;'
+);
+
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @col_categoria_id = (
+    SELECT COUNT(*) 
+    FROM information_schema.columns 
+    WHERE table_schema = DATABASE() 
+    AND table_name = 'cupons' 
+    AND column_name = 'categoria_id'
+);
+
+SET @sql = IF(@col_categoria_id = 0,
+    'ALTER TABLE `cupons` ADD COLUMN `categoria_id` BIGINT UNSIGNED NULL AFTER `tipo_aplicacao`, ADD INDEX `idx_cupons_tenant_tipo_categoria` (`tenant_id`, `tipo_aplicacao`, `categoria_id`), ADD CONSTRAINT `fk_cupons_categoria` FOREIGN KEY (`categoria_id`) REFERENCES `categorias` (`id`) ON DELETE SET NULL;',
+    'SELECT ''Coluna categoria_id já existe em cupons.'' AS mensagem;'
+);
+
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SELECT '' AS '';
+SELECT 'VERIFICAÇÃO DE COLUNAS EM CUPONS' AS '';
+SELECT 
+    CASE 
+        WHEN COUNT(*) > 0 THEN '✓ tipo_aplicacao'
+        ELSE '✗ tipo_aplicacao - Coluna não encontrada'
+    END AS status
+FROM information_schema.columns 
+WHERE table_schema = DATABASE() 
+AND table_name = 'cupons' 
+AND column_name = 'tipo_aplicacao';
+
+SELECT 
+    CASE 
+        WHEN COUNT(*) > 0 THEN '✓ categoria_id'
+        ELSE '✗ categoria_id - Coluna não encontrada'
+    END AS status
+FROM information_schema.columns 
+WHERE table_schema = DATABASE() 
+AND table_name = 'cupons' 
+AND column_name = 'categoria_id';
+
+SELECT '' AS '';
+SELECT '========================================' AS '';
+SELECT 'RESUMO FINAL' AS '';
+SELECT '========================================' AS '';
+SELECT '' AS '';
+SELECT 'Tabelas criadas:' AS '';
+SELECT '  - vendedor_pontos' AS '';
+SELECT '  - historico_pontos' AS '';
+SELECT '  - premiacoes' AS '';
+SELECT '  - impressoras_config' AS '';
+SELECT '  - treinamento' AS '';
+SELECT '  - treinamento_progresso' AS '';
+SELECT '  - treinamento_avisos' AS '';
+SELECT '  - treinamento_regras_alerta' AS '';
+SELECT '  - eventos_calendario' AS '';
+SELECT '  - termometro_config' AS '';
+SELECT '  - pos_venda' AS '';
+SELECT '  - pos_venda_historico' AS '';
+SELECT '  - pos_venda_transferencias' AS '';
+SELECT '  - pos_venda_agendamentos' AS '';
+SELECT '' AS '';
+SELECT 'Colunas adicionadas:' AS '';
+SELECT '  - metas_vendas.pontos_meta' AS '';
+SELECT '  - metas_vendas.percentual_proximo_alerta' AS '';
+SELECT '  - metas_vendas.premiacao' AS '';
+SELECT '  - notificacoes.dados_adicionais' AS '';
+SELECT '  - users.setor' AS '';
+SELECT '  - users.nivel_treinamento_liberado' AS '';
+SELECT '  - users.progresso_treinamento' AS '';
+SELECT '  - users.ultimo_acesso_treinamento' AS '';
+SELECT '  - cupons.tipo_aplicacao' AS '';
+SELECT '  - cupons.categoria_id' AS '';
 SELECT '' AS '';
 SELECT '========================================' AS '';
 SELECT 'FIM DO SCRIPT' AS '';
