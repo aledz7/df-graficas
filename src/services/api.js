@@ -1807,3 +1807,26 @@ export const clienteTendenciaService = {
   getClientesComQueda: (params = {}) => api.get('/api/clientes-tendencia', { params }),
   gerarAlertas: (params = {}) => api.post('/api/clientes-tendencia/gerar-alertas', params),
 };
+
+// Serviços para Perfil do Vendedor
+export const perfilVendedorService = {
+  getPerfil: (vendedorId, params = {}) => api.get(`/api/perfil-vendedor/${vendedorId}`, { params }),
+  listarPerfis: (params = {}) => api.get('/api/perfil-vendedor', { params }),
+};
+
+// Serviços para Calendário Inteligente
+export const eventoCalendarioService = {
+  getAll: (params = {}) => api.get('/api/eventos-calendario', { params }),
+  getById: (id) => api.get(`/api/eventos-calendario/${id}`),
+  create: (data) => api.post('/api/eventos-calendario', data),
+  update: (id, data) => api.put(`/api/eventos-calendario/${id}`, data),
+  delete: (id) => api.delete(`/api/eventos-calendario/${id}`),
+  getProximos: (params = {}) => api.get('/api/eventos-calendario/proximos', { params }),
+};
+
+// Serviços para Termômetro da Empresa
+export const termometroService = {
+  getStatus: () => api.get('/api/termometro/status'),
+  getConfig: () => api.get('/api/termometro/config'),
+  updateConfig: (data) => api.put('/api/termometro/config', data),
+};

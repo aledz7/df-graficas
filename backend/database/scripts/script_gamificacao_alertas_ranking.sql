@@ -619,6 +619,107 @@ WHERE table_schema = DATABASE()
 AND table_name = 'users' 
 AND column_name = 'ultimo_acesso_treinamento';
 
+-- =====================================================
+-- 13. CRIAR TABELA EVENTOS_CALENDARIO
+-- =====================================================
+
+CREATE TABLE IF NOT EXISTS `eventos_calendario` (
+    `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `tenant_id` BIGINT UNSIGNED NOT NULL,
+    `titulo` VARCHAR(255) NOT NULL,
+    `descricao` TEXT NULL,
+    `data_inicio` DATE NOT NULL,
+    `data_fim` DATE NULL COMMENT 'Para eventos de múltiplos dias',
+    `tipo` ENUM('volta_aulas', 'eleicoes', 'datas_comerciais', 'feriado', 'evento_especial', 'outro') NOT NULL DEFAULT 'outro',
+    `impacto` ENUM('alto', 'medio', 'baixo') NOT NULL DEFAULT 'medio',
+    `recorrente` TINYINT(1) NOT NULL DEFAULT 0,
+    `frequencia_recorrencia` ENUM('anual', 'mensal', 'semanal') NULL,
+    `ano_base` INT NULL COMMENT 'Para eventos recorrentes',
+    `ativo` TINYINT(1) NOT NULL DEFAULT 1,
+    `observacoes` TEXT NULL,
+    `metadados` JSON NULL,
+    `created_at` TIMESTAMP NULL DEFAULT NULL,
+    `updated_at` TIMESTAMP NULL DEFAULT NULL,
+    `deleted_at` TIMESTAMP NULL DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    INDEX `idx_eventos_tenant_data_inicio` (`tenant_id`, `data_inicio`),
+    INDEX `idx_eventos_tenant_tipo` (`tenant_id`, `tipo`),
+    INDEX `idx_eventos_tenant_ativo` (`tenant_id`, `ativo`),
+    CONSTRAINT `fk_eventos_calendario_tenant` 
+        FOREIGN KEY (`tenant_id`) 
+        REFERENCES `tenants` (`id`) 
+        ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+SELECT '' AS '';
+SELECT 'VERIFICAÇÃO DE TABELA EVENTOS_CALENDARIO' AS '';
+SELECT 
+    CASE 
+        WHEN COUNT(*) > 0 THEN CONCAT('✓ eventos_calendario - ', COUNT(*), ' registro(s)')
+        ELSE '✗ eventos_calendario - Tabela não encontrada'
+    END AS status
+FROM information_schema.tables 
+WHERE table_schema = DATABASE() 
+AND table_name = 'eventos_calendario';
+
+-- =====================================================
+-- 14. CRIAR TABELA TERMOMETRO_CONFIG
+-- =====================================================
+
+CREATE TABLE IF NOT EXISTS `termometro_config` (
+    `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `tenant_id` BIGINT UNSIGNED NOT NULL,
+    `usuarios_permitidos` JSON NULL COMMENT 'Array de user_ids que podem ver o termômetro',
+    `todos_usuarios` TINYINT(1) NOT NULL DEFAULT 0 COMMENT 'Se true, todos podem ver',
+    `apenas_admin` TINYINT(1) NOT NULL DEFAULT 1 COMMENT 'Se true, apenas admins podem ver',
+    `configuracoes_limites` JSON NULL COMMENT 'Limites personalizados para cada indicador',
+    `created_at` TIMESTAMP NULL DEFAULT NULL,
+    `updated_at` TIMESTAMP NULL DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `unique_termometro_config_tenant` (`tenant_id`),
+    CONSTRAINT `fk_termometro_config_tenant` 
+        FOREIGN KEY (`tenant_id`) 
+        REFERENCES `tenants` (`id`) 
+        ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+SELECT '' AS '';
+SELECT 'VERIFICAÇÃO DE TABELA TERMOMETRO_CONFIG' AS '';
+SELECT 
+    CASE 
+        WHEN COUNT(*) > 0 THEN CONCAT('✓ termometro_config - ', COUNT(*), ' registro(s)')
+        ELSE '✗ termometro_config - Tabela não encontrada'
+    END AS status
+FROM information_schema.tables 
+WHERE table_schema = DATABASE() 
+AND table_name = 'termometro_config';
+
+SELECT '' AS '';
+SELECT '========================================' AS '';
+SELECT 'RESUMO FINAL' AS '';
+SELECT '========================================' AS '';
+SELECT '' AS '';
+SELECT 'Tabelas criadas:' AS '';
+SELECT '  - vendedor_pontos' AS '';
+SELECT '  - historico_pontos' AS '';
+SELECT '  - premiacoes' AS '';
+SELECT '  - impressoras_config' AS '';
+SELECT '  - treinamento' AS '';
+SELECT '  - treinamento_progresso' AS '';
+SELECT '  - treinamento_avisos' AS '';
+SELECT '  - treinamento_regras_alerta' AS '';
+SELECT '  - eventos_calendario' AS '';
+SELECT '  - termometro_config' AS '';
+SELECT '' AS '';
+SELECT 'Colunas adicionadas:' AS '';
+SELECT '  - metas_vendas.pontos_meta' AS '';
+SELECT '  - metas_vendas.percentual_proximo_alerta' AS '';
+SELECT '  - metas_vendas.premiacao' AS '';
+SELECT '  - notificacoes.dados_adicionais' AS '';
+SELECT '  - users.setor' AS '';
+SELECT '  - users.nivel_treinamento_liberado' AS '';
+SELECT '  - users.progresso_treinamento' AS '';
+SELECT '  - users.ultimo_acesso_treinamento' AS '';
 SELECT '' AS '';
 SELECT '========================================' AS '';
 SELECT 'FIM DO SCRIPT' AS '';

@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FileText, BarChart2, PieChart, Users, ShoppingBag, Package, TrendingUp, CreditCard, DollarSign, Printer, Box, Wallet, ArrowDownUp, Award, Target, Gift, Trophy, TrendingDown, GraduationCap } from 'lucide-react';
+import { FileText, BarChart2, PieChart, Users, ShoppingBag, Package, TrendingUp, CreditCard, DollarSign, Printer, Box, Wallet, ArrowDownUp, Award, Target, Gift, Trophy, TrendingDown, GraduationCap, User } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useToast } from "@/components/ui/use-toast";
 
@@ -47,6 +47,7 @@ const reportCategories = [
       { id: 'ranking_vendedores', title: 'Ranking de Vendedores', description: 'Ranking de vendedores por valor e quantidade vendida.', icon: Trophy, path: '/relatorios/gerencial/ranking-vendedores' },
       { id: 'metas_gamificadas', title: 'Metas Gamificadas', description: 'Acompanhamento de metas com sistema de pontos e níveis.', icon: Target, path: '/relatorios/gerencial/metas-gamificadas' },
       { id: 'clientes_diminuindo_compras', title: 'Clientes Diminuindo Compras', description: 'Identifique clientes que estão comprando menos e aja antes que parem.', icon: TrendingDown, path: '/relatorios/gerencial/clientes-diminuindo-compras' },
+      { id: 'perfil_vendedor', title: 'Perfil do Vendedor', description: 'Identifique o estilo de venda de cada vendedor para treinamento personalizado.', icon: User, path: '/relatorios/gerencial/perfil-vendedor' },
     ]
   },
   {

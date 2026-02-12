@@ -62,6 +62,9 @@ use App\Http\Controllers\Api\GamificacaoController;
 use App\Http\Controllers\Api\AproveitamentoFolhaController;
 use App\Http\Controllers\Api\TreinamentoController;
 use App\Http\Controllers\Api\ClienteTendenciaController;
+use App\Http\Controllers\Api\PerfilVendedorController;
+use App\Http\Controllers\Api\EventoCalendarioController;
+use App\Http\Controllers\Api\TermometroController;
 
 /*
 |--------------------------------------------------------------------------
@@ -456,6 +459,25 @@ Route::middleware(['api.auth'])->group(function () {
     Route::prefix('clientes-tendencia')->group(function () {
         Route::get('/', [ClienteTendenciaController::class, 'index']);
         Route::post('gerar-alertas', [ClienteTendenciaController::class, 'gerarAlertas']);
+    });
+
+    // Perfil do Vendedor
+    Route::prefix('perfil-vendedor')->group(function () {
+        Route::get('/', [PerfilVendedorController::class, 'index']);
+        Route::get('{vendedorId}', [PerfilVendedorController::class, 'show']);
+    });
+
+    // Calendário Inteligente
+    Route::prefix('eventos-calendario')->group(function () {
+        Route::get('proximos', [EventoCalendarioController::class, 'proximos']);
+    });
+    Route::apiResource('eventos-calendario', EventoCalendarioController::class);
+
+    // Termômetro da Empresa
+    Route::prefix('termometro')->group(function () {
+        Route::get('status', [TermometroController::class, 'status']);
+        Route::get('config', [TermometroController::class, 'config']);
+        Route::put('config', [TermometroController::class, 'atualizarConfig']);
     });
     
     // Treinamento Interno

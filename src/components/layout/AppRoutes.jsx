@@ -98,6 +98,9 @@ const TreinamentoRelatorioSetorPage = lazy(() => import('@/pages/TreinamentoRela
 const TreinamentoAvisosPage = lazy(() => import('@/pages/TreinamentoAvisosPage'));
 const MetasVendedorPage = lazy(() => import('@/pages/MetasVendedorPage'));
 const ClientesDiminuindoComprasPage = lazy(() => import('@/pages/ClientesDiminuindoComprasPage'));
+const PerfilVendedorPage = lazy(() => import('@/pages/PerfilVendedorPage'));
+const CalendarioInteligentePage = lazy(() => import('@/pages/CalendarioInteligentePage'));
+const TermometroEmpresaPage = lazy(() => import('@/pages/TermometroEmpresaPage'));
 
 
 const AppRoutes = ({ logoUrl, nomeEmpresa, vendedorAtual, theme, setTheme, setAppLogoUrl, setAppNomeEmpresa, setAppNomeSistema }) => {
@@ -105,6 +108,7 @@ const AppRoutes = ({ logoUrl, nomeEmpresa, vendedorAtual, theme, setTheme, setAp
     <Routes>
       <Route path="/" element={<RedirectToFirstAllowedRoute />} />
       <Route path="/dashboard" element={<DashboardPage vendedorAtual={vendedorAtual} />} />
+      <Route path="/termometro-empresa" element={<TermometroEmpresaPage />} />
       
       {/* Cadastros */}
       <Route path="/cadastros/produtos" element={<ProdutosPage />} />
@@ -192,6 +196,7 @@ const AppRoutes = ({ logoUrl, nomeEmpresa, vendedorAtual, theme, setTheme, setAp
       {/* Ferramentas */}
       <Route path="/ferramentas/feed-atividades" element={<FeedPage />} />
       <Route path="/ferramentas/agenda" element={<AgendaPage />} />
+      <Route path="/ferramentas/calendario-inteligente" element={<CalendarioInteligentePage />} />
       <Route path="/ferramentas/lixeira" element={<LixeiraPage vendedorAtual={vendedorAtual}/>} />
       <Route path="/ferramentas/auditoria" element={<AuditoriaPage />} />
       <Route path="/ferramentas/calculadora-metricas" element={<CalculadoraPage />} />
@@ -204,6 +209,7 @@ const AppRoutes = ({ logoUrl, nomeEmpresa, vendedorAtual, theme, setTheme, setAp
       <Route path="/ferramentas/treinamento-avisos" element={<TreinamentoAvisosPage />} />
       <Route path="/vendedor/minhas-metas" element={<MetasVendedorPage />} />
       <Route path="/relatorios/gerencial/clientes-diminuindo-compras" element={<ClientesDiminuindoComprasPage />} />
+      <Route path="/relatorios/gerencial/perfil-vendedor" element={<PerfilVendedorPage />} />
       
       {/* Marketplace */}
       <Route path="/marketplace/vendas" element={<MarketplacePage vendedorAtual={vendedorAtual} />} />
