@@ -1834,7 +1834,12 @@ const OSItemForm = ({
       materialFoiEditadoRef.current = false;
       setProdutoBaseInfo(produto);
       const unidadeProduto = (produto.unidade_medida || produto.unidadeMedida || produto.tipo_produto || '').toString().toLowerCase();
-      const produtoEhM2 = ['m2', 'm²', 'metro', 'metro quadrado'].includes(unidadeProduto);
+      const tipoPrecificacaoProduto = (produto.tipo_precificacao || '').toLowerCase();
+      
+      // Determinar se é produto M2 considerando tipo_precificacao E unidade_medida
+      const produtoEhM2PorUnidade = ['m2', 'm²', 'metro', 'metro quadrado'].includes(unidadeProduto);
+      const produtoEhM2PorPrecificacao = ['m2_cm2', 'm2_cm2_tabelado', 'metro_linear'].includes(tipoPrecificacaoProduto);
+      const produtoEhM2 = produtoEhM2PorUnidade || produtoEhM2PorPrecificacao;
       const novoTipoItem = produtoEhM2 ? 'm2' : 'unidade';
 
       let novoValorProduto = '0,00';
@@ -1847,14 +1852,27 @@ const OSItemForm = ({
       const precoM2 = safeParseFloat(produto.preco_m2);
       const precoVenda = safeParseFloat(produto.preco_venda);
       const precoMetroLinear = safeParseFloat(produto.preco_metro_linear);
-      const tipoPrecificacaoProduto = (produto.tipo_precificacao || '').toLowerCase();
 
-      if (produtoEhM2 && precoM2 > 0) {
+      // Prioridade de preço baseada em tipo_precificacao:
+      // 1. m2_cm2/m2_cm2_tabelado → preco_m2
+      // 2. metro_linear → preco_metro_linear
+      // 3. Fallback: preco_m2 > preco_metro_linear > preco_venda
+      if ((tipoPrecificacaoProduto === 'm2_cm2' || tipoPrecificacaoProduto === 'm2_cm2_tabelado') && precoM2 > 0) {
         novoValorProduto = formatToDisplay(precoM2, 2);
         valorBloqueado = true;
         valorOrigem = "preço por m²";
-        toastMessage = `${produto.nome}. Valor (R$ ${novoValorProduto}) originado do ${valorOrigem}) carregado e bloqueado. Informe as medidas (m).`;
+        toastMessage = `${produto.nome}. Valor (R$ ${novoValorProduto}) originado do ${valorOrigem} carregado e bloqueado. Informe as medidas (m).`;
       } else if (tipoPrecificacaoProduto === 'metro_linear' && precoMetroLinear > 0) {
+        novoValorProduto = formatToDisplay(precoMetroLinear, 2);
+        valorBloqueado = true;
+        valorOrigem = "preço por metro linear";
+        toastMessage = `${produto.nome}. Valor (R$ ${novoValorProduto}/m) originado do ${valorOrigem}. Informe o comprimento (m).`;
+      } else if (precoM2 > 0) {
+        novoValorProduto = formatToDisplay(precoM2, 2);
+        valorBloqueado = true;
+        valorOrigem = "preço por m²";
+        toastMessage = `${produto.nome}. Valor (R$ ${novoValorProduto}) originado do ${valorOrigem} carregado e bloqueado. Informe as medidas (m).`;
+      } else if (precoMetroLinear > 0) {
         novoValorProduto = formatToDisplay(precoMetroLinear, 2);
         valorBloqueado = true;
         valorOrigem = "preço por metro linear";

@@ -239,11 +239,32 @@ const ProductAutocomplete = ({
                             </p>
                           </div>
                           
-                          {produto.preco_venda && (
-                            <p className="text-xs text-muted-foreground mt-1">
-                              R$ {parseFloat(produto.preco_venda).toFixed(2).replace('.', ',')}
-                            </p>
-                          )}
+                          {(() => {
+                            const tipo = (produto.tipo_precificacao || '').toLowerCase();
+                            let preco = 0;
+                            let sufixo = '';
+                            if ((tipo === 'm2_cm2' || tipo === 'm2_cm2_tabelado') && parseFloat(produto.preco_m2 || 0) > 0) {
+                              preco = parseFloat(produto.preco_m2);
+                              sufixo = '/m²';
+                            } else if (tipo === 'metro_linear' && parseFloat(produto.preco_metro_linear || 0) > 0) {
+                              preco = parseFloat(produto.preco_metro_linear);
+                              sufixo = '/m';
+                            } else if (parseFloat(produto.preco_m2 || 0) > 0) {
+                              preco = parseFloat(produto.preco_m2);
+                              sufixo = '/m²';
+                            } else if (parseFloat(produto.preco_metro_linear || 0) > 0) {
+                              preco = parseFloat(produto.preco_metro_linear);
+                              sufixo = '/m';
+                            } else if (parseFloat(produto.preco_venda || 0) > 0) {
+                              preco = parseFloat(produto.preco_venda);
+                            }
+                            return preco > 0 ? (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                R$ {preco.toFixed(2).replace('.', ',')}
+                                {sufixo && <span className="text-blue-600"> {sufixo}</span>}
+                              </p>
+                            ) : null;
+                          })()}
                           
                           {produto.sku && (
                             <p className="text-xs text-muted-foreground">

@@ -43,10 +43,14 @@ const ProductAutocompleteSimple = ({
     let produtosFiltradosPorTipo = produtos;
     
     if (tipoProduto === 'm2') {
-      // Para m²: incluir produtos m², serviços adicionais e produtos que não sejam unidade
+      // Para m²: incluir produtos m², metro linear, serviços adicionais e produtos que não sejam unidade
       produtosFiltradosPorTipo = produtos.filter(produto => {
         const unidade = (produto.unidade_medida || produto.unidadeMedida || '').toLowerCase();
+        const tipoPrecif = (produto.tipo_precificacao || '').toLowerCase();
         return produto.isServicoAdicional || 
+               tipoPrecif === 'm2_cm2' ||
+               tipoPrecif === 'm2_cm2_tabelado' ||
+               tipoPrecif === 'metro_linear' ||
                unidade === 'm²' || 
                unidade === 'm2' || 
                unidade === 'metro_quadrado' ||
@@ -56,7 +60,8 @@ const ProductAutocompleteSimple = ({
       // Para unidade: incluir apenas produtos por unidade
       produtosFiltradosPorTipo = produtos.filter(produto => {
         const unidade = (produto.unidade_medida || produto.unidadeMedida || '').toLowerCase();
-        return unidade === 'unidade';
+        const tipoPrecif = (produto.tipo_precificacao || '').toLowerCase();
+        return unidade === 'unidade' || tipoPrecif === 'unidade' || tipoPrecif === 'quantidade_definida' || tipoPrecif === 'faixa_quantidade';
       });
     }
     // Se tipoProduto === 'all', não filtrar por tipo
@@ -345,12 +350,33 @@ const ProductAutocompleteSimple = ({
                             )}
                           </div>
                           
-                          {produto.preco_venda && (
-                            <p className="text-xs text-muted-foreground mt-1">
-                              R$ {parseFloat(produto.preco_venda).toFixed(2).replace('.', ',')}
-                              {produto.isServicoAdicional && <span className="text-blue-600"> /m²</span>}
-                            </p>
-                          )}
+                          {(() => {
+                            const tipo = (produto.tipo_precificacao || '').toLowerCase();
+                            let preco = 0;
+                            let sufixo = '';
+                            if ((tipo === 'm2_cm2' || tipo === 'm2_cm2_tabelado') && parseFloat(produto.preco_m2 || 0) > 0) {
+                              preco = parseFloat(produto.preco_m2);
+                              sufixo = '/m²';
+                            } else if (tipo === 'metro_linear' && parseFloat(produto.preco_metro_linear || 0) > 0) {
+                              preco = parseFloat(produto.preco_metro_linear);
+                              sufixo = '/m';
+                            } else if (parseFloat(produto.preco_m2 || 0) > 0) {
+                              preco = parseFloat(produto.preco_m2);
+                              sufixo = '/m²';
+                            } else if (parseFloat(produto.preco_metro_linear || 0) > 0) {
+                              preco = parseFloat(produto.preco_metro_linear);
+                              sufixo = '/m';
+                            } else if (parseFloat(produto.preco_venda || 0) > 0) {
+                              preco = parseFloat(produto.preco_venda);
+                            }
+                            if (produto.isServicoAdicional && !sufixo) sufixo = '/m²';
+                            return preco > 0 ? (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                R$ {preco.toFixed(2).replace('.', ',')}
+                                {sufixo && <span className="text-blue-600"> {sufixo}</span>}
+                              </p>
+                            ) : null;
+                          })()}
                           
                           {produto.sku && (
                             <p className="text-xs text-muted-foreground">

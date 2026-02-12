@@ -61,9 +61,9 @@ const menuItems = [
     ]
   },
   {
-    label: 'Ordem de Serviço', icon: FileText,
+    label: 'O.S / Pedidos', icon: FileText,
     subItems: [
-      { path: '/operacional/ordens-servico', label: 'Nova OS', icon: FileText },
+      { path: '/operacional/ordens-servico', label: 'Nova OS / Pedido', icon: FileText },
       { path: '/cadastros/acabamentos-servicos', label: 'Acabamentos e Serviços', icon: Palette },
       { path: '/operacional/os-historico', label: 'Histórico de OS', icon: History },
       { path: '/operacional/os-em-producao', label: 'Em Produção', icon: HardHat },

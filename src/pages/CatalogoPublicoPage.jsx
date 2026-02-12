@@ -19,6 +19,34 @@ import { getImageUrl } from '@/lib/imageUtils';
 import { calcularEstoqueTotal, temEstoqueDisponivel, getTextoDisponibilidadeEstoque } from '@/utils/estoqueUtils';
 import CompartilharProdutoModal from '@/components/produtos/CompartilharProdutoModal';
 
+// Função para obter o preço correto do produto baseado no tipo de precificação
+const obterPrecoProduto = (produto) => {
+    if (!produto) return 0;
+    const tipo = (produto.tipo_precificacao || '').toLowerCase();
+    if ((tipo === 'm2_cm2' || tipo === 'm2_cm2_tabelado') && parseFloat(produto.preco_m2 || 0) > 0) {
+        return parseFloat(produto.preco_m2);
+    }
+    if (tipo === 'metro_linear' && parseFloat(produto.preco_metro_linear || 0) > 0) {
+        return parseFloat(produto.preco_metro_linear);
+    }
+    if (parseFloat(produto.preco_m2 || 0) > 0) return parseFloat(produto.preco_m2);
+    if (parseFloat(produto.preco_metro_linear || 0) > 0) return parseFloat(produto.preco_metro_linear);
+    return parseFloat(produto.preco_venda || 0);
+};
+
+// Retorna o sufixo de unidade de preço (ex: "/m²", "/m", "/un")
+const obterSufixoPreco = (produto) => {
+    if (!produto) return '';
+    const tipo = (produto.tipo_precificacao || '').toLowerCase();
+    if (tipo === 'm2_cm2' || tipo === 'm2_cm2_tabelado') return '/m²';
+    if (tipo === 'metro_linear') return '/m';
+    if (tipo === 'faixa_quantidade' || tipo === 'quantidade_definida') return '/un';
+    // Fallback por campo de preço
+    if (parseFloat(produto.preco_m2 || 0) > 0) return '/m²';
+    if (parseFloat(produto.preco_metro_linear || 0) > 0) return '/m';
+    return '';
+};
+
 const CatalogoPublicoPage = () => {
     const { tenantId, produtoId } = useParams();
     const [searchParams, setSearchParams] = useSearchParams();
@@ -328,7 +356,7 @@ const CatalogoPublicoPage = () => {
     }, [variacaoSelecionada]);
 
     const adicionarAoCarrinho = (produto, quantidade = 1, variacao = null) => {
-        let precoFinal = parseFloat(isPromocaoAtiva(produto) ? produto.preco_promocional : produto.preco_venda || 0);
+        let precoFinal = parseFloat(isPromocaoAtiva(produto) ? produto.preco_promocional : obterPrecoProduto(produto));
         let nomeCompleto = produto.nome;
         let estoqueDisponivel = produto.estoque_atual || produto.estoque;
         
@@ -608,7 +636,7 @@ const CatalogoPublicoPage = () => {
                             <AnimatePresence>
                                 {filteredProdutos.map((produto, index) => {
                                     const temPromo = isPromocaoAtiva(produto);
-                                    let precoFinal = parseFloat(temPromo ? produto.preco_promocional : produto.preco_venda || 0);
+                                    let precoFinal = parseFloat(temPromo ? produto.preco_promocional : obterPrecoProduto(produto));
 
                                     return (
                                         <motion.div
@@ -662,12 +690,15 @@ const CatalogoPublicoPage = () => {
                                                         <div className="text-right mb-2">
                                                             {temPromo && (
                                                                 <span className="text-sm line-through text-muted-foreground mr-2">
-                                                                    R$ {parseFloat(produto.preco_venda || 0).toFixed(2)}
+                                                                    R$ {obterPrecoProduto(produto).toFixed(2)}
                                                                 </span>
                                                             )}
                                                             <span className={`${produtoId ? 'text-3xl' : 'text-xl'} font-extrabold ${temPromo ? 'text-primary' : 'text-foreground'}`}>
                                                                 R$ {parseFloat(precoFinal || 0).toFixed(2)}
                                                             </span>
+                                                            {obterSufixoPreco(produto) && (
+                                                                <span className="text-xs text-muted-foreground ml-1">{obterSufixoPreco(produto)}</span>
+                                                            )}
                                                         </div>
                                                         <div className="flex gap-2">
                                                             <Button 
@@ -689,7 +720,7 @@ const CatalogoPublicoPage = () => {
                                                                     // Carregar carrinho existente do localStorage
                                                                     const carrinhoExistente = JSON.parse(localStorage.getItem('carrinho') || '[]');
                                                                     const novoCarrinho = [...carrinhoExistente];
-                                                                    let precoFinal = parseFloat(isPromocaoAtiva(produto) ? produto.preco_promocional : produto.preco_venda || 0);
+                                                                    let precoFinal = parseFloat(isPromocaoAtiva(produto) ? produto.preco_promocional : obterPrecoProduto(produto));
                                                                     let nomeCompleto = produto.nome;
                                                                     let estoqueDisponivel = produto.estoque_atual || produto.estoque;
                                                                     
@@ -974,7 +1005,7 @@ const CatalogoPublicoPage = () => {
                                                     const estoqueVar = variacao.estoque_var || 0;
                                                     const precoVar = parseFloat(
                                                         variacao.preco_var || 
-                                                        (isPromocaoAtiva(produtoSelecionado) ? produtoSelecionado.preco_promocional : produtoSelecionado.preco_venda) || 0
+                                                        (isPromocaoAtiva(produtoSelecionado) ? produtoSelecionado.preco_promocional : obterPrecoProduto(produtoSelecionado)) || 0
                                                     );
                                                     const isSelected = variacaoSelecionada === variacao;
                                                     const isOutOfStock = estoqueVar <= 0;
@@ -1053,7 +1084,7 @@ const CatalogoPublicoPage = () => {
                                             <div className="text-right">
                                                 {isPromocaoAtiva(produtoSelecionado) && (
                                                     <span className="text-sm line-through text-muted-foreground mr-2">
-                                                        R$ {parseFloat(produtoSelecionado.preco_venda || 0).toFixed(2)}
+                                                        R$ {obterPrecoProduto(produtoSelecionado).toFixed(2)}
                                                     </span>
                                                 )}
                                                 <span className={`text-2xl font-bold ${
@@ -1063,9 +1094,12 @@ const CatalogoPublicoPage = () => {
                                                         variacaoSelecionada?.preco_var ||
                                                         (isPromocaoAtiva(produtoSelecionado) 
                                                             ? produtoSelecionado.preco_promocional 
-                                                            : produtoSelecionado.preco_venda) || 0
+                                                            : obterPrecoProduto(produtoSelecionado)) || 0
                                                     ).toFixed(2)}
                                                 </span>
+                                                {obterSufixoPreco(produtoSelecionado) && (
+                                                    <span className="text-xs text-muted-foreground ml-1">{obterSufixoPreco(produtoSelecionado)}</span>
+                                                )}
                                             </div>
                                         </div>
 
@@ -1109,7 +1143,7 @@ const CatalogoPublicoPage = () => {
                                                         variacaoSelecionada?.preco_var ||
                                                         (isPromocaoAtiva(produtoSelecionado) 
                                                             ? produtoSelecionado.preco_promocional 
-                                                            : produtoSelecionado.preco_venda) || 0
+                                                            : obterPrecoProduto(produtoSelecionado)) || 0
                                                     ) * quantidadeSelecionada
                                                 ).toFixed(2)}
                                             </span>
@@ -1139,7 +1173,7 @@ const CatalogoPublicoPage = () => {
                                                     
                                                     const carrinhoExistente = JSON.parse(localStorage.getItem('carrinho') || '[]');
                                                     const novoCarrinho = [...carrinhoExistente];
-                                                    let precoFinal = parseFloat(isPromocaoAtiva(produtoSelecionado) ? produtoSelecionado.preco_promocional : produtoSelecionado.preco_venda || 0);
+                                                    let precoFinal = parseFloat(isPromocaoAtiva(produtoSelecionado) ? produtoSelecionado.preco_promocional : obterPrecoProduto(produtoSelecionado));
                                                     let nomeCompleto = produtoSelecionado.nome;
                                                     let estoqueDisponivel = produtoSelecionado.estoque_atual || produtoSelecionado.estoque;
                                                     

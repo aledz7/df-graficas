@@ -300,8 +300,28 @@ const OSProdutoLookupModal = ({ onSelectProduto, children, isOpen, setIsOpen, pr
                       return est % 1 === 0 ? est : est.toFixed(2);
                     })()} {produto.unidade_medida || produto.unidadeMedida}</p>
                     <p className="text-sm font-bold text-primary mt-1">
-                      R$ {parseFloat(produto.preco_venda || 0).toFixed(2)}
-                      {produto.tipo_produto === 'm2' && <span className="text-xs text-muted-foreground"> /m²</span>}
+                      {(() => {
+                        const tipo = (produto.tipo_precificacao || '').toLowerCase();
+                        let preco = 0;
+                        let sufixo = '';
+                        if ((tipo === 'm2_cm2' || tipo === 'm2_cm2_tabelado') && parseFloat(produto.preco_m2 || 0) > 0) {
+                          preco = parseFloat(produto.preco_m2);
+                          sufixo = '/m²';
+                        } else if (tipo === 'metro_linear' && parseFloat(produto.preco_metro_linear || 0) > 0) {
+                          preco = parseFloat(produto.preco_metro_linear);
+                          sufixo = '/m';
+                        } else if (parseFloat(produto.preco_m2 || 0) > 0) {
+                          preco = parseFloat(produto.preco_m2);
+                          sufixo = '/m²';
+                        } else if (parseFloat(produto.preco_metro_linear || 0) > 0) {
+                          preco = parseFloat(produto.preco_metro_linear);
+                          sufixo = '/m';
+                        } else {
+                          preco = parseFloat(produto.preco_venda || 0);
+                        }
+                        if (!sufixo && produto.tipo_produto === 'm2') sufixo = '/m²';
+                        return <>R$ {preco.toFixed(2)}{sufixo && <span className="text-xs text-muted-foreground"> {sufixo}</span>}</>;
+                      })()}
                     </p>
                   </CardContent>
                   <CardFooter className="p-3 border-t">

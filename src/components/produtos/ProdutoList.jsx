@@ -11,6 +11,25 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { motion } from 'framer-motion';
 import { calcularEstoqueTotal } from '@/utils/estoqueUtils';
 
+// Função para obter o preço de exibição correto baseado no tipo de precificação
+const obterPrecoExibicao = (produto) => {
+  const tipo = (produto.tipo_precificacao || '').toLowerCase();
+  if ((tipo === 'm2_cm2' || tipo === 'm2_cm2_tabelado') && parseFloat(produto.preco_m2 || 0) > 0) {
+    return { valor: parseFloat(produto.preco_m2), sufixo: '/m²' };
+  }
+  if (tipo === 'metro_linear' && parseFloat(produto.preco_metro_linear || 0) > 0) {
+    return { valor: parseFloat(produto.preco_metro_linear), sufixo: '/m' };
+  }
+  // Fallback: tentar preco_m2, depois preco_metro_linear, depois preco_venda
+  if (parseFloat(produto.preco_m2 || 0) > 0) {
+    return { valor: parseFloat(produto.preco_m2), sufixo: '/m²' };
+  }
+  if (parseFloat(produto.preco_metro_linear || 0) > 0) {
+    return { valor: parseFloat(produto.preco_metro_linear), sufixo: '/m' };
+  }
+  return { valor: parseFloat(produto.preco_venda || 0), sufixo: '' };
+};
+
 // Função para obter a URL completa da imagem
 export const getImageUrl = (path) => {
   if (!path) return null;
@@ -122,7 +141,7 @@ const ProdutoList = ({
 
                                             <div>
                                                 <p className="text-xs text-gray-500 dark:text-gray-400">Preço de Venda</p>
-                                                <p className="text-lg font-bold text-primary">R$ {parseFloat(produto.preco_venda || 0).toFixed(2)}</p>
+                                                <p className="text-lg font-bold text-primary">R$ {obterPrecoExibicao(produto).valor.toFixed(2)}{obterPrecoExibicao(produto).sufixo}</p>
                                             </div>
 
                                             <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
@@ -219,7 +238,7 @@ const ProdutoList = ({
                                             <TableCell className="text-center">
                                                 {calcularEstoqueTotal(produto).toString()}
                                             </TableCell>
-                                            <TableCell className="text-right">R$ {parseFloat(produto.preco_venda || 0).toFixed(2)}</TableCell>
+                                            <TableCell className="text-right">R$ {obterPrecoExibicao(produto).valor.toFixed(2)}{obterPrecoExibicao(produto).sufixo}</TableCell>
                                             <TableCell className="text-center">
                                                 <Badge variant={produto.status ? 'default' : 'destructive'}>
                                                     {produto.status ? 'Ativo' : 'Inativo'}
