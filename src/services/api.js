@@ -1801,3 +1801,9 @@ export const treinamentoService = {
   getRegrasAlerta: () => api.get('/api/treinamento/avisos/regras'),
   salvarRegraAlerta: (data) => api.post('/api/treinamento/avisos/regras', data),
 };
+
+// Serviços para Clientes Diminuindo Compras
+export const clienteTendenciaService = {
+  getClientesComQueda: (params = {}) => api.get('/api/clientes-tendencia', { params }),
+  gerarAlertas: (params = {}) => api.post('/api/clientes-tendencia/gerar-alertas', params),
+};

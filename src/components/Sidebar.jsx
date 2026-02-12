@@ -5,7 +5,7 @@ import { useNomeSistema } from '@/hooks/useNomeSistema.jsx';
 import {
   LayoutDashboard, ShoppingCart, Package, Users, Truck, Banknote,
   Settings, BarChart3, FileText, SprayCan, Calculator,
-  Palette, Boxes, BookOpen, Wrench, HardHat, FileClock, CheckCircle2, History, SlidersHorizontal, Trash2, Barcode, Store, Activity, CalendarDays, FileSpreadsheet, Box, LogIn, LogOut, PackagePlus, ListChecks, Printer, DollarSign, ShieldAlert, Ruler, Star, TrendingUp, CreditCard, Ticket, Gift, Receipt, Trophy, Target, Maximize2, GraduationCap, Bell
+  Palette, Boxes, BookOpen, Wrench, HardHat, FileClock, CheckCircle2, History, SlidersHorizontal, Trash2, Barcode, Store, Activity, CalendarDays, FileSpreadsheet, Box, LogIn, LogOut, PackagePlus, ListChecks, Printer, DollarSign, ShieldAlert, Ruler, Star, TrendingUp, CreditCard, Ticket, Gift, Receipt,   Trophy, Target, Maximize2, GraduationCap, Bell, TrendingDown
 } from 'lucide-react';
 import IndiqueGanheModal from '@/components/IndiqueGanheModal';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -62,6 +62,12 @@ const menuItems = [
     ]
   },
   {
+    label: 'Vendas', icon: ShoppingCart,
+    subItems: [
+      { path: '/vendedor/minhas-metas', label: 'Minhas Metas', icon: Target },
+    ]
+  },
+  {
     label: 'O.S / Pedidos', icon: FileText,
     subItems: [
       { path: '/operacional/ordens-servico', label: 'Nova OS / Pedido', icon: FileText },
@@ -102,20 +108,6 @@ const menuItems = [
     label: 'Relatórios', icon: BarChart3,
     subItems: [
       { path: '/relatorios', label: 'Central de Relatórios', icon: BarChart3 },
-      { path: '/relatorio-simplificado', label: 'Relatório Simplificado', icon: FileSpreadsheet },
-      { path: '/relatorios/operacional/vendas-gerais', label: 'Vendas Gerais', icon: ShoppingCart },
-      { path: '/relatorios/operacional/ordens-de-servico', label: 'Ordens de Serviço', icon: FileText },
-      { path: '/relatorios/operacional/produtos-e-estoque', label: 'Produtos e Estoque', icon: Package },
-      { path: '/relatorios/financeiro/faturamento-detalhado', label: 'Faturamento Detalhado', icon: DollarSign },
-      { path: '/relatorios/financeiro/fluxo-caixa', label: 'Fluxo de Caixa', icon: BarChart3 },
-      { path: '/relatorios/financeiro/contas-a-receber', label: 'Contas a Receber', icon: CreditCard },
-      { path: '/relatorios/financeiro/contas-a-pagar', label: 'Contas a Pagar', icon: CreditCard },
-      { path: '/relatorios/gerencial/comissoes', label: 'Comissões', icon: DollarSign },
-      { path: '/relatorios/gerencial/desempenho-por-vendedor', label: 'Desempenho por Vendedor', icon: Users },
-      { path: '/relatorios/gerencial/ranking-vendedores', label: 'Ranking de Vendedores', icon: Trophy },
-      { path: '/relatorios/gerencial/metas-gamificadas', label: 'Metas Gamificadas', icon: Target },
-      { path: '/relatorios/treinamento-por-setor', label: 'Treinamento por Setor', icon: BarChart3 },
-      { path: '/relatorios/gerencial/clientes-que-mais-compraram', label: 'Clientes que Mais Compraram', icon: Users },
     ]
   },
   { path: '/catalogo-publico', label: 'Catálogo Público', icon: BookOpen },

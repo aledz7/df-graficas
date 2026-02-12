@@ -13,6 +13,12 @@ use Illuminate\Support\Facades\DB;
 
 class AlertasService
 {
+    protected $clienteTendenciaService;
+
+    public function __construct(ClienteTendenciaService $clienteTendenciaService)
+    {
+        $this->clienteTendenciaService = $clienteTendenciaService;
+    }
     /**
      * Verificar e criar alertas de estoque baixo
      */
@@ -221,6 +227,18 @@ class AlertasService
     }
 
     /**
+     * Verificar clientes diminuindo compras
+     */
+    protected function verificarClientesDiminuindoCompras(int $tenantId): void
+    {
+        try {
+            $this->clienteTendenciaService->gerarAlertas($tenantId);
+        } catch (\Exception $e) {
+            \Log::error("Erro ao verificar clientes diminuindo compras: " . $e->getMessage());
+        }
+    }
+
+    /**
      * Executar todas as verificações de alertas
      */
     public function executarTodasVerificacoes($tenantId)
@@ -230,8 +248,23 @@ class AlertasService
             'atrasos' => $this->verificarAtrasos($tenantId),
             'clientes_inativos' => $this->verificarClientesInativos($tenantId),
             'metas_proximas' => $this->verificarMetasProximas($tenantId),
+            'clientes_diminuindo_compras' => $this->verificarClientesDiminuindoCompras($tenantId),
         ];
 
         return $resultado;
+    }
+
+    /**
+     * Executar verificações (alias para compatibilidade)
+     */
+    public function executarVerificacoes(int $tenantId): void
+    {
+        \Log::info("Executando verificações de alertas para o tenant: {$tenantId}");
+        $this->verificarEstoqueBaixo($tenantId);
+        $this->verificarAtrasos($tenantId);
+        $this->verificarClientesInativos($tenantId);
+        $this->verificarMetasProximas($tenantId);
+        $this->verificarClientesDiminuindoCompras($tenantId);
+        \Log::info("Verificações de alertas concluídas para o tenant: {$tenantId}");
     }
 }

@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FileText, BarChart2, PieChart, Users, ShoppingBag, Package, TrendingUp, CreditCard, DollarSign, Printer, Box, Wallet, ArrowDownUp, Award, Target, Gift, Trophy } from 'lucide-react';
+import { FileText, BarChart2, PieChart, Users, ShoppingBag, Package, TrendingUp, CreditCard, DollarSign, Printer, Box, Wallet, ArrowDownUp, Award, Target, Gift, Trophy, TrendingDown, GraduationCap } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useToast } from "@/components/ui/use-toast";
 
@@ -44,6 +44,16 @@ const reportCategories = [
       { id: 'recebimentos_clientes', title: 'Recebimentos por Cliente', description: 'Total recebido de cada cliente.', icon: Users, path: '/relatorios/gerencial/recebimentos-por-cliente' },
       { id: 'aniversariantes', title: 'Aniversariantes do Mês', description: 'Clientes que fazem aniversário no mês selecionado.', icon: Gift, path: '/relatorios/gerencial/aniversariantes-mes' },
       { id: 'clientes_mais_compraram', title: 'Clientes que Mais Compraram', description: 'Ranking dos clientes que mais compraram no ano por valor.', icon: Trophy, path: '/relatorios/gerencial/clientes-que-mais-compraram' },
+      { id: 'ranking_vendedores', title: 'Ranking de Vendedores', description: 'Ranking de vendedores por valor e quantidade vendida.', icon: Trophy, path: '/relatorios/gerencial/ranking-vendedores' },
+      { id: 'metas_gamificadas', title: 'Metas Gamificadas', description: 'Acompanhamento de metas com sistema de pontos e níveis.', icon: Target, path: '/relatorios/gerencial/metas-gamificadas' },
+      { id: 'clientes_diminuindo_compras', title: 'Clientes Diminuindo Compras', description: 'Identifique clientes que estão comprando menos e aja antes que parem.', icon: TrendingDown, path: '/relatorios/gerencial/clientes-diminuindo-compras' },
+    ]
+  },
+  {
+    title: 'Treinamento',
+    icon: GraduationCap,
+    reports: [
+      { id: 'treinamento_setor', title: 'Treinamento por Setor', description: 'Relatório de progresso de treinamento por setor da empresa.', icon: GraduationCap, path: '/relatorios/treinamento-por-setor' },
     ]
   }
 ];

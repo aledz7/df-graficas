@@ -61,6 +61,7 @@ use App\Http\Controllers\Api\RankingVendedoresController;
 use App\Http\Controllers\Api\GamificacaoController;
 use App\Http\Controllers\Api\AproveitamentoFolhaController;
 use App\Http\Controllers\Api\TreinamentoController;
+use App\Http\Controllers\Api\ClienteTendenciaController;
 
 /*
 |--------------------------------------------------------------------------
@@ -449,6 +450,12 @@ Route::middleware(['api.auth'])->group(function () {
         Route::get('impressoras', [AproveitamentoFolhaController::class, 'listarImpressoras']);
         Route::post('impressoras', [AproveitamentoFolhaController::class, 'salvarImpressora']);
         Route::delete('impressoras/{id}', [AproveitamentoFolhaController::class, 'excluirImpressora']);
+    });
+    
+    // Clientes Diminuindo Compras
+    Route::prefix('clientes-tendencia')->group(function () {
+        Route::get('/', [ClienteTendenciaController::class, 'index']);
+        Route::post('gerar-alertas', [ClienteTendenciaController::class, 'gerarAlertas']);
     });
     
     // Treinamento Interno

@@ -96,6 +96,8 @@ const TreinamentoInternoPage = lazy(() => import('@/pages/TreinamentoInternoPage
 const TreinamentoProgressoPage = lazy(() => import('@/pages/TreinamentoProgressoPage'));
 const TreinamentoRelatorioSetorPage = lazy(() => import('@/pages/TreinamentoRelatorioSetorPage'));
 const TreinamentoAvisosPage = lazy(() => import('@/pages/TreinamentoAvisosPage'));
+const MetasVendedorPage = lazy(() => import('@/pages/MetasVendedorPage'));
+const ClientesDiminuindoComprasPage = lazy(() => import('@/pages/ClientesDiminuindoComprasPage'));
 
 
 const AppRoutes = ({ logoUrl, nomeEmpresa, vendedorAtual, theme, setTheme, setAppLogoUrl, setAppNomeEmpresa, setAppNomeSistema }) => {
@@ -200,6 +202,8 @@ const AppRoutes = ({ logoUrl, nomeEmpresa, vendedorAtual, theme, setTheme, setAp
       <Route path="/ferramentas/treinamento-progresso" element={<TreinamentoProgressoPage />} />
       <Route path="/relatorios/treinamento-por-setor" element={<TreinamentoRelatorioSetorPage />} />
       <Route path="/ferramentas/treinamento-avisos" element={<TreinamentoAvisosPage />} />
+      <Route path="/vendedor/minhas-metas" element={<MetasVendedorPage />} />
+      <Route path="/relatorios/gerencial/clientes-diminuindo-compras" element={<ClientesDiminuindoComprasPage />} />
       
       {/* Marketplace */}
       <Route path="/marketplace/vendas" element={<MarketplacePage vendedorAtual={vendedorAtual} />} />
