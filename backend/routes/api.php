@@ -60,6 +60,7 @@ use App\Http\Controllers\Api\AlertasController;
 use App\Http\Controllers\Api\RankingVendedoresController;
 use App\Http\Controllers\Api\GamificacaoController;
 use App\Http\Controllers\Api\AproveitamentoFolhaController;
+use App\Http\Controllers\Api\TreinamentoController;
 
 /*
 |--------------------------------------------------------------------------
@@ -449,6 +450,22 @@ Route::middleware(['api.auth'])->group(function () {
         Route::post('impressoras', [AproveitamentoFolhaController::class, 'salvarImpressora']);
         Route::delete('impressoras/{id}', [AproveitamentoFolhaController::class, 'excluirImpressora']);
     });
+    
+    // Treinamento Interno
+    Route::prefix('treinamento')->group(function () {
+        Route::get('estatisticas', [TreinamentoController::class, 'estatisticas']);
+        Route::get('meu-progresso', [\App\Http\Controllers\Api\TreinamentoProgressoController::class, 'meuProgresso']);
+        Route::post('marcar-concluido/{treinamentoId}', [\App\Http\Controllers\Api\TreinamentoProgressoController::class, 'marcarComoConcluido']);
+        Route::get('progresso-colaborador/{usuarioId}', [\App\Http\Controllers\Api\TreinamentoProgressoController::class, 'progressoColaborador']);
+        Route::put('atualizar-colaborador/{usuarioId}', [\App\Http\Controllers\Api\TreinamentoProgressoController::class, 'atualizarColaborador']);
+        Route::get('relatorio-por-setor', [\App\Http\Controllers\Api\TreinamentoRelatorioController::class, 'porSetor']);
+        Route::get('avisos', [\App\Http\Controllers\Api\TreinamentoAvisoController::class, 'index']);
+        Route::post('avisos/{id}/marcar-resolvido', [\App\Http\Controllers\Api\TreinamentoAvisoController::class, 'marcarComoResolvido']);
+        Route::post('avisos/executar-verificacoes', [\App\Http\Controllers\Api\TreinamentoAvisoController::class, 'executarVerificacoes']);
+        Route::get('avisos/regras', [\App\Http\Controllers\Api\TreinamentoAvisoController::class, 'listarRegras']);
+        Route::post('avisos/regras', [\App\Http\Controllers\Api\TreinamentoAvisoController::class, 'salvarRegra']);
+    });
+    Route::apiResource('treinamento', TreinamentoController::class);
     
     // Cálculos Salvos (nova tabela específica)
     Route::apiResource('calculos-salvos', CalculoSavadoController::class);

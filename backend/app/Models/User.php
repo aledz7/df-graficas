@@ -68,6 +68,11 @@ class User extends Authenticatable
         'foto_url',
         'usuario_cadastro_id',
         'usuario_alteracao_id',
+        // Campos de treinamento
+        'setor',
+        'nivel_treinamento_liberado',
+        'progresso_treinamento',
+        'ultimo_acesso_treinamento',
     ];
 
     /**
@@ -122,6 +127,10 @@ class User extends Authenticatable
             'permissions' => 'array',
             'access_schedule' => 'array',
             'status' => 'boolean',
+            // Casts de treinamento
+            'nivel_treinamento_liberado' => 'string',
+            'progresso_treinamento' => 'decimal:2',
+            'ultimo_acesso_treinamento' => 'datetime',
         ];
     }
     

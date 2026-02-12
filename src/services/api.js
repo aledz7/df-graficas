@@ -1781,3 +1781,23 @@ export const aproveitamentoFolhaService = {
   salvarImpressora: (data) => api.post('/api/aproveitamento-folha/impressoras', data),
   excluirImpressora: (id) => api.delete(`/api/aproveitamento-folha/impressoras/${id}`),
 };
+
+// Serviços para Treinamento Interno
+export const treinamentoService = {
+  getAll: (params = {}) => api.get('/api/treinamento', { params }),
+  getById: (id) => api.get(`/api/treinamento/${id}`),
+  create: (data) => api.post('/api/treinamento', data),
+  update: (id, data) => api.put(`/api/treinamento/${id}`, data),
+  delete: (id) => api.delete(`/api/treinamento/${id}`),
+  getEstatisticas: () => api.get('/api/treinamento/estatisticas'),
+  getMeuProgresso: () => api.get('/api/treinamento/meu-progresso'),
+  marcarComoConcluido: (treinamentoId, data = {}) => api.post(`/api/treinamento/marcar-concluido/${treinamentoId}`, data),
+  getProgressoColaborador: (usuarioId) => api.get(`/api/treinamento/progresso-colaborador/${usuarioId}`),
+  atualizarColaborador: (usuarioId, data) => api.put(`/api/treinamento/atualizar-colaborador/${usuarioId}`, data),
+  getRelatorioPorSetor: (params = {}) => api.get('/api/treinamento/relatorio-por-setor', { params }),
+  getAvisos: (params = {}) => api.get('/api/treinamento/avisos', { params }),
+  marcarAvisoResolvido: (id) => api.post(`/api/treinamento/avisos/${id}/marcar-resolvido`),
+  executarVerificacoesAvisos: () => api.post('/api/treinamento/avisos/executar-verificacoes'),
+  getRegrasAlerta: () => api.get('/api/treinamento/avisos/regras'),
+  salvarRegraAlerta: (data) => api.post('/api/treinamento/avisos/regras', data),
+};
