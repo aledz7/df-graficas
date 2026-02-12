@@ -65,6 +65,7 @@ use App\Http\Controllers\Api\ClienteTendenciaController;
 use App\Http\Controllers\Api\PerfilVendedorController;
 use App\Http\Controllers\Api\EventoCalendarioController;
 use App\Http\Controllers\Api\TermometroController;
+use App\Http\Controllers\Api\PosVendaController;
 
 /*
 |--------------------------------------------------------------------------
@@ -479,6 +480,18 @@ Route::middleware(['api.auth'])->group(function () {
         Route::get('config', [TermometroController::class, 'config']);
         Route::put('config', [TermometroController::class, 'atualizarConfig']);
     });
+
+    // Pós-Venda
+    Route::prefix('pos-venda')->group(function () {
+        Route::get('historico-cliente/{clienteId}', [PosVendaController::class, 'historicoCliente']);
+        Route::post('executar-verificacoes', [PosVendaController::class, 'executarVerificacoes']);
+        Route::post('{id}/atualizar-status', [PosVendaController::class, 'atualizarStatus']);
+        Route::post('{id}/transferir', [PosVendaController::class, 'transferir']);
+        Route::post('{id}/adicionar-observacao', [PosVendaController::class, 'adicionarObservacao']);
+        Route::post('{id}/criar-agendamento', [PosVendaController::class, 'criarAgendamento']);
+        Route::post('agendamento/{agendamentoId}/concluir', [PosVendaController::class, 'concluirAgendamento']);
+    });
+    Route::apiResource('pos-venda', PosVendaController::class);
     
     // Treinamento Interno
     Route::prefix('treinamento')->group(function () {

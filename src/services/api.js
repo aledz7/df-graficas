@@ -1830,3 +1830,17 @@ export const termometroService = {
   getConfig: () => api.get('/api/termometro/config'),
   updateConfig: (data) => api.put('/api/termometro/config', data),
 };
+
+// Serviços para Pós-Venda
+export const posVendaService = {
+  getAll: (params = {}) => api.get('/api/pos-venda', { params }),
+  getById: (id) => api.get(`/api/pos-venda/${id}`),
+  create: (data) => api.post('/api/pos-venda', data),
+  atualizarStatus: (id, data) => api.post(`/api/pos-venda/${id}/atualizar-status`, data),
+  transferir: (id, data) => api.post(`/api/pos-venda/${id}/transferir`, data),
+  adicionarObservacao: (id, data) => api.post(`/api/pos-venda/${id}/adicionar-observacao`, data),
+  criarAgendamento: (id, data) => api.post(`/api/pos-venda/${id}/criar-agendamento`, data),
+  concluirAgendamento: (agendamentoId) => api.post(`/api/pos-venda/agendamento/${agendamentoId}/concluir`),
+  historicoCliente: (clienteId) => api.get(`/api/pos-venda/historico-cliente/${clienteId}`),
+  executarVerificacoes: () => api.post('/api/pos-venda/executar-verificacoes'),
+};

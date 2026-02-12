@@ -101,6 +101,7 @@ const ClientesDiminuindoComprasPage = lazy(() => import('@/pages/ClientesDiminui
 const PerfilVendedorPage = lazy(() => import('@/pages/PerfilVendedorPage'));
 const CalendarioInteligentePage = lazy(() => import('@/pages/CalendarioInteligentePage'));
 const TermometroEmpresaPage = lazy(() => import('@/pages/TermometroEmpresaPage'));
+const PosVendaPage = lazy(() => import('@/pages/PosVendaPage'));
 
 
 const AppRoutes = ({ logoUrl, nomeEmpresa, vendedorAtual, theme, setTheme, setAppLogoUrl, setAppNomeEmpresa, setAppNomeSistema }) => {
@@ -197,6 +198,7 @@ const AppRoutes = ({ logoUrl, nomeEmpresa, vendedorAtual, theme, setTheme, setAp
       <Route path="/ferramentas/feed-atividades" element={<FeedPage />} />
       <Route path="/ferramentas/agenda" element={<AgendaPage />} />
       <Route path="/ferramentas/calendario-inteligente" element={<CalendarioInteligentePage />} />
+      <Route path="/ferramentas/pos-venda" element={<PosVendaPage />} />
       <Route path="/ferramentas/lixeira" element={<LixeiraPage vendedorAtual={vendedorAtual}/>} />
       <Route path="/ferramentas/auditoria" element={<AuditoriaPage />} />
       <Route path="/ferramentas/calculadora-metricas" element={<CalculadoraPage />} />

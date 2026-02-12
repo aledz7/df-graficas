@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Venda;
 use App\Models\User;
+use App\Services\PosVendaService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Carbon\Carbon;
@@ -12,6 +13,12 @@ use Illuminate\Support\Facades\DB;
 
 class RankingVendedoresController extends Controller
 {
+    protected $posVendaService;
+
+    public function __construct(PosVendaService $posVendaService)
+    {
+        $this->posVendaService = $posVendaService;
+    }
     /**
      * Obter ranking de vendedores
      */
@@ -58,6 +65,9 @@ class RankingVendedoresController extends Controller
                 ->sum('valor_total');
 
             // Buscar informações dos vendedores e montar ranking
+            $dataInicioCarbon = Carbon::parse($dataInicio);
+            $dataFimCarbon = Carbon::parse($dataFim)->endOfDay();
+            
             $ranking = [];
             foreach ($vendas as $venda) {
                 $vendedor = User::find($venda->vendedor_id);
@@ -66,6 +76,14 @@ class RankingVendedoresController extends Controller
                 $percentualContribuicao = $totalGeral > 0 
                     ? ($venda->total_vendido / $totalGeral) * 100 
                     : 0;
+
+                // Obter métricas de pós-venda
+                $metricasPosVenda = $this->posVendaService->obterMetricasPorVendedor(
+                    $tenantId,
+                    $vendedor->id,
+                    $dataInicioCarbon,
+                    $dataFimCarbon
+                );
 
                 $ranking[] = [
                     'posicao' => count($ranking) + 1,
@@ -76,6 +94,14 @@ class RankingVendedoresController extends Controller
                     'quantidade_vendas' => (int) $venda->quantidade_vendas,
                     'ticket_medio' => (float) $venda->ticket_medio,
                     'percentual_contribuicao' => round($percentualContribuicao, 2),
+                    // Métricas de pós-venda
+                    'total_pos_vendas' => $metricasPosVenda['total_pos_vendas'],
+                    'percentual_com_pos_venda' => $metricasPosVenda['percentual_com_pos_venda'],
+                    'elogios' => $metricasPosVenda['elogios'],
+                    'reclamacoes' => $metricasPosVenda['reclamacoes'],
+                    'retrabalhos' => $metricasPosVenda['retrabalhos'],
+                    'media_satisfacao' => $metricasPosVenda['media_satisfacao'],
+                    'pontuacao_qualidade' => $metricasPosVenda['pontuacao_qualidade'],
                 ];
             }
 
@@ -152,6 +178,9 @@ class RankingVendedoresController extends Controller
                 ->whereBetween('data_finalizacao', [$dataInicio, $dataFim])
                 ->count();
 
+            $dataInicioCarbon = Carbon::parse($dataInicio);
+            $dataFimCarbon = Carbon::parse($dataFim)->endOfDay();
+            
             $ranking = [];
             foreach ($vendas as $venda) {
                 $vendedor = User::find($venda->vendedor_id);
@@ -160,6 +189,14 @@ class RankingVendedoresController extends Controller
                 $percentualContribuicao = $totalGeral > 0 
                     ? ($venda->quantidade_vendas / $totalGeral) * 100 
                     : 0;
+
+                // Obter métricas de pós-venda
+                $metricasPosVenda = $this->posVendaService->obterMetricasPorVendedor(
+                    $tenantId,
+                    $vendedor->id,
+                    $dataInicioCarbon,
+                    $dataFimCarbon
+                );
 
                 $ranking[] = [
                     'posicao' => count($ranking) + 1,
@@ -170,6 +207,14 @@ class RankingVendedoresController extends Controller
                     'total_vendido' => (float) $venda->total_vendido,
                     'ticket_medio' => (float) $venda->ticket_medio,
                     'percentual_contribuicao' => round($percentualContribuicao, 2),
+                    // Métricas de pós-venda
+                    'total_pos_vendas' => $metricasPosVenda['total_pos_vendas'],
+                    'percentual_com_pos_venda' => $metricasPosVenda['percentual_com_pos_venda'],
+                    'elogios' => $metricasPosVenda['elogios'],
+                    'reclamacoes' => $metricasPosVenda['reclamacoes'],
+                    'retrabalhos' => $metricasPosVenda['retrabalhos'],
+                    'media_satisfacao' => $metricasPosVenda['media_satisfacao'],
+                    'pontuacao_qualidade' => $metricasPosVenda['pontuacao_qualidade'],
                 ];
             }
 

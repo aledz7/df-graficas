@@ -192,6 +192,11 @@ class Cliente extends Model
         return $this->hasMany(Venda::class);
     }
 
+    public function posVendas()
+    {
+        return $this->hasMany(\App\Models\PosVenda::class, 'cliente_id');
+    }
+
     /**
      * Obtém os atendimentos do cliente.
      */

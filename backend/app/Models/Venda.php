@@ -357,6 +357,11 @@ class Venda extends Model
         return $this->hasMany(ItemVenda::class);
     }
 
+    public function posVendas()
+    {
+        return $this->hasMany(\App\Models\PosVenda::class, 'venda_id');
+    }
+
     /**
      * Get the contas a receber for the venda.
      */

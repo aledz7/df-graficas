@@ -295,6 +295,29 @@ const RankingVendedoresPage = () => {
                           <div>
                             <p className="font-semibold">{vendedor.vendedor_nome}</p>
                             <p className="text-sm text-muted-foreground">{vendedor.vendedor_email}</p>
+                            {/* Métricas de Pós-Venda */}
+                            {vendedor.total_pos_vendas !== undefined && (
+                              <div className="flex gap-4 mt-2 text-xs">
+                                <span className="text-green-600">
+                                  ✓ {vendedor.total_pos_vendas} pós-vendas
+                                </span>
+                                {vendedor.elogios > 0 && (
+                                  <span className="text-green-600">
+                                    👍 {vendedor.elogios} elogios
+                                  </span>
+                                )}
+                                {vendedor.reclamacoes > 0 && (
+                                  <span className="text-red-600">
+                                    ⚠️ {vendedor.reclamacoes} reclamações
+                                  </span>
+                                )}
+                                {vendedor.media_satisfacao && (
+                                  <span className="text-yellow-600">
+                                    ⭐ {vendedor.media_satisfacao.toFixed(1)}/5
+                                  </span>
+                                )}
+                              </div>
+                            )}
                           </div>
                         </div>
 
@@ -328,6 +351,19 @@ const RankingVendedoresPage = () => {
                             <Badge variant="secondary" className="text-sm">
                               {vendedor.percentual_contribuicao}%
                             </Badge>
+                            {/* Métricas de Qualidade */}
+                            {vendedor.total_pos_vendas !== undefined && (
+                              <div className="mt-2 pt-2 border-t">
+                                <p className="text-xs text-muted-foreground">
+                                  {vendedor.percentual_com_pos_venda?.toFixed(0) || 0}% com pós-venda
+                                </p>
+                                {vendedor.pontuacao_qualidade !== undefined && (
+                                  <p className="text-xs font-semibold mt-1">
+                                    {vendedor.pontuacao_qualidade} pts
+                                  </p>
+                                )}
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>

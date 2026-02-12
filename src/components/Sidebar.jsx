@@ -5,7 +5,7 @@ import { useNomeSistema } from '@/hooks/useNomeSistema.jsx';
 import {
   LayoutDashboard, ShoppingCart, Package, Users, Truck, Banknote,
   Settings, BarChart3, FileText, SprayCan, Calculator,
-  Palette, Boxes, BookOpen, Wrench, HardHat, FileClock, CheckCircle2, History, SlidersHorizontal, Trash2, Barcode, Store, Activity, CalendarDays, FileSpreadsheet, Box, LogIn, LogOut, PackagePlus, ListChecks, Printer, DollarSign, ShieldAlert, Ruler, Star, TrendingUp, CreditCard, Ticket, Gift, Receipt,   Trophy, Target, Maximize2, GraduationCap, Bell, TrendingDown, Thermometer
+  Palette, Boxes, BookOpen, Wrench, HardHat, FileClock, CheckCircle2, History, SlidersHorizontal, Trash2, Barcode, Store, Activity, CalendarDays, FileSpreadsheet, Box, LogIn, LogOut, PackagePlus, ListChecks, Printer, DollarSign, ShieldAlert, Ruler, Star, TrendingUp, CreditCard, Ticket, Gift, Receipt,   Trophy, Target, Maximize2, GraduationCap, Bell, TrendingDown, Thermometer, MessageSquare
 } from 'lucide-react';
 import IndiqueGanheModal from '@/components/IndiqueGanheModal';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -114,6 +114,7 @@ const menuItems = [
   { path: '/catalogo-publico', label: 'Catálogo Público', icon: BookOpen },
   { path: '/ferramentas/feed-atividades', label: 'Feed de Atividades', icon: Activity },
   { path: '/ferramentas/calendario-inteligente', label: 'Calendário Inteligente', icon: CalendarDays },
+  { path: '/ferramentas/pos-venda', label: 'Pós-Venda', icon: MessageSquare },
   { path: '/ferramentas/treinamento-interno', label: 'Treinamento Interno', icon: GraduationCap },
   { path: '/ferramentas/treinamento-progresso', label: 'Meu Progresso', icon: TrendingUp },
   { path: '/ferramentas/treinamento-avisos', label: 'Avisos de Treinamento', icon: Bell },
