@@ -59,6 +59,7 @@ use App\Http\Controllers\Api\MetaVendaController;
 use App\Http\Controllers\Api\AlertasController;
 use App\Http\Controllers\Api\RankingVendedoresController;
 use App\Http\Controllers\Api\GamificacaoController;
+use App\Http\Controllers\Api\AproveitamentoFolhaController;
 
 /*
 |--------------------------------------------------------------------------
@@ -439,6 +440,14 @@ Route::middleware(['api.auth'])->group(function () {
         Route::delete('calculos-salvos/{id}', [CalculadoraController::class, 'deleteCalculoSalvo']);
         Route::get('servicos-adicionais', [CalculadoraController::class, 'getServicosAdicionais']);
         Route::post('servicos-adicionais', [CalculadoraController::class, 'storeServicoAdicional']);
+    });
+    
+    // Aproveitamento de Folha
+    Route::prefix('aproveitamento-folha')->group(function () {
+        Route::post('calcular', [AproveitamentoFolhaController::class, 'calcular']);
+        Route::get('impressoras', [AproveitamentoFolhaController::class, 'listarImpressoras']);
+        Route::post('impressoras', [AproveitamentoFolhaController::class, 'salvarImpressora']);
+        Route::delete('impressoras/{id}', [AproveitamentoFolhaController::class, 'excluirImpressora']);
     });
     
     // Cálculos Salvos (nova tabela específica)

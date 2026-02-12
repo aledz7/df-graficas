@@ -292,6 +292,46 @@ SELECT '  - metas_vendas.percentual_proximo_alerta' AS '';
 SELECT '  - metas_vendas.premiacao' AS '';
 SELECT '  - notificacoes.dados_adicionais' AS '';
 SELECT '' AS '';
+SELECT 'Tabela adicional criada:' AS '';
+SELECT '  - impressoras_config (para cálculo de aproveitamento de folha)' AS '';
+-- =====================================================
+-- 7. CRIAR TABELA IMPRESSORAS_CONFIG
+-- =====================================================
+
+CREATE TABLE IF NOT EXISTS `impressoras_config` (
+    `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `tenant_id` BIGINT UNSIGNED NOT NULL,
+    `nome` VARCHAR(255) NOT NULL COMMENT 'Nome da impressora ou configuração',
+    `margem_superior_mm` DECIMAL(5, 2) NOT NULL DEFAULT 0 COMMENT 'Margem superior não imprimível em mm',
+    `margem_inferior_mm` DECIMAL(5, 2) NOT NULL DEFAULT 0 COMMENT 'Margem inferior não imprimível em mm',
+    `margem_esquerda_mm` DECIMAL(5, 2) NOT NULL DEFAULT 0 COMMENT 'Margem esquerda não imprimível em mm',
+    `margem_direita_mm` DECIMAL(5, 2) NOT NULL DEFAULT 0 COMMENT 'Margem direita não imprimível em mm',
+    `padrao` TINYINT(1) NOT NULL DEFAULT 0 COMMENT 'Se é a configuração padrão',
+    `ativo` TINYINT(1) NOT NULL DEFAULT 1,
+    `created_at` TIMESTAMP NULL DEFAULT NULL,
+    `updated_at` TIMESTAMP NULL DEFAULT NULL,
+    `deleted_at` TIMESTAMP NULL DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    INDEX `idx_impressoras_tenant_ativo` (`tenant_id`, `ativo`),
+    INDEX `idx_impressoras_tenant_padrao` (`tenant_id`, `padrao`),
+    CONSTRAINT `fk_impressoras_config_tenant` 
+        FOREIGN KEY (`tenant_id`) 
+        REFERENCES `tenants` (`id`) 
+        ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+SELECT '' AS '';
+SELECT 'VERIFICAÇÃO DE TABELA IMPRESSORAS_CONFIG' AS '';
+SELECT 
+    CASE 
+        WHEN COUNT(*) > 0 THEN CONCAT('✓ impressoras_config - ', COUNT(*), ' registro(s)')
+        ELSE '✗ impressoras_config - Tabela não encontrada'
+    END AS status
+FROM information_schema.tables 
+WHERE table_schema = DATABASE() 
+AND table_name = 'impressoras_config';
+
+SELECT '' AS '';
 SELECT '========================================' AS '';
 SELECT 'FIM DO SCRIPT' AS '';
 SELECT '========================================' AS '';

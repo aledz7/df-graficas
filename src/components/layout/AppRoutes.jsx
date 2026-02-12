@@ -91,6 +91,7 @@ const RelatorioAniversariantesPage = lazy(() => import('@/pages/RelatorioAnivers
 const RelatorioClientesQueMaisCompraramPage = lazy(() => import('@/pages/RelatorioClientesQueMaisCompraramPage'));
 const RankingVendedoresPage = lazy(() => import('@/pages/RankingVendedoresPage'));
 const MetasGamificadasPage = lazy(() => import('@/pages/MetasGamificadasPage'));
+const AproveitamentoFolhaPage = lazy(() => import('@/pages/AproveitamentoFolhaPage'));
 
 
 const AppRoutes = ({ logoUrl, nomeEmpresa, vendedorAtual, theme, setTheme, setAppLogoUrl, setAppNomeEmpresa, setAppNomeSistema }) => {
@@ -190,6 +191,7 @@ const AppRoutes = ({ logoUrl, nomeEmpresa, vendedorAtual, theme, setTheme, setAp
       <Route path="/ferramentas/calculadora-metricas" element={<CalculadoraPage />} />
       <Route path="/ferramentas/calculadora-servicos" element={<CalculadoraServicosPage />} />
       <Route path="/ferramentas/calculadora-historico" element={<CalculadoraHistoricoPage />} />
+      <Route path="/ferramentas/aproveitamento-folha" element={<AproveitamentoFolhaPage />} />
       
       {/* Marketplace */}
       <Route path="/marketplace/vendas" element={<MarketplacePage vendedorAtual={vendedorAtual} />} />

@@ -5,7 +5,7 @@ import { useNomeSistema } from '@/hooks/useNomeSistema.jsx';
 import {
   LayoutDashboard, ShoppingCart, Package, Users, Truck, Banknote,
   Settings, BarChart3, FileText, SprayCan, Calculator,
-  Palette, Boxes, BookOpen, Wrench, HardHat, FileClock, CheckCircle2, History, SlidersHorizontal, Trash2, Barcode, Store, Activity, CalendarDays, FileSpreadsheet, Box, LogIn, LogOut, PackagePlus, ListChecks, Printer, DollarSign, ShieldAlert, Ruler, Star, TrendingUp, CreditCard, Ticket, Gift, Receipt, Trophy, Target
+  Palette, Boxes, BookOpen, Wrench, HardHat, FileClock, CheckCircle2, History, SlidersHorizontal, Trash2, Barcode, Store, Activity, CalendarDays, FileSpreadsheet, Box, LogIn, LogOut, PackagePlus, ListChecks, Printer, DollarSign, ShieldAlert, Ruler, Star, TrendingUp, CreditCard, Ticket, Gift, Receipt, Trophy, Target, Maximize2
 } from 'lucide-react';
 import IndiqueGanheModal from '@/components/IndiqueGanheModal';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -40,6 +40,7 @@ const menuItems = [
       { path: '/ferramentas/calculadora-metricas', label: 'Nova Simulação', icon: Calculator },
       { path: '/ferramentas/calculadora-servicos', label: 'Serviços Adicionais', icon: Wrench },
       { path: '/ferramentas/calculadora-historico', label: 'Orçamentos Salvos', icon: History },
+      { path: '/ferramentas/aproveitamento-folha', label: 'Aproveitamento de Folha', icon: Maximize2 },
     ]
   },
   {

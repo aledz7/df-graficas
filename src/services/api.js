@@ -1773,3 +1773,11 @@ export const metaVendaService = {
   getMetaPeriodo: (params = {}) => api.get('/api/metas-vendas/periodo/meta', { params }),
   getProgresso: (id) => api.get(`/api/metas-vendas/${id}/progresso`),
 };
+
+// Serviços para Aproveitamento de Folha
+export const aproveitamentoFolhaService = {
+  calcular: (data) => api.post('/api/aproveitamento-folha/calcular', data),
+  listarImpressoras: () => api.get('/api/aproveitamento-folha/impressoras'),
+  salvarImpressora: (data) => api.post('/api/aproveitamento-folha/impressoras', data),
+  excluirImpressora: (id) => api.delete(`/api/aproveitamento-folha/impressoras/${id}`),
+};
