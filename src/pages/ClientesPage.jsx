@@ -258,64 +258,69 @@ const ClientesPage = ({ vendedorAtual }) => {
   
   const handleImportExcel = async (event) => {
     const file = event.target.files[0];
-    if (file) {
-      setIsLoading(true);
-      try {
-        importFromExcel(file, async (data) => {
-          // Processar cada cliente importado e enviar para a API
-          const importPromises = data.map(async (item) => {
-            try {
-              // Mapear dados para o formato da API
-              const clienteData = {
-                nome: item.nome_completo || item.nome,
-                tipo: (item.tipo_pessoa === 'Pessoa Física' || item.tipo_pessoa === 'fisica') ? 'fisica' : 'juridica',
-                cpf_cnpj: item.cpf_cnpj || '',
-                email: item.email || '',
-                telefone: item.telefone_principal || '',
-                celular: item.celular || '',
-                endereco: item.endereco?.logradouro || '',
-                bairro: item.endereco?.bairro || '',
-                cidade: item.endereco?.cidade || '',
-                estado: item.endereco?.estado || '',
-                cep: item.endereco?.cep || '',
-                ativo: item.status === undefined ? 1 : (item.status ? 1 : 0),
-                // Outros campos conforme necessário
-              };
-              
-              // Enviar para API
-              const response = await clienteService.create(clienteData);
-              return response.data;
-            } catch (error) {
-              console.error('Erro ao importar cliente:', error);
-              throw error;
-            }
-          });
-          
-          try {
-            await Promise.all(importPromises);
-            toast({ 
-              title: "Importação Concluída", 
-              description: `${data.length} clientes importados para o banco de dados.` 
-            });
-            // Recarregar a lista de clientes
-            await fetchClientes(1);
-          } catch (error) {
-            toast({ 
-              title: "Erro na Importação", 
-              description: "Alguns clientes não puderam ser importados. Verifique os dados e tente novamente.", 
-              variant: "destructive" 
-            });
-          }
-          
-          setIsLoading(false);
-        }, (error) => {
-          toast({ title: "Erro na Importação", description: error.message, variant: "destructive" });
-          setIsLoading(false);
-        });
-      } catch (error) {
-        toast({ title: "Erro na Importação", description: error.message, variant: "destructive" });
+    if (!file) return;
+
+    setIsLoading(true);
+    try {
+      const data = await importFromExcel(file);
+
+      if (!data || data.length === 0) {
+        toast({ title: "Importação Vazia", description: "O arquivo não contém dados para importar.", variant: "destructive" });
         setIsLoading(false);
+        event.target.value = null;
+        return;
       }
+
+      // Campos que não devem ser enviados na criação (são gerados pelo servidor)
+      const camposIgnorados = [
+        'id', 'tenant_id', 'created_at', 'updated_at', 'deleted_at',
+        'codigo_cliente', 'total_pontos_ganhos', 'pontos_utilizados',
+        'pontos_expirados', 'saldo_pontos_atual'
+      ];
+
+      let importados = 0;
+      let erros = 0;
+
+      for (const item of data) {
+        try {
+          // Montar dados removendo campos do servidor e campos vazios
+          const clienteData = {};
+          for (const [key, value] of Object.entries(item)) {
+            if (camposIgnorados.includes(key)) continue;
+            if (value === null || value === undefined || value === '') continue;
+            clienteData[key] = value;
+          }
+
+          // Garantir que tenha pelo menos o nome
+          if (!clienteData.nome_completo && !clienteData.nome) continue;
+
+          await clienteService.create(clienteData);
+          importados++;
+        } catch (error) {
+          console.error('Erro ao importar cliente:', item.nome_completo || item.nome, error);
+          erros++;
+        }
+      }
+
+      if (importados > 0) {
+        toast({
+          title: "Importação Concluída",
+          description: `${importados} cliente(s) importado(s) com sucesso.${erros > 0 ? ` ${erros} erro(s).` : ''}`,
+          variant: erros > 0 ? 'default' : 'success'
+        });
+        await fetchClientes(1);
+      } else {
+        toast({
+          title: "Erro na Importação",
+          description: `Nenhum cliente foi importado. ${erros} erro(s) encontrado(s).`,
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao processar arquivo de importação:', error);
+      toast({ title: "Erro na Importação", description: error.message || "Não foi possível ler o arquivo.", variant: "destructive" });
+    } finally {
+      setIsLoading(false);
       event.target.value = null;
     }
   };
