@@ -43,7 +43,7 @@ const EmitirNotaFiscalModal = ({
   const pollingRef = useRef(null);
   const [loadingNotas, setLoadingNotas] = useState(false);
 
-  // Dados adicionais editáveis
+  // Dados adicionais editáveis (NFe apenas, NFSe usa configs salvas)
   const [dadosAdicionais, setDadosAdicionais] = useState({
     natureza_operacao: 'Venda',
     presenca_comprador: '1',
@@ -347,7 +347,7 @@ const EmitirNotaFiscalModal = ({
           </CardContent>
         </Card>
 
-        {/* Campos editáveis */}
+        {/* Campos editáveis - NFe */}
         {tipoNota === 'nfe' && (
           <Card>
             <CardHeader className="pb-2">
@@ -383,6 +383,8 @@ const EmitirNotaFiscalModal = ({
             </CardContent>
           </Card>
         )}
+
+        {/* NFSe usa configurações salvas, sem campos editáveis por nota */}
       </div>
     </ScrollArea>
   );

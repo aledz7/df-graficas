@@ -32,7 +32,7 @@ const defaultCliente = {
     email: '', 
     telefone_principal: '', 
     whatsapp: '', 
-    endereco: { cep: '', logradouro: '', numero: '', complemento: '', bairro: '', cidade: '', estado: ''}, 
+    endereco: { cep: '', logradouro: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '', codigo_municipio_ibge: ''}, 
     observacoes: '', 
     autorizado_prazo: false, 
     status: true,
@@ -101,7 +101,8 @@ const ClienteForm = ({ isOpen, onClose, onSave, clienteEmEdicao, showSaveAndNewB
                             complemento: clienteData.complemento || '',
                             bairro: clienteData.bairro || '',
                             cidade: clienteData.cidade || '',
-                            estado: clienteData.estado || ''
+                            estado: clienteData.estado || '',
+                            codigo_municipio_ibge: clienteData.codigo_municipio_ibge || ''
                         }
                     };
                     
@@ -218,6 +219,7 @@ const ClienteForm = ({ isOpen, onClose, onSave, clienteEmEdicao, showSaveAndNewB
                         cidade: data.localidade || prev.endereco.cidade || '',
                         estado: data.uf || prev.endereco.estado || '',
                         complemento: data.complemento || prev.endereco.complemento || '',
+                        codigo_municipio_ibge: data.ibge || prev.endereco.codigo_municipio_ibge || '',
                     }
                 }));
                 toast({ title: "Endereço encontrado!", description: "Os campos de endereço foram preenchidos." });
@@ -264,6 +266,11 @@ const ClienteForm = ({ isOpen, onClose, onSave, clienteEmEdicao, showSaveAndNewB
                 }
             }
             
+            // BrasilAPI retorna codigo_ibge_do_municipio
+            const codigoIbge = data.codigo_ibge_do_municipio 
+                ? String(data.codigo_ibge_do_municipio) 
+                : '';
+
             setCurrentCliente(prev => ({
                 ...prev,
                 nome_completo: data.razao_social || prev.nome_completo || '',
@@ -279,6 +286,7 @@ const ClienteForm = ({ isOpen, onClose, onSave, clienteEmEdicao, showSaveAndNewB
                     bairro: data.bairro || prev.endereco.bairro || '',
                     cidade: data.municipio || prev.endereco.cidade || '',
                     estado: data.uf || prev.endereco.estado || '',
+                    codigo_municipio_ibge: codigoIbge || prev.endereco.codigo_municipio_ibge || '',
                 }
             }));
             
@@ -317,7 +325,8 @@ const ClienteForm = ({ isOpen, onClose, onSave, clienteEmEdicao, showSaveAndNewB
                 complemento: currentCliente.endereco?.complemento || '',
                 bairro: currentCliente.endereco?.bairro || '',
                 cidade: currentCliente.endereco?.cidade || '',
-                estado: currentCliente.endereco?.estado || ''
+                estado: currentCliente.endereco?.estado || '',
+                codigo_municipio_ibge: currentCliente.endereco?.codigo_municipio_ibge || ''
             };
             
             // Remove ID se for um novo cliente para evitar envio acidental

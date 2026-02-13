@@ -448,6 +448,23 @@ class FocusNfeService
     // =============================
 
     /**
+     * Retorna o tipo de integração NFSe configurado: 'nfse' (legacy) ou 'nfsen' (Nacional)
+     */
+    protected function getTipoNfse(): string
+    {
+        return Configuracao::getValor('nfe', 'tipo_nfse', 'nfse') ?: 'nfse';
+    }
+
+    /**
+     * Retorna o prefixo de endpoint para NFSe: '/v2/nfse' ou '/v2/nfsen'
+     */
+    protected function getNfseEndpointBase(?string $tipoIntegracao = null): string
+    {
+        $tipo = $tipoIntegracao ?? $this->getTipoNfse();
+        return $tipo === 'nfsen' ? '/v2/nfsen' : '/v2/nfse';
+    }
+
+    /**
      * Emitir NFSe a partir de uma Ordem de Serviço
      */
     public function emitirNFSe(OrdemServico $os, array $dadosAdicionais = []): array
@@ -506,10 +523,16 @@ class FocusNfeService
 
         // Validar configurações fiscais
         $configs = $this->getConfigsNfe();
+        $tipoNfse = $this->getTipoNfse();
         $errosConfig = [];
-        if (empty($configs['codigo_tributario_municipio'] ?? '') && empty($dadosAdicionais['codigo_tributario_municipio'] ?? '')) {
-            $errosConfig[] = 'Código Tributário do Município';
+
+        // codigo_tributario_municipio é obrigatório apenas para NFSe Legacy
+        if ($tipoNfse !== 'nfsen') {
+            if (empty($configs['codigo_tributario_municipio'] ?? '') && empty($dadosAdicionais['codigo_tributario_municipio'] ?? '')) {
+                $errosConfig[] = 'Código Tributário do Município';
+            }
         }
+
         if (empty($configs['item_lista_servico'] ?? '') && empty($dadosAdicionais['item_lista_servico'] ?? '')) {
             $errosConfig[] = 'Item da Lista de Serviço';
         }
@@ -528,10 +551,22 @@ class FocusNfeService
 
         $referencia = $this->gerarReferencia('nfse', $os->id);
 
-        // Montar payload NFSe
-        $payload = $this->montarPayloadNFSe($empresa, $cliente, $os, $configs, $dadosAdicionais);
+        // Usar tipo de integração já detectado na validação
+        $tipoIntegracao = $tipoNfse;
+        $endpointBase = $this->getNfseEndpointBase($tipoIntegracao);
 
-        $response = $this->request('POST', "/v2/nfse?ref={$referencia}", $payload);
+        // Montar payload conforme tipo de integração
+        if ($tipoIntegracao === 'nfsen') {
+            $payload = $this->montarPayloadNFSeNacional($empresa, $cliente, $os, $configs, $dadosAdicionais);
+        } else {
+            $payload = $this->montarPayloadNFSe($empresa, $cliente, $os, $configs, $dadosAdicionais);
+        }
+
+        // Guardar o tipo de integração no payload para referência futura
+        $payloadComMeta = $payload;
+        $payloadComMeta['_tipo_integracao'] = $tipoIntegracao;
+
+        $response = $this->request('POST', "{$endpointBase}?ref={$referencia}", $payload);
 
         // Traduzir erros comuns da API para mensagens mais amigáveis
         if (!($response['sucesso'] ?? false)) {
@@ -540,12 +575,40 @@ class FocusNfeService
 
         return array_merge($response, [
             'referencia' => $referencia,
-            'payload_enviado' => $payload,
+            'payload_enviado' => $payloadComMeta,
         ]);
     }
 
     /**
-     * Monta o payload da NFSe (formato v2 da API - objetos aninhados)
+     * Resolve o código IBGE do município do cliente com fallback via CEP.
+     * Retorna o código e atualiza o banco automaticamente.
+     */
+    protected function resolverCodigoMunicipioCliente($cliente): string
+    {
+        $codigoMunicipioCliente = $cliente->codigo_municipio_ibge ?? '';
+        if (empty($codigoMunicipioCliente) && !empty($cliente->cep)) {
+            $codigoMunicipioCliente = $this->resolverCodigoMunicipioIbge($cliente->cep);
+            if (!empty($codigoMunicipioCliente)) {
+                try {
+                    $cliente->update(['codigo_municipio_ibge' => $codigoMunicipioCliente]);
+                    Log::info('FocusNFe: Código IBGE do município salvo automaticamente para o cliente', [
+                        'cliente_id' => $cliente->id,
+                        'codigo_municipio_ibge' => $codigoMunicipioCliente,
+                    ]);
+                } catch (\Exception $e) {
+                    Log::warning('FocusNFe: Não foi possível salvar o código IBGE no cliente', [
+                        'cliente_id' => $cliente->id,
+                        'erro' => $e->getMessage(),
+                    ]);
+                }
+            }
+        }
+        return $codigoMunicipioCliente;
+    }
+
+    /**
+     * Monta o payload da NFSe Legacy (formato ABRASF - objetos aninhados)
+     * Endpoint: /v2/nfse
      */
     protected function montarPayloadNFSe(Empresa $empresa, $cliente, OrdemServico $os, array $configs, array $dadosAdicionais = []): array
     {
@@ -559,26 +622,28 @@ class FocusNfeService
         });
 
         $desconto = $this->calcularDescontoTotal($os);
-        $valorLiquido = $valorServicos - $desconto;
 
         // Montar discriminação dos serviços
         $discriminacao = $this->montarDiscriminacaoNFSe($os);
 
-        // Prestador (empresa emissora)
+        // Prestador (empresa emissora) - formato aninhado
         $prestador = [
             'cnpj' => $cnpjPrestador,
             'inscricao_municipal' => preg_replace('/\D/', '', $empresa->inscricao_municipal ?? ''),
             'codigo_municipio' => $empresa->codigo_municipio_ibge ?? '',
         ];
 
-        // Tomador (cliente)
+        // Resolver código do município IBGE do cliente
+        $codigoMunicipioCliente = $this->resolverCodigoMunicipioCliente($cliente);
+
+        // Tomador (cliente) - formato aninhado
         $tomador = [
             'razao_social' => $cliente->nome_completo ?? $cliente->apelido_fantasia ?? '',
             'endereco' => [
                 'logradouro' => $cliente->logradouro ?? '',
                 'numero' => $cliente->numero ?? $cliente->numero_endereco ?? 'S/N',
                 'bairro' => $cliente->bairro ?? '',
-                'codigo_municipio' => $cliente->codigo_municipio_ibge ?? '',
+                'codigo_municipio' => $codigoMunicipioCliente,
                 'uf' => $cliente->estado ?? '',
                 'cep' => preg_replace('/\D/', '', $cliente->cep ?? ''),
             ],
@@ -591,31 +656,41 @@ class FocusNfeService
             $tomador['cpf'] = $cpfCnpjTomador;
         }
 
-        // Email do tomador
         if ($cliente->email) {
             $tomador['email'] = $cliente->email;
         }
         if ($cliente->telefone_principal) {
             $tomador['telefone'] = preg_replace('/\D/', '', $cliente->telefone_principal);
         }
-
-        // Complemento do endereço do tomador
         if (!empty($cliente->complemento)) {
             $tomador['endereco']['complemento'] = $cliente->complemento;
         }
 
-        // Serviço
+        // Item lista serviço - formato ABRASF (ex: "13.05")
+        $itemListaServico = $dadosAdicionais['item_lista_servico'] ?? $configs['item_lista_servico'] ?? '';
+
+        // Serviço - formato aninhado
         $servico = [
             'discriminacao' => $discriminacao,
             'valor_servicos' => round($valorServicos, 2),
-            'base_calculo' => round($valorLiquido, 2),
             'aliquota' => (float) ($dadosAdicionais['aliquota_iss'] ?? $configs['aliquota_iss'] ?? 0),
-            'iss_retido' => $dadosAdicionais['iss_retido'] ?? 'false',
-            'codigo_tributario_municipio' => $dadosAdicionais['codigo_tributario_municipio'] ?? $configs['codigo_tributario_municipio'] ?? '',
-            'item_lista_servico' => $dadosAdicionais['item_lista_servico'] ?? $configs['item_lista_servico'] ?? '',
+            'iss_retido' => ($dadosAdicionais['iss_retido'] ?? 'false') === 'true' ? true : false,
+            'item_lista_servico' => $itemListaServico,
+            'codigo_cnae' => substr(preg_replace('/\D/', '', $dadosAdicionais['codigo_cnae'] ?? $configs['codigo_cnae'] ?? ''), 0, 7),
         ];
 
-        // Desconto
+        // Código tributário do município (alguns municípios como Olinda não utilizam)
+        $codigoTribMunicipio = $dadosAdicionais['codigo_tributario_municipio'] ?? $configs['codigo_tributario_municipio'] ?? '';
+        if (!empty($codigoTribMunicipio)) {
+            $servico['codigo_tributario_municipio'] = $codigoTribMunicipio;
+        }
+
+        // Código NBS (Nomenclatura Brasileira de Serviços) - opcional mas exigido por alguns provedores
+        $codigoNbs = $dadosAdicionais['codigo_nbs'] ?? $configs['codigo_nbs'] ?? '';
+        if (!empty($codigoNbs)) {
+            $servico['codigo_nbs'] = preg_replace('/\D/', '', $codigoNbs);
+        }
+
         if ($desconto > 0) {
             $servico['desconto_condicionado'] = round($desconto, 2);
         }
@@ -627,10 +702,168 @@ class FocusNfeService
             'servico' => $servico,
         ];
 
-        // Natureza da operação (se configurado)
-        $naturezaOperacao = $dadosAdicionais['natureza_operacao'] ?? $configs['natureza_operacao'] ?? '';
+        // Natureza da operação (código numérico 1-6 conforme ABRASF)
+        $naturezaOperacao = $dadosAdicionais['natureza_operacao_nfse'] ?? $configs['natureza_operacao_nfse'] ?? '1';
         if (!empty($naturezaOperacao)) {
             $payload['natureza_operacao'] = $naturezaOperacao;
+        }
+
+        // Optante Simples Nacional (ABRASF: boolean true/false)
+        $optanteSN = $configs['optante_simples_nacional'] ?? '3';
+        $isSimples = in_array($optanteSN, ['2', '3']);
+        $payload['optante_simples_nacional'] = $isSimples;
+
+        // Regime de Apuração Tributária pelo Simples Nacional (regApTribSN)
+        // Obrigatório para provedores que exigem (ex: Tinus/Olinda)
+        // 1=Tributos federais e municipal pelo SN, 2=Federais pelo SN e ISSQN pela NFS-e, 3=Todos pela NFS-e
+        $regimeTribSN = $configs['regime_tributario_simples_nacional'] ?? '';
+        if (!empty($regimeTribSN) && $regimeTribSN !== 'nao_enviar') {
+            $payload['regime_tributario_simples_nacional'] = $regimeTribSN;
+        }
+
+        // Regime especial de tributação (ABRASF: valores 1-6, 0=Nenhum)
+        $regimeEspecial = $configs['regime_especial_tributacao'] ?? 'nao_enviar';
+        if ($regimeEspecial !== 'nao_enviar' && !empty($regimeEspecial)) {
+            $payload['regime_especial_tributacao'] = $regimeEspecial;
+        }
+
+        // Incentivo fiscal (ABRASF: 1=Sim, 2=Não)
+        $incentivoFiscal = $configs['incentivo_fiscal'] ?? '';
+        if (!empty($incentivoFiscal) && $incentivoFiscal !== 'nao_enviar') {
+            $payload['incentivo_fiscal'] = $incentivoFiscal;
+        }
+
+        return $payload;
+    }
+
+    /**
+     * Monta o payload da NFSe Nacional (formato flat para API /v2/nfsen)
+     * Endpoint: /v2/nfsen
+     * Documentação: https://campos.focusnfe.com.br/nfse_nacional/EmissaoDPSXml.html
+     */
+    protected function montarPayloadNFSeNacional(Empresa $empresa, $cliente, OrdemServico $os, array $configs, array $dadosAdicionais = []): array
+    {
+        $cnpjPrestador = preg_replace('/\D/', '', $empresa->cnpj);
+        $cpfCnpjTomador = preg_replace('/\D/', '', $cliente->cpf_cnpj ?? '');
+        $isTomadorPJ = strlen($cpfCnpjTomador) === 14;
+
+        // Calcular valor total dos serviços
+        $valorServicos = $os->itens->sum(function ($item) {
+            return (float) ($item->valor_total ?? ($item->quantidade * $item->valor_unitario));
+        });
+
+        $desconto = $this->calcularDescontoTotal($os);
+
+        // Descrição do serviço
+        $descricaoServico = $this->montarDiscriminacaoNFSe($os);
+
+        // Resolver código do município IBGE do cliente
+        $codigoMunicipioCliente = $this->resolverCodigoMunicipioCliente($cliente);
+
+        // Formatar item_lista_servico para 6 dígitos (cTribNac)
+        // Espera-se que o valor já venha com 6 dígitos (ex: "130501")
+        // Se vier com pontos (ex: "13.05"), remove e preenche com zeros à direita
+        $itemListaRaw = $dadosAdicionais['item_lista_servico'] ?? $configs['item_lista_servico'] ?? '';
+        $itemListaDigits = preg_replace('/\D/', '', $itemListaRaw);
+        $codigoTribNac = str_pad($itemListaDigits, 6, '0', STR_PAD_RIGHT);
+
+        // Código do município do prestador (emissora)
+        $codigoMunicipioPrestador = $empresa->codigo_municipio_ibge ?? '';
+
+        // === Payload flat para NFSe Nacional ===
+        $payload = [
+            'data_emissao' => now()->toIso8601String(),
+            'data_competencia' => now()->format('Y-m-d'),
+            'codigo_municipio_emissora' => $codigoMunicipioPrestador,
+        ];
+
+        // Prestador
+        $payload['cnpj_prestador'] = $cnpjPrestador;
+        $payload['inscricao_municipal_prestador'] = preg_replace('/\D/', '', $empresa->inscricao_municipal ?? '');
+
+        // Optante Simples Nacional (opSimpNac): 1=Não Optante, 2=MEI, 3=ME/EPP
+        $optanteSN = $configs['optante_simples_nacional'] ?? '3';
+        $payload['codigo_opcao_simples_nacional'] = $optanteSN;
+
+        $isSimples = in_array($optanteSN, ['2', '3']);
+
+        // Regime de Apuração Tributária pelo Simples Nacional (regApTribSN)
+        // 1 = Tributos federais e municipal pelo SN
+        // 2 = Tributos federais pelo SN e ISSQN pela legislação municipal
+        // 3 = Tributos federais e municipal pela NFS-e conforme legislações de cada tributo
+        $regimeSN = $configs['regime_tributario_simples_nacional'] ?? '1';
+        if ($isSimples && !empty($regimeSN) && $regimeSN !== 'nao_enviar') {
+            $payload['regime_tributario_simples_nacional'] = $regimeSN;
+        }
+
+        // Regime Especial de Tributação (regEspTrib): 0=Nenhum, 1=Cooperativa, etc.
+        $regimeEspecial = $configs['regime_especial_tributacao'] ?? '0';
+        if ($regimeEspecial !== 'nao_enviar') {
+            $payload['regime_especial_tributacao'] = $regimeEspecial;
+        }
+
+        // Tomador (campos flat)
+        if ($isTomadorPJ) {
+            $payload['cnpj_tomador'] = $cpfCnpjTomador;
+        } else {
+            $payload['cpf_tomador'] = $cpfCnpjTomador;
+        }
+        $payload['razao_social_tomador'] = $cliente->nome_completo ?? $cliente->apelido_fantasia ?? '';
+        $payload['logradouro_tomador'] = $cliente->logradouro ?? '';
+        $payload['numero_tomador'] = $cliente->numero ?? $cliente->numero_endereco ?? 'S/N';
+        $payload['bairro_tomador'] = $cliente->bairro ?? '';
+        $payload['codigo_municipio_tomador'] = $codigoMunicipioCliente;
+        $payload['cep_tomador'] = preg_replace('/\D/', '', $cliente->cep ?? '');
+
+        if (!empty($cliente->complemento)) {
+            $payload['complemento_tomador'] = $cliente->complemento;
+        }
+        if ($cliente->email) {
+            $payload['email_tomador'] = $cliente->email;
+        }
+        if ($cliente->telefone_principal) {
+            $payload['telefone_tomador'] = preg_replace('/\D/', '', $cliente->telefone_principal);
+        }
+
+        // Serviço (campos flat)
+        $payload['codigo_municipio_prestacao'] = $codigoMunicipioPrestador;
+        $payload['codigo_tributacao_nacional_iss'] = $codigoTribNac;
+        $payload['descricao_servico'] = $descricaoServico;
+        $payload['valor_servico'] = round($valorServicos, 2);
+
+        // Código tributário municipal (cTribMun) - NFSe Nacional aceita apenas 3 dígitos [0-9]{3}
+        $codigoTribMunicipio = $dadosAdicionais['codigo_tributario_municipio'] ?? $configs['codigo_tributario_municipio'] ?? '';
+        $codigoTribMunicipioDigits = preg_replace('/\D/', '', $codigoTribMunicipio);
+        if (!empty($codigoTribMunicipioDigits) && strlen($codigoTribMunicipioDigits) <= 3) {
+            $payload['codigo_tributacao_municipal_iss'] = $codigoTribMunicipioDigits;
+        }
+
+        // Desconto
+        if ($desconto > 0) {
+            $payload['desconto_condicionado'] = round($desconto, 2);
+        }
+
+        // Tributação do ISSQN (tribISSQN): 1=Tributável, 2=Imunidade, 3=Exportação, 4=Não Incidência
+        $tributacaoIss = $configs['tributacao_iss'] ?? '1';
+        $payload['tributacao_iss'] = $tributacaoIss;
+
+        // Tipo de retenção do ISSQN (tpRetISSQN): 1=Não Retido, 2=Retido Tomador, 3=Retido Intermediário
+        $tipoRetencaoIss = $configs['tipo_retencao_iss'] ?? '1';
+        $payload['tipo_retencao_iss'] = $tipoRetencaoIss;
+
+        // Indicador de informação de valor total de tributos (indTotTrib)
+        // 0 = Não (valor default) - obrigatório dentro do grupo trib > totTrib
+        $payload['indicador_total_tributacao'] = '0';
+
+        // Alíquota (só envia se maior que zero)
+        $aliquota = (float) ($dadosAdicionais['aliquota_iss'] ?? $configs['aliquota_iss'] ?? 0);
+        if ($aliquota > 0) {
+            $payload['percentual_aliquota_relativa_municipio'] = $aliquota;
+        }
+
+        // Informações complementares
+        if (!empty($os->observacoes)) {
+            $payload['informacoes_complementares'] = substr($os->observacoes, 0, 2000);
         }
 
         return $payload;
@@ -661,19 +894,23 @@ class FocusNfeService
     }
 
     /**
-     * Consultar NFSe pela referência
+     * Consultar NFSe pela referência.
+     * Detecta automaticamente o endpoint (legacy ou nacional) a partir dos dados da nota.
      */
-    public function consultarNFSe(string $referencia): array
+    public function consultarNFSe(string $referencia, ?string $tipoIntegracao = null): array
     {
-        return $this->request('GET', "/v2/nfse/{$referencia}");
+        $endpointBase = $this->getNfseEndpointBase($tipoIntegracao);
+        return $this->request('GET', "{$endpointBase}/{$referencia}");
     }
 
     /**
-     * Cancelar NFSe
+     * Cancelar NFSe.
+     * Detecta automaticamente o endpoint (legacy ou nacional) a partir dos dados da nota.
      */
-    public function cancelarNFSe(string $referencia, string $justificativa): array
+    public function cancelarNFSe(string $referencia, string $justificativa, ?string $tipoIntegracao = null): array
     {
-        return $this->request('DELETE', "/v2/nfse/{$referencia}", [
+        $endpointBase = $this->getNfseEndpointBase($tipoIntegracao);
+        return $this->request('DELETE', "{$endpointBase}/{$referencia}", [
             'justificativa' => $justificativa,
         ]);
     }
@@ -683,23 +920,27 @@ class FocusNfeService
     // =============================
 
     /**
-     * Consultar nota fiscal pela referência (detecta tipo)
+     * Consultar nota fiscal pela referência (detecta tipo).
+     * Para NFSe, tenta detectar o tipo de integração a partir dos dados salvos na nota.
      */
-    public function consultar(string $referencia, string $tipo): array
+    public function consultar(string $referencia, string $tipo, ?string $tipoIntegracao = null): array
     {
-        return $tipo === 'nfse'
-            ? $this->consultarNFSe($referencia)
-            : $this->consultarNFe($referencia);
+        if ($tipo === 'nfse') {
+            return $this->consultarNFSe($referencia, $tipoIntegracao);
+        }
+        return $this->consultarNFe($referencia);
     }
 
     /**
-     * Cancelar nota fiscal pela referência (detecta tipo)
+     * Cancelar nota fiscal pela referência (detecta tipo).
+     * Para NFSe, tenta detectar o tipo de integração a partir dos dados salvos na nota.
      */
-    public function cancelar(string $referencia, string $tipo, string $justificativa): array
+    public function cancelar(string $referencia, string $tipo, string $justificativa, ?string $tipoIntegracao = null): array
     {
-        return $tipo === 'nfse'
-            ? $this->cancelarNFSe($referencia, $justificativa)
-            : $this->cancelarNFe($referencia, $justificativa);
+        if ($tipo === 'nfse') {
+            return $this->cancelarNFSe($referencia, $justificativa, $tipoIntegracao);
+        }
+        return $this->cancelarNFe($referencia, $justificativa);
     }
 
     /**
@@ -757,11 +998,16 @@ class FocusNfeService
     }
 
     /**
-     * Atualizar dados de uma NotaFiscal com base na consulta à API
+     * Atualizar dados de uma NotaFiscal com base na consulta à API.
+     * Detecta automaticamente o tipo de integração NFSe (legacy ou nacional)
+     * a partir dos dados de envio armazenados.
      */
     public function atualizarNotaFiscal(NotaFiscal $nota): NotaFiscal
     {
-        $response = $this->consultar($nota->referencia, $nota->tipo);
+        // Detectar tipo de integração dos dados salvos
+        $tipoIntegracao = $nota->dados_envio['_tipo_integracao'] ?? null;
+
+        $response = $this->consultar($nota->referencia, $nota->tipo, $tipoIntegracao);
 
         if (!($response['sucesso'] ?? false)) {
             return $nota;
@@ -777,8 +1023,22 @@ class FocusNfeService
             $nota->serie = $dados['serie'] ?? $nota->serie;
             $nota->chave_nfe = $dados['chave_nfe'] ?? $dados['chave'] ?? $nota->chave_nfe;
             $nota->protocolo = $dados['protocolo'] ?? $nota->protocolo;
-            $nota->caminho_xml_nota_fiscal = $dados['caminho_xml_nota_fiscal'] ?? $nota->caminho_xml_nota_fiscal;
-            $nota->caminho_danfe = $dados['caminho_danfe'] ?? $nota->caminho_danfe;
+
+            // URLs de XML e DANFE: prefixar com URL base da API se forem caminhos relativos
+            $baseUrl = $this->getBaseUrl();
+            $xmlPath = $dados['caminho_xml_nota_fiscal'] ?? $nota->caminho_xml_nota_fiscal;
+            if ($xmlPath && !str_starts_with($xmlPath, 'http')) {
+                $xmlPath = rtrim($baseUrl, '/') . '/' . ltrim($xmlPath, '/');
+            }
+            $nota->caminho_xml_nota_fiscal = $xmlPath;
+
+            // DANFE/DANFSe: pode vir em caminho_danfe, url_danfse ou url_danfe
+            $danfePath = $dados['url_danfse'] ?? $dados['url_danfe'] ?? $dados['caminho_danfe'] ?? $nota->caminho_danfe;
+            if ($danfePath && !str_starts_with($danfePath, 'http')) {
+                $danfePath = rtrim($baseUrl, '/') . '/' . ltrim($danfePath, '/');
+            }
+            $nota->caminho_danfe = $danfePath;
+
             $nota->url_nota_fiscal = $dados['url'] ?? $dados['url_nota_fiscal'] ?? $nota->url_nota_fiscal;
         } elseif (in_array($status, ['erro_autorizacao', 'rejeitado', 'rejeitada'])) {
             $nota->status = 'erro_autorizacao';
@@ -867,5 +1127,51 @@ class FocusNfeService
         }
 
         return $response;
+    }
+
+    /**
+     * Resolve o código IBGE do município a partir do CEP usando ViaCEP.
+     * Usado como fallback quando o cliente não tem o código salvo no banco.
+     *
+     * @param string $cep
+     * @return string Código IBGE do município ou string vazia
+     */
+    protected function resolverCodigoMunicipioIbge(string $cep): string
+    {
+        try {
+            $cepLimpo = preg_replace('/\D/', '', $cep);
+
+            if (strlen($cepLimpo) !== 8) {
+                return '';
+            }
+
+            $response = Http::timeout(5)->get("https://viacep.com.br/ws/{$cepLimpo}/json/");
+
+            if ($response->successful()) {
+                $data = $response->json();
+
+                if (!isset($data['erro']) && !empty($data['ibge'])) {
+                    Log::info('FocusNFe: Código IBGE resolvido via ViaCEP', [
+                        'cep' => $cepLimpo,
+                        'ibge' => $data['ibge'],
+                        'localidade' => $data['localidade'] ?? '',
+                    ]);
+                    return (string) $data['ibge'];
+                }
+            }
+
+            Log::warning('FocusNFe: Não foi possível resolver código IBGE via ViaCEP', [
+                'cep' => $cepLimpo,
+                'status' => $response->status(),
+            ]);
+
+            return '';
+        } catch (\Exception $e) {
+            Log::warning('FocusNFe: Erro ao buscar código IBGE via ViaCEP', [
+                'cep' => $cep,
+                'erro' => $e->getMessage(),
+            ]);
+            return '';
+        }
     }
 }

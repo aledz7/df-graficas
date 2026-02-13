@@ -38,6 +38,7 @@ class Cliente extends Model
         'bairro',
         'cidade',
         'estado',
+        'codigo_municipio_ibge',
         'observacoes',
         'autorizado_prazo',
         'status',
