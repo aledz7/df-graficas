@@ -70,6 +70,7 @@ use App\Http\Controllers\Api\PerfilVendedorController;
 use App\Http\Controllers\Api\EventoCalendarioController;
 use App\Http\Controllers\Api\TermometroController;
 use App\Http\Controllers\Api\PosVendaController;
+use App\Http\Controllers\Api\RelatorioProducaoController;
 
 /*
 |--------------------------------------------------------------------------
@@ -618,6 +619,9 @@ Route::middleware(['api.auth'])->group(function () {
         Route::post('corrigir-758', [OrdemServicoController::class, 'corrigirOS758']);
     });
     Route::apiResource('ordens-servico', OrdemServicoController::class);
+
+    // Relatório de Produção
+    Route::get('relatorio-producao', [RelatorioProducaoController::class, 'index']);
 
     // Notas Fiscais (NFe / NFSe)
     Route::prefix('notas-fiscais')->group(function () {

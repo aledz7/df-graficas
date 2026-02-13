@@ -30,9 +30,12 @@ const EntregadoresPage = () => {
         try {
             setIsLoading(true);
             const response = await entregadorService.getAll();
-            setEntregadores(response.data?.data || response.data || []);
+            // Garantir que sempre seja um array
+            const dados = response.data?.data || response.data || [];
+            setEntregadores(Array.isArray(dados) ? dados : []);
         } catch (error) {
             console.error('Erro ao carregar entregadores:', error);
+            setEntregadores([]); // Garantir que seja array mesmo em caso de erro
             toast({ 
                 title: 'Erro ao carregar dados', 
                 description: 'Ocorreu um erro ao carregar os entregadores.', 
@@ -171,7 +174,7 @@ const EntregadoresPage = () => {
                                                 </div>
                                             </TableCell>
                                         </TableRow>
-                                    ) : entregadores.length > 0 ? (
+                                    ) : Array.isArray(entregadores) && entregadores.length > 0 ? (
                                         entregadores.map(entregador => (
                                             <TableRow key={entregador.id} className="hover:bg-muted/50">
                                                 <TableCell className="font-medium">{entregador.nome}</TableCell>

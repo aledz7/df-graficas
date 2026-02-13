@@ -2,7 +2,7 @@
 -- SCRIPT COMPLETO PARA BANCO DE DADOS ONLINE
 -- Execute este script no banco de dados MySQL/MariaDB
 -- Data inicial: 2025-01-28
--- Última atualização: 2026-02-13 (Sistema de Fretes e Logística)
+-- Última atualização: 2026-02-14 (Relatório de Produção)
 -- =====================================================
 
 -- =====================================================
@@ -882,6 +882,108 @@ SET @sql_grafica = IF(@col_exists_grafica = 0,
 PREPARE stmt_grafica FROM @sql_grafica;
 EXECUTE stmt_grafica;
 DEALLOCATE PREPARE stmt_grafica;
+
+-- =====================================================
+-- 8. ALTERAÇÕES - RELATÓRIO DE PRODUÇÃO
+-- =====================================================
+-- Data: 2026-02-14
+-- Descrição: Adiciona campos de produção aos itens de OS para relatório de produção
+
+-- Verificar e adicionar coluna data_inicio_producao em ordens_servico_itens (se não existir)
+SET @col_inicio_producao = (
+    SELECT COUNT(*) 
+    FROM information_schema.columns 
+    WHERE table_schema = DATABASE() 
+    AND table_name = 'ordens_servico_itens' 
+    AND column_name = 'data_inicio_producao'
+);
+
+SET @sql = IF(@col_inicio_producao = 0,
+    'ALTER TABLE `ordens_servico_itens` 
+    ADD COLUMN `data_inicio_producao` DATETIME NULL 
+    AFTER `detalhes`;',
+    'SELECT ''Coluna data_inicio_producao já existe em ordens_servico_itens.'' AS mensagem;'
+);
+
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Verificar e adicionar coluna data_conclusao_producao em ordens_servico_itens (se não existir)
+SET @col_conclusao_producao = (
+    SELECT COUNT(*) 
+    FROM information_schema.columns 
+    WHERE table_schema = DATABASE() 
+    AND table_name = 'ordens_servico_itens' 
+    AND column_name = 'data_conclusao_producao'
+);
+
+SET @sql = IF(@col_conclusao_producao = 0,
+    'ALTER TABLE `ordens_servico_itens` 
+    ADD COLUMN `data_conclusao_producao` DATETIME NULL 
+    AFTER `data_inicio_producao`;',
+    'SELECT ''Coluna data_conclusao_producao já existe em ordens_servico_itens.'' AS mensagem;'
+);
+
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Verificar e adicionar coluna is_refacao em ordens_servico_itens (se não existir)
+SET @col_refacao = (
+    SELECT COUNT(*) 
+    FROM information_schema.columns 
+    WHERE table_schema = DATABASE() 
+    AND table_name = 'ordens_servico_itens' 
+    AND column_name = 'is_refacao'
+);
+
+SET @sql = IF(@col_refacao = 0,
+    'ALTER TABLE `ordens_servico_itens` 
+    ADD COLUMN `is_refacao` TINYINT(1) NOT NULL DEFAULT 0 
+    AFTER `data_conclusao_producao`;',
+    'SELECT ''Coluna is_refacao já existe em ordens_servico_itens.'' AS mensagem;'
+);
+
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- =====================================================
+-- 9. RESUMO FINAL ATUALIZADO
+-- =====================================================
+
+SELECT '' AS '';
+SELECT 'Colunas verificadas em ordens_servico_itens (Produção):' AS '';
+SELECT 
+    CASE 
+        WHEN COUNT(*) > 0 THEN '✓ data_inicio_producao'
+        ELSE '✗ data_inicio_producao - Coluna não encontrada'
+    END AS status
+FROM information_schema.columns 
+WHERE table_schema = DATABASE() 
+AND table_name = 'ordens_servico_itens' 
+AND column_name = 'data_inicio_producao';
+
+SELECT 
+    CASE 
+        WHEN COUNT(*) > 0 THEN '✓ data_conclusao_producao'
+        ELSE '✗ data_conclusao_producao - Coluna não encontrada'
+    END AS status
+FROM information_schema.columns 
+WHERE table_schema = DATABASE() 
+AND table_name = 'ordens_servico_itens' 
+AND column_name = 'data_conclusao_producao';
+
+SELECT 
+    CASE 
+        WHEN COUNT(*) > 0 THEN '✓ is_refacao'
+        ELSE '✗ is_refacao - Coluna não encontrada'
+    END AS status
+FROM information_schema.columns 
+WHERE table_schema = DATABASE() 
+AND table_name = 'ordens_servico_itens' 
+AND column_name = 'is_refacao';
 
 SELECT '' AS '';
 SELECT '========================================' AS '';

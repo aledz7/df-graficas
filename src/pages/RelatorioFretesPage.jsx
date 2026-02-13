@@ -42,9 +42,12 @@ const RelatorioFretesPage = () => {
     const loadEntregadores = async () => {
         try {
             const response = await entregadorService.getAtivos();
-            setEntregadores(response.data || []);
+            // Garantir que sempre seja um array
+            const dados = response.data?.data || response.data || [];
+            setEntregadores(Array.isArray(dados) ? dados : []);
         } catch (error) {
             console.error('Erro ao carregar entregadores:', error);
+            setEntregadores([]); // Garantir que seja array mesmo em caso de erro
         }
     };
 
@@ -213,7 +216,7 @@ const RelatorioFretesPage = () => {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">Todos</SelectItem>
-                                    {entregadores.map(ent => (
+                                    {Array.isArray(entregadores) && entregadores.map(ent => (
                                         <SelectItem key={ent.id} value={ent.id.toString()}>{ent.nome}</SelectItem>
                                     ))}
                                 </SelectContent>

@@ -1802,6 +1802,19 @@ export const treinamentoService = {
   salvarRegraAlerta: (data) => api.post('/api/treinamento/avisos/regras', data),
 };
 
+// Serviços para Relatório de Produção
+export const relatorioProducaoService = {
+  getRelatorio: async (params = {}) => {
+    try {
+      const response = await api.get('/api/relatorio-producao', { params });
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao buscar relatório de produção:', error);
+      throw error;
+    }
+  },
+};
+
 // Serviços para Clientes Diminuindo Compras
 export const clienteTendenciaService = {
   getClientesComQueda: (params = {}) => api.get('/api/clientes-tendencia', { params }),

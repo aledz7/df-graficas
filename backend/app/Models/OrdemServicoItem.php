@@ -39,6 +39,9 @@ class OrdemServicoItem extends Model
         'consumo_custo_total',
         'consumo_custo_unitario',
         'consumo_aproveitamento_percentual',
+        'data_inicio_producao',
+        'data_conclusao_producao',
+        'is_refacao',
     ];
     
     protected $casts = [
@@ -55,6 +58,9 @@ class OrdemServicoItem extends Model
         'consumo_custo_total' => 'float',
         'consumo_custo_unitario' => 'float',
         'consumo_aproveitamento_percentual' => 'float',
+        'data_inicio_producao' => 'datetime',
+        'data_conclusao_producao' => 'datetime',
+        'is_refacao' => 'boolean',
     ];
     
     /**

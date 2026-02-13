@@ -41,6 +41,7 @@ const CuponsPage = lazy(() => import('@/pages/CuponsPage'));
 const OpcoesFretePage = lazy(() => import('@/pages/OpcoesFretePage'));
 const EntregadoresPage = lazy(() => import('@/pages/EntregadoresPage'));
 const RelatorioFretesPage = lazy(() => import('@/pages/RelatorioFretesPage'));
+const RelatorioProducaoPage = lazy(() => import('@/pages/RelatorioProducaoPage'));
 const MontarRomaneioPage = lazy(() => import('@/pages/MontarRomaneioPage'));
 const RomaneiosPage = lazy(() => import('@/pages/RomaneiosPage'));
 const PDVHistoricoPage = lazy(() => import('@/pages/PDVHistoricoPage'));
@@ -190,6 +191,7 @@ const AppRoutes = ({ logoUrl, nomeEmpresa, vendedorAtual, theme, setTheme, setAp
       <Route path="/relatorios/operacional/lucratividade-por-produto" element={<RelatorioLucratividadeProdutosPage />} />
       <Route path="/relatorios/operacional/analitico" element={<RelatorioAnaliticoPage />} />
       <Route path="/relatorios/operacional/fretes" element={<RelatorioFretesPage />} />
+      <Route path="/relatorios/operacional/producao" element={<RelatorioProducaoPage />} />
       <Route path="/operacional/romaneio" element={<MontarRomaneioPage />} />
       <Route path="/operacional/romaneios" element={<RomaneiosPage />} />
       <Route path="/relatorios/operacional/vendas-com-metas" element={<RelatorioVendasComMetasPage />} />

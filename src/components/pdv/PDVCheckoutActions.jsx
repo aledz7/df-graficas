@@ -185,7 +185,7 @@ const PDVCheckoutActions = ({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="none">Não especificado</SelectItem>
-              {entregadores.map(ent => (
+              {Array.isArray(entregadores) && entregadores.map(ent => (
                 <SelectItem key={ent.id} value={ent.id.toString()}>
                   {ent.nome} ({ent.tipo === 'proprio' ? 'Próprio' : 'Terceirizado'})
                 </SelectItem>
