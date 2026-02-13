@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Models\User;
 use App\Models\Holerite;
 use App\Models\HistoricoFechamentoMes;
+use App\Models\FreteEntrega;
+use App\Models\Entregador;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
@@ -1236,8 +1238,52 @@ class FuncionarioController extends BaseController
 
                 \Log::info("📊 Resumo consumo interno funcionário {$funcionarioId}: Total = {$totalConsumoInterno}, Itens = " . count($consumoInternoItens));
                 
+                // Buscar fretes próprios do funcionário no período
+                $totalFretes = 0;
+                $fretesItens = [];
+                
+                // Buscar entregador vinculado ao funcionário
+                $entregador = Entregador::where('tenant_id', auth()->user()->tenant_id)
+                    ->where('funcionario_id', $funcionario->id)
+                    ->where('tipo', 'proprio')
+                    ->where('ativo', true)
+                    ->first();
+                
+                if ($entregador) {
+                    // Buscar entregas do entregador no período
+                    $fretesEntregas = FreteEntrega::where('tenant_id', auth()->user()->tenant_id)
+                        ->where('entregador_id', $entregador->id)
+                        ->where('status_pagamento', '!=', 'cancelado')
+                        ->where(function($query) use ($ano, $mes, $dataAberturaMes, $dataFechamentoMes) {
+                            if ($dataAberturaMes) {
+                                $dataFim = $dataFechamentoMes ?: now();
+                                $query->whereBetween('data_entrega', [$dataAberturaMes, $dataFim]);
+                            } else {
+                                $query->whereYear('data_entrega', $ano)
+                                      ->whereMonth('data_entrega', $mes);
+                            }
+                        })
+                        ->get();
+                    
+                    foreach ($fretesEntregas as $frete) {
+                        $totalFretes += floatval($frete->valor_frete ?? 0);
+                        $fretesItens[] = [
+                            'id' => $frete->id,
+                            'venda_id' => $frete->venda_id,
+                            'valor' => floatval($frete->valor_frete ?? 0),
+                            'descricao' => 'Frete - Pedido #' . ($frete->venda->codigo ?? $frete->venda_id),
+                            'data' => $frete->data_entrega,
+                            'bairro' => $frete->bairro,
+                            'cidade' => $frete->cidade,
+                        ];
+                    }
+                    
+                    \Log::info("🚚 Fretes próprios funcionário {$funcionarioId}: Total = {$totalFretes}, Entregas = " . count($fretesItens));
+                }
+                
                 // Calcular salários usando o salário base do mês específico (já calculado anteriormente)
-                $salarioBruto = $salarioBaseMes + $totalComissoes;
+                // Fretes são adicionados como adicional/ajuda de custo (não é desconto, é adicional)
+                $salarioBruto = $salarioBaseMes + $totalComissoes + $totalFretes;
                 $totalDescontos = $totalVales + $descontoFaltas + $totalConsumoInterno;
                 $salarioLiquido = $salarioBruto - $totalDescontos;
 
@@ -1293,6 +1339,8 @@ class FuncionarioController extends BaseController
                             'total_comissoes' => $totalComissoes,
                             'total_consumo_interno' => $totalConsumoInterno,
                             'consumo_interno_itens' => $consumoInternoItens,
+                            'total_fretes' => $totalFretes,
+                            'fretes_itens' => $fretesItens,
                             'fechado' => true,
                             'data_fechamento' => $dataFechamento, // Fecha às 23:59:59 do dia selecionado
                             'usuario_fechamento_id' => auth()->id(),
@@ -1390,6 +1438,8 @@ class FuncionarioController extends BaseController
                         'total_comissoes' => 0,
                         'total_consumo_interno' => 0,
                         'consumo_interno_itens' => [],
+                        'total_fretes' => 0,
+                        'fretes_itens' => [],
                         'fechado' => false, // Próximo mês fica aberto
                         'data_fechamento' => null,
                         'usuario_fechamento_id' => null,

@@ -45,6 +45,7 @@ const PDVPage = ({ vendedorAtual }) => {
     const orcamentoLoadedRef = useRef(false);
     const preVendaLoadedRef = useRef(false);
     const [activeTab, setActiveTab] = useState('produtos'); // 'produtos' ou 'carrinho'
+    const [frete, setFrete] = useState(null);
     
     const handleProdutoClick = useCallback((produto) => {
         if (!produto || !produto.id) {
@@ -355,7 +356,11 @@ const PDVPage = ({ vendedorAtual }) => {
             const orcamento = await finalizarDocumento(
                 [], 
                 'orcamento', 
-                clienteNomeLivre
+                clienteNomeLivre,
+                null,
+                null,
+                null,
+                frete
             );
             if (orcamento) {
                 limparCarrinhoEState();
@@ -411,7 +416,8 @@ const PDVPage = ({ vendedorAtual }) => {
                     clienteNomeLivre,
 					preVendaId, // Passar o ID da pré-venda para atualização
 					dadosPontos,
-					orcamentoEmConversaoId // manter referência caso tenha vindo de orçamento
+					orcamentoEmConversaoId, // manter referência caso tenha vindo de orçamento
+					frete
                 );
             } else {
                 console.log('🆕 CRIANDO NOVA VENDA');
@@ -422,7 +428,8 @@ const PDVPage = ({ vendedorAtual }) => {
                     clienteNomeLivre,
 					null,
 					dadosPontos,
-					orcamentoEmConversaoId
+					orcamentoEmConversaoId,
+					frete
                 );
             }
             
@@ -467,6 +474,7 @@ const PDVPage = ({ vendedorAtual }) => {
         console.log('🔄 NOVO PEDIDO - LIMPANDO TUDO');
         limparCarrinhoEState();
         setClienteNomeLivre('');
+        setFrete(null);
         // Limpar estados de edição para evitar duplicação
         setIsEdicaoPreVenda(false);
         setPreVendaId(null);
@@ -561,6 +569,8 @@ const PDVPage = ({ vendedorAtual }) => {
                     handleCancelarVenda={handleNovoPedido}
                     modoDocumento={modoDocumento}
                     setModoDocumento={setModoDocumento}
+                    frete={frete}
+                    setFrete={setFrete}
                 />
             </div>
 

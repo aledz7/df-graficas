@@ -1844,3 +1844,34 @@ export const posVendaService = {
   historicoCliente: (clienteId) => api.get(`/api/pos-venda/historico-cliente/${clienteId}`),
   executarVerificacoes: () => api.post('/api/pos-venda/executar-verificacoes'),
 };
+
+// Serviços para Opções de Frete
+export const opcaoFreteService = {
+  getAll: (params = {}) => api.get('/api/opcoes-frete', { params }),
+  getById: (id) => api.get(`/api/opcoes-frete/${id}`),
+  getAtivas: () => api.get('/api/opcoes-frete/ativas/listar'),
+  create: (data) => api.post('/api/opcoes-frete', data),
+  update: (id, data) => api.put(`/api/opcoes-frete/${id}`, data),
+  delete: (id) => api.delete(`/api/opcoes-frete/${id}`),
+  getAtivas: () => api.get('/api/opcoes-frete/ativas/listar'),
+};
+
+// Serviços para Entregadores
+export const entregadorService = {
+  getAll: (params = {}) => api.get('/api/entregadores', { params }),
+  getById: (id) => api.get(`/api/entregadores/${id}`),
+  getAtivos: () => api.get('/api/entregadores/ativos/listar'),
+  create: (data) => api.post('/api/entregadores', data),
+  update: (id, data) => api.put(`/api/entregadores/${id}`, data),
+  delete: (id) => api.delete(`/api/entregadores/${id}`),
+  getAtivos: () => api.get('/api/entregadores/ativos/listar'),
+  getPorTipo: (tipo) => api.get(`/api/entregadores/tipo/${tipo}`),
+};
+
+// Serviços para Fretes Entregas
+export const freteEntregaService = {
+  getRelatorio: (params = {}) => api.get('/api/fretes-entregas/relatorio', { params }),
+  criarEntrega: (vendaId, data) => api.post(`/api/vendas/${vendaId}/criar-entrega`, data),
+  marcarComoPago: (id, data) => api.post(`/api/fretes-entregas/${id}/marcar-pago`, data),
+  integrarHolerite: (id, data) => api.post(`/api/fretes-entregas/${id}/integrar-holerite`, data),
+};

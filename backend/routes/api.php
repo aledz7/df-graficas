@@ -34,6 +34,9 @@ use App\Http\Controllers\Api\UserNotificationPreferencesController;
 use App\Http\Controllers\Api\CatalogoParteController;
 use App\Http\Controllers\Api\CaixaController;
 use App\Http\Controllers\Api\EmpresaController;
+use App\Http\Controllers\Api\OpcaoFreteController;
+use App\Http\Controllers\Api\EntregadorController;
+use App\Http\Controllers\Api\FreteEntregaController;
 use App\Http\Controllers\Api\AparenciaController;
 use App\Http\Controllers\Api\LixeiraController;
 use App\Http\Controllers\Api\AdminConfiguracaoController;
@@ -226,6 +229,21 @@ Route::middleware(['api.auth'])->group(function () {
         Route::post('premiacoes/{id}/entregar', [GamificacaoController::class, 'entregarPremiacao']);
     });
     Route::apiResource('vendas', VendaController::class);
+    
+    // Rotas de Fretes (rotas específicas ANTES do apiResource)
+    Route::get('opcoes-frete/ativas/listar', [OpcaoFreteController::class, 'ativas'])->name('api.opcoes-frete.ativas');
+    Route::apiResource('opcoes-frete', OpcaoFreteController::class);
+    
+    // Rotas de Entregadores (rotas específicas ANTES do apiResource)
+    Route::get('entregadores/ativos/listar', [EntregadorController::class, 'ativos'])->name('api.entregadores.ativos');
+    Route::get('entregadores/tipo/{tipo}', [EntregadorController::class, 'porTipo'])->name('api.entregadores.por-tipo');
+    Route::apiResource('entregadores', EntregadorController::class);
+    
+    // Rotas de Entregas de Frete
+    Route::get('fretes-entregas/relatorio', [FreteEntregaController::class, 'relatorio'])->name('api.fretes-entregas.relatorio');
+    Route::post('vendas/{vendaId}/criar-entrega', [FreteEntregaController::class, 'criarEntrega'])->name('api.fretes-entregas.criar');
+    Route::post('fretes-entregas/{id}/marcar-pago', [FreteEntregaController::class, 'marcarComoPago'])->name('api.fretes-entregas.marcar-pago');
+    Route::post('fretes-entregas/{id}/integrar-holerite', [FreteEntregaController::class, 'integrarHolerite'])->name('api.fretes-entregas.integrar-holerite');
     Route::delete('vendas/codigo/{codigo}', [VendaController::class, 'destroyByCodigo']);
     
     // Itens Venda

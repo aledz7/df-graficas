@@ -32,6 +32,8 @@ class Holerite extends Model
         'total_comissoes',
         'total_consumo_interno',
         'consumo_interno_itens',
+        'total_fretes',
+        'fretes_itens',
         'fechado',
         'data_fechamento',
         'usuario_fechamento_id',
@@ -52,6 +54,8 @@ class Holerite extends Model
         'comissao_servicos' => 'decimal:2',
         'total_comissoes' => 'decimal:2',
         'total_consumo_interno' => 'decimal:2',
+        'total_fretes' => 'decimal:2',
+        'fretes_itens' => 'array',
         'fechado' => 'boolean',
         'data_fechamento' => 'datetime',
     ];

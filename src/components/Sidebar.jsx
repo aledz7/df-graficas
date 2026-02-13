@@ -59,6 +59,8 @@ const menuItems = [
       { path: '/cadastros/contas-bancarias', label: 'Contas Bancárias', icon: Banknote },
       { path: '/cadastros/formas-pagamento', label: 'Formas de Pagamento', icon: CreditCard },
       { path: '/cadastros/cupons', label: 'Cupons de Desconto', icon: Ticket },
+      { path: '/cadastros/opcoes-frete', label: 'Opções de Frete', icon: Truck },
+      { path: '/cadastros/entregadores', label: 'Entregadores', icon: Users },
       { path: '/operacional/entrada-estoque', label: 'Entrada de Estoque', icon: SlidersHorizontal },
     ]
   },
@@ -109,6 +111,7 @@ const menuItems = [
     label: 'Relatórios', icon: BarChart3,
     subItems: [
       { path: '/relatorios', label: 'Central de Relatórios', icon: BarChart3 },
+      { path: '/relatorios/operacional/fretes', label: 'Relatório de Fretes', icon: Truck },
     ]
   },
   { path: '/catalogo-publico', label: 'Catálogo Público', icon: BookOpen },

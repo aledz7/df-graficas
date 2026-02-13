@@ -38,6 +38,9 @@ const ContasBancariasPage = lazy(() => import('@/pages/ContasBancariasPage'));
 const MaquinasCartaoPage = lazy(() => import('@/pages/MaquinasCartaoPage'));
 const FormasPagamentoPage = lazy(() => import('@/pages/FormasPagamentoPage'));
 const CuponsPage = lazy(() => import('@/pages/CuponsPage'));
+const OpcoesFretePage = lazy(() => import('@/pages/OpcoesFretePage'));
+const EntregadoresPage = lazy(() => import('@/pages/EntregadoresPage'));
+const RelatorioFretesPage = lazy(() => import('@/pages/RelatorioFretesPage'));
 const PDVHistoricoPage = lazy(() => import('@/pages/PDVHistoricoPage'));
 const PDVReciboPage = lazy(() => import('@/pages/PDVReciboPage'));
 const OSReciboPage = lazy(() => import('@/pages/OSReciboPage'));
@@ -126,6 +129,8 @@ const AppRoutes = ({ logoUrl, nomeEmpresa, vendedorAtual, theme, setTheme, setAp
       <Route path="/cadastros/maquinas-cartao" element={<MaquinasCartaoPage />} />
       <Route path="/cadastros/formas-pagamento" element={<FormasPagamentoPage />} />
       <Route path="/cadastros/cupons" element={<CuponsPage />} />
+      <Route path="/cadastros/opcoes-frete" element={<OpcoesFretePage />} />
+      <Route path="/cadastros/entregadores" element={<EntregadoresPage />} />
 
       {/* Operacional */}
       <Route path="/operacional/ordens-servico" element={<OrdensServicoPage logoUrl={logoUrl} nomeEmpresa={nomeEmpresa} vendedorAtual={vendedorAtual} />} />
@@ -182,6 +187,7 @@ const AppRoutes = ({ logoUrl, nomeEmpresa, vendedorAtual, theme, setTheme, setAp
       <Route path="/relatorios/operacional/produtos-e-estoque" element={<EstoqueRelatorioPage />} />
       <Route path="/relatorios/operacional/lucratividade-por-produto" element={<RelatorioLucratividadeProdutosPage />} />
       <Route path="/relatorios/operacional/analitico" element={<RelatorioAnaliticoPage />} />
+      <Route path="/relatorios/operacional/fretes" element={<RelatorioFretesPage />} />
       <Route path="/relatorios/operacional/vendas-com-metas" element={<RelatorioVendasComMetasPage />} />
       
       <Route path="/relatorios/gerencial/comissoes" element={<RelatorioComissoesPage />} />

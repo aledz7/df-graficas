@@ -33,6 +33,14 @@ class VendaController extends ResourceController
         'dados_pagamento' => 'nullable|array',
         'vendedor_nome' => 'nullable|string',
         'metadados' => 'nullable|array',
+        'opcao_frete_id' => 'nullable|exists:opcoes_frete,id',
+        'valor_frete' => 'nullable|numeric|min:0',
+        'prazo_frete' => 'nullable|integer|min:1',
+        'entregador_id' => 'nullable|exists:entregadores,id',
+        'bairro_entrega' => 'nullable|string|max:255',
+        'cidade_entrega' => 'nullable|string|max:255',
+        'estado_entrega' => 'nullable|string|max:2',
+        'cep_entrega' => 'nullable|string|max:10',
         'itens' => 'required|array|min:1',
         'itens.*.produto_id' => 'required|exists:produtos,id',
         'itens.*.quantidade' => 'required|numeric|min:0.001',
@@ -61,6 +69,14 @@ class VendaController extends ResourceController
         'dados_pagamento' => 'nullable|array',
         'vendedor_nome' => 'nullable|string',
         'metadados' => 'nullable|array',
+        'opcao_frete_id' => 'nullable|exists:opcoes_frete,id',
+        'valor_frete' => 'nullable|numeric|min:0',
+        'prazo_frete' => 'nullable|integer|min:1',
+        'entregador_id' => 'nullable|exists:entregadores,id',
+        'bairro_entrega' => 'nullable|string|max:255',
+        'cidade_entrega' => 'nullable|string|max:255',
+        'estado_entrega' => 'nullable|string|max:2',
+        'cep_entrega' => 'nullable|string|max:10',
         'itens' => 'sometimes|array|min:1',
         'itens.*.produto_id' => 'required|exists:produtos,id',
         'itens.*.quantidade' => 'required|numeric|min:0.001',
@@ -187,6 +203,11 @@ class VendaController extends ResourceController
             
             // Adiciona os itens e atualiza o estoque
             $this->processarItensVenda($venda, $request->input('itens'), 'decrement');
+            
+            // Criar entrega de frete se houver frete na venda
+            if ($venda->opcao_frete_id && $venda->entregador_id && $venda->status === 'concluida') {
+                $this->criarFreteEntrega($venda);
+            }
             
             // Criar conta a receber apenas para vendas concluídas (não para orçamentos) e que NÃO sejam permutas
             if ($venda->status === 'concluida' && !$isClientePermuta) {
@@ -2504,6 +2525,63 @@ class VendaController extends ResourceController
             ]);
             
             return $this->error('Erro ao gerar relatório com metas: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Cria uma entrega de frete para a venda
+     * 
+     * @param Venda $venda
+     * @return void
+     */
+    protected function criarFreteEntrega(Venda $venda)
+    {
+        try {
+            // Verificar se já existe entrega para esta venda
+            $entregaExistente = \App\Models\FreteEntrega::where('venda_id', $venda->id)->first();
+            if ($entregaExistente) {
+                \Log::info('Entrega de frete já existe para esta venda', [
+                    'venda_id' => $venda->id,
+                    'entrega_id' => $entregaExistente->id
+                ]);
+                return;
+            }
+
+            if (!$venda->opcao_frete_id || !$venda->entregador_id) {
+                \Log::info('Venda não tem frete configurado, não criando entrega', [
+                    'venda_id' => $venda->id
+                ]);
+                return;
+            }
+
+            $entrega = \App\Models\FreteEntrega::create([
+                'tenant_id' => $venda->tenant_id,
+                'venda_id' => $venda->id,
+                'opcao_frete_id' => $venda->opcao_frete_id,
+                'entregador_id' => $venda->entregador_id,
+                'cliente_id' => $venda->cliente_id,
+                'valor_frete' => $venda->valor_frete ?? 0,
+                'prazo_frete' => $venda->prazo_frete,
+                'data_entrega' => $venda->data_emissao,
+                'bairro' => $venda->bairro_entrega,
+                'cidade' => $venda->cidade_entrega,
+                'estado' => $venda->estado_entrega,
+                'cep' => $venda->cep_entrega,
+                'status' => 'pendente',
+                'status_pagamento' => 'pendente',
+            ]);
+
+            \Log::info('Entrega de frete criada com sucesso', [
+                'venda_id' => $venda->id,
+                'entrega_id' => $entrega->id,
+                'entregador_id' => $venda->entregador_id,
+                'valor_frete' => $entrega->valor_frete
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Erro ao criar entrega de frete para venda', [
+                'venda_id' => $venda->id,
+                'erro' => $e->getMessage()
+            ]);
         }
     }
 }

@@ -30,6 +30,8 @@ const PDVCartSection = ({
   setIsConsumoFuncionarioPDV,
   funcionarioConsumidorPDVId,
   setFuncionarioConsumidorPDVId,
+  frete,
+  setFrete,
 }) => {
   return (
     <aside className="w-full lg:w-[450px] xl:w-[500px] bg-white dark:bg-gray-800 flex flex-col shadow-lg border-l border-gray-200 dark:border-gray-700">
@@ -87,6 +89,8 @@ const PDVCartSection = ({
             setIsConsumoFuncionarioPDV={setIsConsumoFuncionarioPDV}
             funcionarioConsumidorPDVId={funcionarioConsumidorPDVId}
             setFuncionarioConsumidorPDVId={setFuncionarioConsumidorPDVId}
+            frete={frete}
+            setFrete={setFrete}
           />
         </div>
       </Card>

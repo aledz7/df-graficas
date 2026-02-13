@@ -82,6 +82,14 @@ class Venda extends Model
         'serie_nf',
         'modelo_nf',
         'tenant_id',
+        'opcao_frete_id',
+        'valor_frete',
+        'prazo_frete',
+        'entregador_id',
+        'bairro_entrega',
+        'cidade_entrega',
+        'estado_entrega',
+        'cep_entrega',
         'usuario_exclusao_id',
         'usuario_exclusao_nome',
         'data_exclusao',
@@ -103,6 +111,8 @@ class Venda extends Model
         'valor_total' => 'decimal:2',
         'valor_pago' => 'decimal:2',
         'valor_restante' => 'decimal:2',
+        'valor_frete' => 'decimal:2',
+        'prazo_frete' => 'integer',
         'dados_pagamento' => 'array',
         'metadados' => 'array',
         'data_emissao' => 'datetime',
@@ -369,6 +379,30 @@ class Venda extends Model
     public function contasReceber()
     {
         return $this->hasMany(ContaReceber::class);
+    }
+
+    /**
+     * Relacionamento com opção de frete
+     */
+    public function opcaoFrete()
+    {
+        return $this->belongsTo(OpcaoFrete::class);
+    }
+
+    /**
+     * Relacionamento com entregador
+     */
+    public function entregador()
+    {
+        return $this->belongsTo(Entregador::class);
+    }
+
+    /**
+     * Relacionamento com entrega de frete
+     */
+    public function freteEntrega()
+    {
+        return $this->hasOne(FreteEntrega::class);
     }
 
     /**

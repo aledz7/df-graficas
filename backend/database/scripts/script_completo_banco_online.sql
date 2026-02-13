@@ -2,7 +2,7 @@
 -- SCRIPT COMPLETO PARA BANCO DE DADOS ONLINE
 -- Execute este script no banco de dados MySQL/MariaDB
 -- Data inicial: 2025-01-28
--- Última atualização: 2026-02-13
+-- Última atualização: 2026-02-13 (Sistema de Fretes e Logística)
 -- =====================================================
 
 -- =====================================================
@@ -364,7 +364,195 @@ EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 
 -- =====================================================
--- 6. RESUMO FINAL
+-- 6. ALTERAÇÕES - SISTEMA DE FRETES E LOGÍSTICA
+-- =====================================================
+-- Data: 2026-02-13
+-- Descrição: Sistema completo de cadastro de fretes, entregadores e controle de entregas
+
+-- Verificar e criar tabela opcoes_frete (se não existir)
+CREATE TABLE IF NOT EXISTS `opcoes_frete` (
+    `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `tenant_id` BIGINT UNSIGNED NOT NULL,
+    `titulo` VARCHAR(255) NOT NULL,
+    `descricao` TEXT NULL,
+    `prazo_entrega` INT NOT NULL DEFAULT 1,
+    `taxa_entrega` DECIMAL(10, 2) NOT NULL DEFAULT 0,
+    `pedido_minimo` DECIMAL(10, 2) NULL,
+    `peso_minimo` DECIMAL(10, 3) NULL,
+    `peso_maximo` DECIMAL(10, 3) NULL,
+    `tamanho_minimo` DECIMAL(10, 2) NULL,
+    `tamanho_maximo` DECIMAL(10, 2) NULL,
+    `tipo_limite_geografico` ENUM('localidade', 'cep', 'distancia') NOT NULL DEFAULT 'localidade',
+    `produtos_limitados` JSON NULL,
+    `ativo` TINYINT(1) NOT NULL DEFAULT 1,
+    `ordem` INT NOT NULL DEFAULT 0,
+    `created_at` TIMESTAMP NULL DEFAULT NULL,
+    `updated_at` TIMESTAMP NULL DEFAULT NULL,
+    `deleted_at` TIMESTAMP NULL DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    INDEX `idx_opcoes_frete_tenant_ativo` (`tenant_id`, `ativo`),
+    CONSTRAINT `fk_opcoes_frete_tenant` 
+        FOREIGN KEY (`tenant_id`) 
+        REFERENCES `tenants` (`id`) 
+        ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Verificar e criar tabela entregadores (se não existir)
+CREATE TABLE IF NOT EXISTS `entregadores` (
+    `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `tenant_id` BIGINT UNSIGNED NOT NULL,
+    `nome` VARCHAR(255) NOT NULL,
+    `telefone` VARCHAR(20) NULL,
+    `tipo` ENUM('proprio', 'terceirizado') NOT NULL DEFAULT 'terceirizado',
+    `valor_padrao_entrega` DECIMAL(10, 2) NULL,
+    `chave_pix` VARCHAR(255) NULL,
+    `funcionario_id` BIGINT UNSIGNED NULL,
+    `ativo` TINYINT(1) NOT NULL DEFAULT 1,
+    `observacoes` TEXT NULL,
+    `created_at` TIMESTAMP NULL DEFAULT NULL,
+    `updated_at` TIMESTAMP NULL DEFAULT NULL,
+    `deleted_at` TIMESTAMP NULL DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    INDEX `idx_entregadores_tenant_ativo` (`tenant_id`, `ativo`),
+    INDEX `idx_entregadores_tenant_tipo` (`tenant_id`, `tipo`),
+    CONSTRAINT `fk_entregadores_tenant` 
+        FOREIGN KEY (`tenant_id`) 
+        REFERENCES `tenants` (`id`) 
+        ON DELETE CASCADE,
+    CONSTRAINT `fk_entregadores_funcionario` 
+        FOREIGN KEY (`funcionario_id`) 
+        REFERENCES `users` (`id`) 
+        ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Verificar e criar tabela fretes_localidades (se não existir)
+CREATE TABLE IF NOT EXISTS `fretes_localidades` (
+    `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `opcao_frete_id` BIGINT UNSIGNED NOT NULL,
+    `estado` VARCHAR(2) NULL,
+    `cidade` VARCHAR(255) NULL,
+    `bairro` VARCHAR(255) NULL,
+    `created_at` TIMESTAMP NULL DEFAULT NULL,
+    `updated_at` TIMESTAMP NULL DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    INDEX `idx_fretes_localidades_opcao` (`opcao_frete_id`),
+    INDEX `idx_fretes_localidades_estado_cidade_bairro` (`estado`, `cidade`, `bairro`),
+    CONSTRAINT `fk_fretes_localidades_opcao` 
+        FOREIGN KEY (`opcao_frete_id`) 
+        REFERENCES `opcoes_frete` (`id`) 
+        ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Verificar e criar tabela fretes_faixas_cep (se não existir)
+CREATE TABLE IF NOT EXISTS `fretes_faixas_cep` (
+    `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `opcao_frete_id` BIGINT UNSIGNED NOT NULL,
+    `cep_inicio` VARCHAR(10) NOT NULL,
+    `cep_fim` VARCHAR(10) NOT NULL,
+    `created_at` TIMESTAMP NULL DEFAULT NULL,
+    `updated_at` TIMESTAMP NULL DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    INDEX `idx_fretes_faixas_cep_opcao` (`opcao_frete_id`),
+    INDEX `idx_fretes_faixas_cep_inicio_fim` (`cep_inicio`, `cep_fim`),
+    CONSTRAINT `fk_fretes_faixas_cep_opcao` 
+        FOREIGN KEY (`opcao_frete_id`) 
+        REFERENCES `opcoes_frete` (`id`) 
+        ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Verificar e criar tabela fretes_entregas (se não existir)
+CREATE TABLE IF NOT EXISTS `fretes_entregas` (
+    `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `tenant_id` BIGINT UNSIGNED NOT NULL,
+    `venda_id` BIGINT UNSIGNED NOT NULL,
+    `opcao_frete_id` BIGINT UNSIGNED NULL,
+    `entregador_id` BIGINT UNSIGNED NULL,
+    `cliente_id` BIGINT UNSIGNED NULL,
+    `valor_frete` DECIMAL(10, 2) NOT NULL,
+    `prazo_frete` INT NULL,
+    `data_entrega` DATE NULL,
+    `data_entrega_realizada` DATETIME NULL,
+    `bairro` VARCHAR(255) NULL,
+    `cidade` VARCHAR(255) NULL,
+    `estado` VARCHAR(2) NULL,
+    `cep` VARCHAR(10) NULL,
+    `status` ENUM('pendente', 'entregue', 'cancelado') NOT NULL DEFAULT 'pendente',
+    `status_pagamento` ENUM('pendente', 'pago', 'integrado_holerite') NOT NULL DEFAULT 'pendente',
+    `data_pagamento` DATE NULL,
+    `forma_pagamento` VARCHAR(50) NULL,
+    `observacoes` TEXT NULL,
+    `holerite_id` BIGINT UNSIGNED NULL,
+    `created_at` TIMESTAMP NULL DEFAULT NULL,
+    `updated_at` TIMESTAMP NULL DEFAULT NULL,
+    `deleted_at` TIMESTAMP NULL DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    INDEX `idx_fretes_entregas_tenant_status` (`tenant_id`, `status`),
+    INDEX `idx_fretes_entregas_tenant_status_pagamento` (`tenant_id`, `status_pagamento`),
+    INDEX `idx_fretes_entregas_tenant_entregador` (`tenant_id`, `entregador_id`),
+    INDEX `idx_fretes_entregas_tenant_data` (`tenant_id`, `data_entrega`),
+    INDEX `idx_fretes_entregas_venda` (`venda_id`),
+    CONSTRAINT `fk_fretes_entregas_tenant` 
+        FOREIGN KEY (`tenant_id`) 
+        REFERENCES `tenants` (`id`) 
+        ON DELETE CASCADE,
+    CONSTRAINT `fk_fretes_entregas_venda` 
+        FOREIGN KEY (`venda_id`) 
+        REFERENCES `vendas` (`id`) 
+        ON DELETE CASCADE,
+    CONSTRAINT `fk_fretes_entregas_opcao` 
+        FOREIGN KEY (`opcao_frete_id`) 
+        REFERENCES `opcoes_frete` (`id`) 
+        ON DELETE SET NULL,
+    CONSTRAINT `fk_fretes_entregas_entregador` 
+        FOREIGN KEY (`entregador_id`) 
+        REFERENCES `entregadores` (`id`) 
+        ON DELETE SET NULL,
+    CONSTRAINT `fk_fretes_entregas_cliente` 
+        FOREIGN KEY (`cliente_id`) 
+        REFERENCES `clientes` (`id`) 
+        ON DELETE SET NULL,
+    CONSTRAINT `fk_fretes_entregas_holerite` 
+        FOREIGN KEY (`holerite_id`) 
+        REFERENCES `holerites` (`id`) 
+        ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Verificar e adicionar colunas de frete em vendas (se não existirem)
+SET @col_opcao_frete = (
+    SELECT COUNT(*) 
+    FROM information_schema.columns 
+    WHERE table_schema = DATABASE() 
+    AND table_name = 'vendas' 
+    AND column_name = 'opcao_frete_id'
+);
+
+SET @sql = IF(@col_opcao_frete = 0,
+    'ALTER TABLE `vendas` 
+    ADD COLUMN `opcao_frete_id` BIGINT UNSIGNED NULL AFTER `tipo_pedido`,
+    ADD COLUMN `valor_frete` DECIMAL(10, 2) NULL AFTER `opcao_frete_id`,
+    ADD COLUMN `prazo_frete` INT NULL AFTER `valor_frete`,
+    ADD COLUMN `entregador_id` BIGINT UNSIGNED NULL AFTER `prazo_frete`,
+    ADD COLUMN `bairro_entrega` VARCHAR(255) NULL AFTER `entregador_id`,
+    ADD COLUMN `cidade_entrega` VARCHAR(255) NULL AFTER `bairro_entrega`,
+    ADD COLUMN `estado_entrega` VARCHAR(2) NULL AFTER `cidade_entrega`,
+    ADD COLUMN `cep_entrega` VARCHAR(10) NULL AFTER `estado_entrega`,
+    ADD CONSTRAINT `fk_vendas_opcao_frete` 
+        FOREIGN KEY (`opcao_frete_id`) 
+        REFERENCES `opcoes_frete` (`id`) 
+        ON DELETE SET NULL,
+    ADD CONSTRAINT `fk_vendas_entregador` 
+        FOREIGN KEY (`entregador_id`) 
+        REFERENCES `entregadores` (`id`) 
+        ON DELETE SET NULL;',
+    'SELECT ''Colunas de frete já existem em vendas.'' AS mensagem;'
+);
+
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- =====================================================
+-- 7. RESUMO FINAL
 -- =====================================================
 
 SELECT '========================================' AS '';
@@ -488,6 +676,138 @@ FROM information_schema.columns
 WHERE table_schema = DATABASE() 
 AND table_name = 'vendas' 
 AND column_name = 'tipo_pedido';
+
+SELECT 
+    CASE 
+        WHEN COUNT(*) > 0 THEN '✓ opcao_frete_id'
+        ELSE '✗ opcao_frete_id - Coluna não encontrada'
+    END AS status
+FROM information_schema.columns 
+WHERE table_schema = DATABASE() 
+AND table_name = 'vendas' 
+AND column_name = 'opcao_frete_id';
+
+SELECT 
+    CASE 
+        WHEN COUNT(*) > 0 THEN '✓ valor_frete'
+        ELSE '✗ valor_frete - Coluna não encontrada'
+    END AS status
+FROM information_schema.columns 
+WHERE table_schema = DATABASE() 
+AND table_name = 'vendas' 
+AND column_name = 'valor_frete';
+
+SELECT 
+    CASE 
+        WHEN COUNT(*) > 0 THEN '✓ entregador_id'
+        ELSE '✗ entregador_id - Coluna não encontrada'
+    END AS status
+FROM information_schema.columns 
+WHERE table_schema = DATABASE() 
+AND table_name = 'vendas' 
+AND column_name = 'entregador_id';
+
+SELECT '' AS '';
+SELECT 'Tabelas de fretes verificadas:' AS '';
+SELECT 
+    CASE 
+        WHEN COUNT(*) > 0 THEN CONCAT('✓ opcoes_frete - ', COUNT(*), ' registro(s)')
+        ELSE '✗ opcoes_frete - Tabela não encontrada'
+    END AS status
+FROM information_schema.tables 
+WHERE table_schema = DATABASE() 
+AND table_name = 'opcoes_frete';
+
+SELECT 
+    CASE 
+        WHEN COUNT(*) > 0 THEN CONCAT('✓ entregadores - ', COUNT(*), ' registro(s)')
+        ELSE '✗ entregadores - Tabela não encontrada'
+    END AS status
+FROM information_schema.tables 
+WHERE table_schema = DATABASE() 
+AND table_name = 'entregadores';
+
+SELECT 
+    CASE 
+        WHEN COUNT(*) > 0 THEN CONCAT('✓ fretes_entregas - ', COUNT(*), ' registro(s)')
+        ELSE '✗ fretes_entregas - Tabela não encontrada'
+    END AS status
+FROM information_schema.tables 
+WHERE table_schema = DATABASE() 
+AND table_name = 'fretes_entregas';
+
+SELECT 
+    CASE 
+        WHEN COUNT(*) > 0 THEN CONCAT('✓ fretes_localidades - ', COUNT(*), ' registro(s)')
+        ELSE '✗ fretes_localidades - Tabela não encontrada'
+    END AS status
+FROM information_schema.tables 
+WHERE table_schema = DATABASE() 
+AND table_name = 'fretes_localidades';
+
+SELECT 
+    CASE 
+        WHEN COUNT(*) > 0 THEN CONCAT('✓ fretes_faixas_cep - ', COUNT(*), ' registro(s)')
+        ELSE '✗ fretes_faixas_cep - Tabela não encontrada'
+    END AS status
+FROM information_schema.tables 
+WHERE table_schema = DATABASE() 
+AND table_name = 'fretes_faixas_cep';
+
+SELECT '' AS '';
+SELECT 'Colunas verificadas em holerites:' AS '';
+SELECT 
+    CASE 
+        WHEN COUNT(*) > 0 THEN '✓ total_fretes'
+        ELSE '✗ total_fretes - Coluna não encontrada'
+    END AS status
+FROM information_schema.columns 
+WHERE table_schema = DATABASE() 
+AND table_name = 'holerites' 
+AND column_name = 'total_fretes';
+
+SELECT 
+    CASE 
+        WHEN COUNT(*) > 0 THEN '✓ fretes_itens'
+        ELSE '✗ fretes_itens - Coluna não encontrada'
+    END AS status
+FROM information_schema.columns 
+WHERE table_schema = DATABASE() 
+AND table_name = 'holerites' 
+AND column_name = 'fretes_itens';
+
+-- Adicionar campos de fretes no holerite se não existirem
+SET @col_exists = (
+    SELECT COUNT(*) 
+    FROM information_schema.columns 
+    WHERE table_schema = DATABASE() 
+    AND table_name = 'holerites' 
+    AND column_name = 'total_fretes'
+);
+
+SET @sql = IF(@col_exists = 0,
+    'ALTER TABLE `holerites` ADD COLUMN `total_fretes` DECIMAL(10,2) DEFAULT 0 COMMENT ''Total de fretes próprios do período'' AFTER `total_comissoes`',
+    'SELECT ''Coluna total_fretes já existe'' AS status'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @col_exists2 = (
+    SELECT COUNT(*) 
+    FROM information_schema.columns 
+    WHERE table_schema = DATABASE() 
+    AND table_name = 'holerites' 
+    AND column_name = 'fretes_itens'
+);
+
+SET @sql2 = IF(@col_exists2 = 0,
+    'ALTER TABLE `holerites` ADD COLUMN `fretes_itens` JSON NULL COMMENT ''Array com detalhes dos fretes próprios'' AFTER `total_fretes`',
+    'SELECT ''Coluna fretes_itens já existe'' AS status'
+);
+PREPARE stmt2 FROM @sql2;
+EXECUTE stmt2;
+DEALLOCATE PREPARE stmt2;
 
 SELECT '' AS '';
 SELECT '========================================' AS '';
