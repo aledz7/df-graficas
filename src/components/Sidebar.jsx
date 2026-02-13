@@ -3,8 +3,8 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useNomeSistema } from '@/hooks/useNomeSistema.jsx';
 import {
-  LayoutDashboard, ShoppingCart, Package, Users, Truck, Banknote,
-  Settings, BarChart3, FileText, SprayCan, Calculator,
+  LayoutDashboard, ShoppingCart, Package, Users, Truck, Banknote, FileText,
+  Settings, BarChart3, SprayCan, Calculator,
   Palette, Boxes, BookOpen, Wrench, HardHat, FileClock, CheckCircle2, History, SlidersHorizontal, Trash2, Barcode, Store, Activity, CalendarDays, FileSpreadsheet, Box, LogIn, LogOut, PackagePlus, ListChecks, Printer, DollarSign, ShieldAlert, Ruler, Star, TrendingUp, CreditCard, Ticket, Gift, Receipt,   Trophy, Target, Maximize2, GraduationCap, Bell, TrendingDown, Thermometer, MessageSquare
 } from 'lucide-react';
 import IndiqueGanheModal from '@/components/IndiqueGanheModal';
@@ -20,51 +20,13 @@ import { empresaService } from '@/services/api';
 const menuItems = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/termometro-empresa', label: 'Termômetro da Empresa', icon: Thermometer },
-  { path: '/ferramentas/agenda', label: 'Agenda', icon: CalendarDays },
   { 
-    label: 'PDV', icon: ShoppingCart,
-    subItems: [
-        { path: '/operacional/pdv', label: 'Novo Pedido', icon: ShoppingCart },
-        { path: '/operacional/pdv-historico', label: 'Vendas e Orçamentos', icon: History },
-    ]
-  },
-  {
-    label: 'Marketplace', icon: Store,
-    subItems: [
-        { path: '/marketplace/vendas', label: 'Vendas Online', icon: Store },
-        { path: '/marketplace/historico', label: 'Histórico de Vendas', icon: History },
-    ]
-  },
-  {
-    label: 'Calculadora', icon: Calculator,
-    subItems: [
-      { path: '/ferramentas/calculadora-metricas', label: 'Nova Simulação', icon: Calculator },
-      { path: '/ferramentas/calculadora-servicos', label: 'Serviços Adicionais', icon: Wrench },
-      { path: '/ferramentas/calculadora-historico', label: 'Orçamentos Salvos', icon: History },
-      { path: '/ferramentas/aproveitamento-folha', label: 'Aproveitamento de Folha', icon: Maximize2 },
-    ]
-  },
-  {
-    label: 'Cadastros', icon: Package,
-    subItems: [
-      { path: '/cadastros/produtos', label: 'Produtos', icon: PackagePlus },
-      { path: '/cadastros/categorias', label: 'Categorias', icon: Boxes },
-      // { path: '/cadastros/cores', label: 'Cores', icon: Palette },
-      // { path: '/cadastros/tamanhos', label: 'Tamanhos', icon: Ruler },
-      { path: '/cadastros/clientes', label: 'Clientes', icon: Users },
-      { path: '/cadastros/funcionarios', label: 'Funcionários', icon: Users },
-      { path: '/cadastros/fornecedores', label: 'Fornecedores', icon: Truck },
-      { path: '/cadastros/maquinas-equipamentos', label: 'Máquinas', icon: Settings },
-      { path: '/cadastros/maquinas-cartao', label: 'Máquinas de Cartão', icon: Settings },
-      { path: '/cadastros/contas-bancarias', label: 'Contas Bancárias', icon: Banknote },
-      { path: '/cadastros/formas-pagamento', label: 'Formas de Pagamento', icon: CreditCard },
-      { path: '/cadastros/cupons', label: 'Cupons de Desconto', icon: Ticket },
-      { path: '/operacional/entrada-estoque', label: 'Entrada de Estoque', icon: SlidersHorizontal },
-    ]
-  },
-  {
     label: 'Vendas', icon: ShoppingCart,
     subItems: [
+      { path: '/operacional/pdv', label: 'PDV - Novo Pedido', icon: ShoppingCart },
+      { path: '/operacional/pdv-historico', label: 'Vendas e Orçamentos', icon: History },
+      { path: '/marketplace/vendas', label: 'Vendas Online', icon: Store },
+      { path: '/marketplace/historico', label: 'Histórico Marketplace', icon: History },
       { path: '/vendedor/minhas-metas', label: 'Minhas Metas', icon: Target },
     ]
   },
@@ -72,19 +34,12 @@ const menuItems = [
     label: 'O.S / Pedidos', icon: FileText,
     subItems: [
       { path: '/operacional/ordens-servico', label: 'Nova OS / Pedido', icon: FileText },
-      { path: '/cadastros/acabamentos-servicos', label: 'Acabamentos e Serviços', icon: Palette },
       { path: '/operacional/os-historico', label: 'Histórico de OS', icon: History },
       { path: '/operacional/os-em-producao', label: 'Em Produção', icon: HardHat },
       { path: '/operacional/os-entregar', label: 'A Serem Entregues', icon: FileClock },
       { path: '/operacional/os-entregues', label: 'Pedidos Entregues', icon: CheckCircle2 },
-    ]
-  },
-  {
-    label: 'Envelopamento', icon: SprayCan,
-    subItems: [
-      { path: '/operacional/envelopamento', label: 'Novo Orçamento', icon: SprayCan },
-      { path: '/operacional/orcamentos-envelopamento', label: 'Histórico', icon: History },
-      { path: '/operacional/envelopamento/configuracao-precos', label: 'Serviços adicionais', icon: Wrench },
+      { path: '/operacional/envelopamento', label: 'Envelopamento', icon: SprayCan },
+      { path: '/operacional/orcamentos-envelopamento', label: 'Hist. Envelopamento', icon: History },
     ]
   },
   {
@@ -92,32 +47,61 @@ const menuItems = [
     subItems: [
       { path: '/financeiro/contas-receber', label: 'Contas a Receber', icon: Banknote },
       { path: '/financeiro/contas-pagar', label: 'Contas a Pagar', icon: Banknote },
-      { path: '/financeiro/sangria-suprimento', label: 'Sangria/Suprimento', icon: Banknote },
       { path: '/financeiro/recebimento', label: 'Recebimento', icon: TrendingUp },
-    ]
-  },
-  {
-    label: 'Caixa', icon: Box,
-    subItems: [
+      { path: '/financeiro/sangria-suprimento', label: 'Sangria/Suprimento', icon: Banknote },
       { path: '/caixa/fluxo-caixa', label: 'Fluxo de Caixa', icon: BarChart3 },
       { path: '/caixa/abertura-caixa', label: 'Abrir Caixa', icon: LogIn },
       { path: '/caixa/fechamento-caixa', label: 'Fechar Caixa', icon: LogOut },
-      { path: '/caixa/historico-caixa', label: 'Histórico', icon: History },
+      { path: '/caixa/historico-caixa', label: 'Histórico Caixa', icon: History },
+    ]
+  },
+  {
+    label: 'Cadastros', icon: Package,
+    subItems: [
+      { path: '/cadastros/produtos', label: 'Produtos', icon: PackagePlus },
+      { path: '/cadastros/categorias', label: 'Categorias', icon: Boxes },
+      { path: '/cadastros/clientes', label: 'Clientes', icon: Users },
+      { path: '/cadastros/funcionarios', label: 'Funcionários', icon: Users },
+      { path: '/cadastros/fornecedores', label: 'Fornecedores', icon: Truck },
+      { path: '/operacional/entrada-estoque', label: 'Entrada de Estoque', icon: SlidersHorizontal },
+      { path: '/cadastros/maquinas-equipamentos', label: 'Máquinas', icon: Settings },
+      { path: '/cadastros/acabamentos-servicos', label: 'Acabamentos e Serviços', icon: Palette },
+      { path: '/cadastros/contas-bancarias', label: 'Contas Bancárias', icon: Banknote },
+      { path: '/cadastros/formas-pagamento', label: 'Formas de Pagamento', icon: CreditCard },
+      { path: '/cadastros/cupons', label: 'Cupons de Desconto', icon: Ticket },
+      { path: '/cadastros/opcoes-frete', label: 'Opções de Frete', icon: Truck },
+      { path: '/cadastros/entregadores', label: 'Entregadores', icon: Users },
+      { path: '/cadastros/maquinas-cartao', label: 'Máquinas de Cartão', icon: Settings },
+    ]
+  },
+  {
+    label: 'Ferramentas', icon: Calculator,
+    subItems: [
+      { path: '/ferramentas/agenda', label: 'Agenda', icon: CalendarDays },
+      { path: '/ferramentas/calculadora-metricas', label: 'Calculadora - Simulação', icon: Calculator },
+      { path: '/ferramentas/calculadora-servicos', label: 'Serviços Adicionais', icon: Wrench },
+      { path: '/ferramentas/calculadora-historico', label: 'Orçamentos Salvos', icon: History },
+      { path: '/ferramentas/aproveitamento-folha', label: 'Aproveitamento de Folha', icon: Maximize2 },
+      { path: '/ferramentas/feed-atividades', label: 'Feed de Atividades', icon: Activity },
+      { path: '/ferramentas/calendario-inteligente', label: 'Calendário Inteligente', icon: CalendarDays },
+      { path: '/ferramentas/pos-venda', label: 'Pós-Venda', icon: MessageSquare },
+      { path: '/ferramentas/treinamento-interno', label: 'Treinamento Interno', icon: GraduationCap },
+      { path: '/ferramentas/treinamento-progresso', label: 'Meu Progresso', icon: TrendingUp },
+      { path: '/ferramentas/treinamento-avisos', label: 'Avisos de Treinamento', icon: Bell },
+      { path: '/operacional/gerador-etiquetas', label: 'Gerador de Etiquetas', icon: Barcode },
+      { path: '/ferramentas/lixeira', label: 'Lixeira', icon: Trash2 },
     ]
   },
   {
     label: 'Relatórios', icon: BarChart3,
     subItems: [
       { path: '/relatorios', label: 'Central de Relatórios', icon: BarChart3 },
+      { path: '/relatorios/operacional/fretes', label: 'Relatório de Fretes', icon: Truck },
+      { path: '/operacional/romaneio', label: 'Montar Romaneio', icon: Truck },
+      { path: '/operacional/romaneios', label: 'Gestão de Romaneios', icon: FileText },
     ]
   },
   { path: '/catalogo-publico', label: 'Catálogo Público', icon: BookOpen },
-  { path: '/ferramentas/feed-atividades', label: 'Feed de Atividades', icon: Activity },
-  { path: '/ferramentas/calendario-inteligente', label: 'Calendário Inteligente', icon: CalendarDays },
-  { path: '/ferramentas/pos-venda', label: 'Pós-Venda', icon: MessageSquare },
-  { path: '/ferramentas/treinamento-interno', label: 'Treinamento Interno', icon: GraduationCap },
-  { path: '/ferramentas/treinamento-progresso', label: 'Meu Progresso', icon: TrendingUp },
-  { path: '/ferramentas/treinamento-avisos', label: 'Avisos de Treinamento', icon: Bell },
   {
     label: 'Configurações', icon: Settings,
     subItems: [
@@ -126,8 +110,6 @@ const menuItems = [
       { path: '/configuracoes/produtos-estoque', label: 'Produtos e Estoque', icon: Package },
       { path: '/configuracoes/nota-fiscal', label: 'Nota Fiscal', icon: Receipt },
       { path: '/configuracoes/pontos', label: 'Programa de Pontos', icon: Star },
-      { path: '/operacional/gerador-etiquetas', label: 'Gerador de Etiquetas', icon: Barcode },
-      { path: '/ferramentas/lixeira', label: 'Lixeira', icon: Trash2 },
       { path: '/configuracoes/admin', label: 'Admin do Sistema', icon: ShieldAlert },
     ]
   },

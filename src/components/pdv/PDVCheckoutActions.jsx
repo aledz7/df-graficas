@@ -5,7 +5,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { XCircle, UserPlus, FileText, Save } from 'lucide-react';
+import { XCircle, UserPlus, FileText, Save, Truck, Wrench } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { opcaoFreteService, entregadorService } from '@/services/api';
 
 const PDVCheckoutActions = ({
   carrinho,
@@ -24,7 +26,65 @@ const PDVCheckoutActions = ({
   handleCancelarVenda,
   modoDocumento,
   setModoDocumento,
+  frete,
+  setFrete,
+  handleTransformarEmOS,
 }) => {
+  const [opcoesFrete, setOpcoesFrete] = useState([]);
+  const [entregadores, setEntregadores] = useState([]);
+  const [isLoadingFrete, setIsLoadingFrete] = useState(false);
+
+  useEffect(() => {
+    const loadFreteData = async () => {
+      try {
+        setIsLoadingFrete(true);
+        const [freteResponse, entregadorResponse] = await Promise.all([
+          opcaoFreteService.getAtivas(),
+          entregadorService.getAtivos(),
+        ]);
+        
+        // A resposta da API vem em freteResponse.data.data (estrutura padrão do ResourceController)
+        const opcoesData = freteResponse.data?.data || freteResponse.data || [];
+        const entregadoresData = entregadorResponse.data?.data || entregadorResponse.data || [];
+        
+        setOpcoesFrete(Array.isArray(opcoesData) ? opcoesData : []);
+        setEntregadores(Array.isArray(entregadoresData) ? entregadoresData : []);
+      } catch (error) {
+        console.error('Erro ao carregar dados de frete:', error);
+        setOpcoesFrete([]);
+        setEntregadores([]);
+      } finally {
+        setIsLoadingFrete(false);
+      }
+    };
+    loadFreteData();
+  }, []);
+
+  const handleOpcaoFreteChange = (opcaoId) => {
+    const opcao = opcoesFrete.find(f => f.id === parseInt(opcaoId));
+    if (opcao) {
+      setFrete({
+        opcao_frete_id: opcao.id,
+        valor_frete: parseFloat(opcao.taxa_entrega || 0),
+        prazo_entrega_dias: opcao.prazo_entrega || opcao.prazo_entrega_dias || 1,
+        entregador_id: null,
+        quem_entrega: '',
+      });
+    } else {
+      setFrete(null);
+    }
+  };
+
+  const handleEntregadorChange = (entregadorId) => {
+    const entregador = entregadores.find(e => e.id === parseInt(entregadorId));
+    if (entregador && frete) {
+      setFrete({
+        ...frete,
+        entregador_id: entregador.id,
+        quem_entrega: entregador.nome,
+      });
+    }
+  };
 
   const isFinalizarDisabled = () => {
     if (carrinho.length === 0) return true;
@@ -69,7 +129,72 @@ const PDVCheckoutActions = ({
             </span>
           </div>
         </div>
-        <div className="flex justify-between text-lg font-bold text-orange-600 dark:text-orange-400 pt-1 border-t border-dashed"><span>TOTAL:</span><span>R$ {valorTotal.toFixed(2)}</span></div> {/* Usando valorTotal */}
+        {frete && frete.valor_frete > 0 && (
+          <div className="flex justify-between"><span>Frete:</span><span className="font-medium">R$ {parseFloat(frete.valor_frete || 0).toFixed(2)}</span></div>
+        )}
+        <div className="flex justify-between text-lg font-bold text-orange-600 dark:text-orange-400 pt-1 border-t border-dashed">
+          <span>TOTAL:</span>
+          <span>R$ {(valorTotal + (frete ? parseFloat(frete.valor_frete || 0) : 0)).toFixed(2)}</span>
+        </div>
+      </div>
+
+      {/* Seleção de Frete */}
+      <div className="my-3 space-y-2">
+        <Label className="flex items-center gap-2">
+          <Truck size={16} />
+          Frete
+        </Label>
+        <Select 
+          value={frete?.opcao_frete_id?.toString() || undefined} 
+          onValueChange={(value) => {
+            if (value === 'none') {
+              setFrete(null);
+            } else {
+              handleOpcaoFreteChange(value);
+            }
+          }}
+          disabled={isLoadingFrete}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Selecione o frete (opcional)" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">Sem frete</SelectItem>
+            {opcoesFrete.map(opcao => (
+              <SelectItem key={opcao.id} value={opcao.id.toString()}>
+                {opcao.titulo} - R$ {parseFloat(opcao.taxa_entrega || 0).toFixed(2)} ({(opcao.prazo_entrega || opcao.prazo_entrega_dias || 1)} dia(s))
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {frete && frete.opcao_frete_id && (
+          <Select 
+            value={frete?.entregador_id?.toString() || undefined} 
+            onValueChange={(value) => {
+              if (value === 'none') {
+                setFrete({
+                  ...frete,
+                  entregador_id: null,
+                  quem_entrega: '',
+                });
+              } else {
+                handleEntregadorChange(value);
+              }
+            }}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Selecione o entregador (opcional)" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Não especificado</SelectItem>
+              {Array.isArray(entregadores) && entregadores.map(ent => (
+                <SelectItem key={ent.id} value={ent.id.toString()}>
+                  {ent.nome} ({ent.tipo === 'proprio' ? 'Próprio' : 'Terceirizado'})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
       
       <div className="my-3">
@@ -108,6 +233,17 @@ const PDVCheckoutActions = ({
         </div>
       </div>
 
+      {handleTransformarEmOS && (
+        <Button 
+          variant="outline" 
+          className="w-full mb-3 border-purple-500 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20"
+          onClick={handleTransformarEmOS}
+          disabled={carrinho.length === 0}
+        >
+          <Wrench size={18} className="mr-2"/>
+          Transformar em O.S
+        </Button>
+      )}
 
       <div className="mt-auto grid grid-cols-2 gap-3 pt-3 border-t">
         <Button variant="outline" className="w-full" onClick={handleCancelarVenda}>

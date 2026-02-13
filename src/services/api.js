@@ -1802,6 +1802,72 @@ export const treinamentoService = {
   salvarRegraAlerta: (data) => api.post('/api/treinamento/avisos/regras', data),
 };
 
+// Serviços para Relatório de Produção
+export const relatorioProducaoService = {
+  getRelatorio: async (params = {}) => {
+    try {
+      const response = await api.get('/api/relatorio-producao', { params });
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao buscar relatório de produção:', error);
+      throw error;
+    }
+  },
+};
+
+// Serviços para Dashboard Configurável
+export const dashboardService = {
+  getWidgetsDisponiveis: async () => {
+    try {
+      const response = await api.get('/api/dashboard/widgets-disponiveis');
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao buscar widgets disponíveis:', error);
+      throw error;
+    }
+  },
+  
+  getConfiguracao: async () => {
+    try {
+      const response = await api.get('/api/dashboard/configuracao');
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao buscar configuração do dashboard:', error);
+      throw error;
+    }
+  },
+  
+  salvarConfiguracao: async (dados) => {
+    try {
+      const response = await api.post('/api/dashboard/configuracao', dados);
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao salvar configuração do dashboard:', error);
+      throw error;
+    }
+  },
+  
+  getDadosWidget: async (widgetCodigo, filtros = {}) => {
+    try {
+      const response = await api.get(`/api/dashboard/widget/${widgetCodigo}`, { params: filtros });
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao buscar dados do widget:', error);
+      throw error;
+    }
+  },
+  
+  getDadosWidgets: async (widgets, filtros = {}) => {
+    try {
+      const response = await api.post('/api/dashboard/widgets', { widgets, ...filtros });
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao buscar dados dos widgets:', error);
+      throw error;
+    }
+  },
+};
+
 // Serviços para Clientes Diminuindo Compras
 export const clienteTendenciaService = {
   getClientesComQueda: (params = {}) => api.get('/api/clientes-tendencia', { params }),
@@ -1843,4 +1909,47 @@ export const posVendaService = {
   concluirAgendamento: (agendamentoId) => api.post(`/api/pos-venda/agendamento/${agendamentoId}/concluir`),
   historicoCliente: (clienteId) => api.get(`/api/pos-venda/historico-cliente/${clienteId}`),
   executarVerificacoes: () => api.post('/api/pos-venda/executar-verificacoes'),
+};
+
+// Serviços para Opções de Frete
+export const opcaoFreteService = {
+  getAll: (params = {}) => api.get('/api/opcoes-frete', { params }),
+  getById: (id) => api.get(`/api/opcoes-frete/${id}`),
+  getAtivas: () => api.get('/api/opcoes-frete/ativas/listar'),
+  create: (data) => api.post('/api/opcoes-frete', data),
+  update: (id, data) => api.put(`/api/opcoes-frete/${id}`, data),
+  delete: (id) => api.delete(`/api/opcoes-frete/${id}`),
+  getAtivas: () => api.get('/api/opcoes-frete/ativas/listar'),
+};
+
+// Serviços para Entregadores
+export const entregadorService = {
+  getAll: (params = {}) => api.get('/api/entregadores', { params }),
+  getById: (id) => api.get(`/api/entregadores/${id}`),
+  getAtivos: () => api.get('/api/entregadores/ativos/listar'),
+  create: (data) => api.post('/api/entregadores', data),
+  update: (id, data) => api.put(`/api/entregadores/${id}`, data),
+  delete: (id) => api.delete(`/api/entregadores/${id}`),
+  getAtivos: () => api.get('/api/entregadores/ativos/listar'),
+  getPorTipo: (tipo) => api.get(`/api/entregadores/tipo/${tipo}`),
+};
+
+// Serviços para Fretes Entregas
+export const freteEntregaService = {
+  getRelatorio: (params = {}) => api.get('/api/fretes-entregas/relatorio', { params }),
+  criarEntrega: (vendaId, data) => api.post(`/api/vendas/${vendaId}/criar-entrega`, data),
+  marcarComoPago: (id, data) => api.post(`/api/fretes-entregas/${id}/marcar-pago`, data),
+  integrarHolerite: (id, data) => api.post(`/api/fretes-entregas/${id}/integrar-holerite`, data),
+};
+
+// Serviços para Romaneios
+export const romaneioService = {
+  getAll: (params = {}) => api.get('/api/romaneios', { params }),
+  getById: (id) => api.get(`/api/romaneios/${id}`),
+  getPedidosDisponiveis: (params = {}) => api.get('/api/romaneios/pedidos-disponiveis', { params }),
+  calcularRota: (data) => api.post('/api/romaneios/calcular-rota', data),
+  create: (data) => api.post('/api/romaneios', data),
+  updateStatus: (id, data) => api.post(`/api/romaneios/${id}/atualizar-status`, data),
+  confirmarEntrega: (id, data) => api.post(`/api/romaneios/${id}/confirmar-entrega`, data),
+  delete: (id) => api.delete(`/api/romaneios/${id}`),
 };

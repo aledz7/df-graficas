@@ -33,6 +33,14 @@ class VendaController extends ResourceController
         'dados_pagamento' => 'nullable|array',
         'vendedor_nome' => 'nullable|string',
         'metadados' => 'nullable|array',
+        'opcao_frete_id' => 'nullable|exists:opcoes_frete,id',
+        'valor_frete' => 'nullable|numeric|min:0',
+        'prazo_frete' => 'nullable|integer|min:1',
+        'entregador_id' => 'nullable|exists:entregadores,id',
+        'bairro_entrega' => 'nullable|string|max:255',
+        'cidade_entrega' => 'nullable|string|max:255',
+        'estado_entrega' => 'nullable|string|max:2',
+        'cep_entrega' => 'nullable|string|max:10',
         'itens' => 'required|array|min:1',
         'itens.*.produto_id' => 'required|exists:produtos,id',
         'itens.*.quantidade' => 'required|numeric|min:0.001',
@@ -61,6 +69,14 @@ class VendaController extends ResourceController
         'dados_pagamento' => 'nullable|array',
         'vendedor_nome' => 'nullable|string',
         'metadados' => 'nullable|array',
+        'opcao_frete_id' => 'nullable|exists:opcoes_frete,id',
+        'valor_frete' => 'nullable|numeric|min:0',
+        'prazo_frete' => 'nullable|integer|min:1',
+        'entregador_id' => 'nullable|exists:entregadores,id',
+        'bairro_entrega' => 'nullable|string|max:255',
+        'cidade_entrega' => 'nullable|string|max:255',
+        'estado_entrega' => 'nullable|string|max:2',
+        'cep_entrega' => 'nullable|string|max:10',
         'itens' => 'sometimes|array|min:1',
         'itens.*.produto_id' => 'required|exists:produtos,id',
         'itens.*.quantidade' => 'required|numeric|min:0.001',
@@ -138,6 +154,38 @@ class VendaController extends ResourceController
                 'vendedor_nome' => $data['vendedor_nome'] ?? 'não fornecido'
             ]);
             
+            // Verificar se o cliente é de permuta
+            $cliente = null;
+            $isClientePermuta = false;
+            if (!empty($data['cliente_id'])) {
+                $cliente = \App\Models\Cliente::find($data['cliente_id']);
+                if ($cliente && $cliente->is_cliente_permuta) {
+                    $isClientePermuta = true;
+                    // Configurar venda como permuta
+                    $data['tipo_pedido'] = 'PERMUTA';
+                    $data['forma_pagamento'] = 'Permuta';
+                    // Garantir que não há dados de pagamento que gerem contas
+                    if (empty($data['dados_pagamento'])) {
+                        $data['dados_pagamento'] = [
+                            [
+                                'metodo' => 'Permuta',
+                                'valor' => $data['valor_total'] ?? 0,
+                                'valorOriginal' => $data['valor_total'] ?? 0,
+                                'valorFinal' => $data['valor_total'] ?? 0,
+                                'parcelas' => 1
+                            ]
+                        ];
+                    }
+                    // Adicionar observação sobre permuta
+                    $observacaoPermuta = 'Pedido sem impacto financeiro';
+                    if (!empty($data['observacoes'])) {
+                        $data['observacoes'] = $data['observacoes'] . ' | ' . $observacaoPermuta;
+                    } else {
+                        $data['observacoes'] = $observacaoPermuta;
+                    }
+                }
+            }
+            
             $venda = $this->model::create($data);
             
             // Log para confirmar que a venda foi criada
@@ -148,23 +196,37 @@ class VendaController extends ResourceController
                 'cliente_id' => $venda->cliente_id,
                 'vendedor_nome' => $venda->vendedor_nome,
                 'forma_pagamento' => $venda->forma_pagamento,
+                'tipo_pedido' => $venda->tipo_pedido,
+                'is_cliente_permuta' => $isClientePermuta,
                 'dados_pagamento' => $venda->dados_pagamento
             ]);
             
             // Adiciona os itens e atualiza o estoque
             $this->processarItensVenda($venda, $request->input('itens'), 'decrement');
             
-            // Criar conta a receber apenas para vendas concluídas (não para orçamentos)
-            if ($venda->status === 'concluida') {
+            // Criar entrega de frete se houver frete na venda
+            if ($venda->opcao_frete_id && $venda->entregador_id && $venda->status === 'concluida') {
+                $this->criarFreteEntrega($venda);
+            }
+            
+            // Criar conta a receber apenas para vendas concluídas (não para orçamentos) e que NÃO sejam permutas
+            if ($venda->status === 'concluida' && !$isClientePermuta) {
                 $this->criarContaReceber($venda, $request);
                 
                 // Criar lançamentos no fluxo de caixa
                 $this->criarLancamentosCaixa($venda, $request);
             } else {
-                \Log::info('Venda não está com status concluida, não criando lançamentos', [
-                    'venda_id' => $venda->id,
-                    'status' => $venda->status
-                ]);
+                if ($isClientePermuta) {
+                    \Log::info('Venda de permuta - não criando contas a receber nem lançamentos no caixa', [
+                        'venda_id' => $venda->id,
+                        'cliente_id' => $venda->cliente_id
+                    ]);
+                } else {
+                    \Log::info('Venda não está com status concluida, não criando lançamentos', [
+                        'venda_id' => $venda->id,
+                        'status' => $venda->status
+                    ]);
+                }
             }
             
             // Recarrega a venda com os relacionamentos
@@ -1633,6 +1695,27 @@ class VendaController extends ResourceController
     protected function criarContaReceber(Venda $venda, Request $request)
     {
         try {
+            // Não criar contas a receber para pedidos de permuta
+            if ($venda->tipo_pedido === 'PERMUTA') {
+                \Log::info('Venda de permuta - não criando conta a receber', [
+                    'venda_id' => $venda->id,
+                    'tipo_pedido' => $venda->tipo_pedido
+                ]);
+                return;
+            }
+            
+            // Verificar se o cliente é de permuta
+            if ($venda->cliente_id) {
+                $cliente = \App\Models\Cliente::find($venda->cliente_id);
+                if ($cliente && $cliente->is_cliente_permuta) {
+                    \Log::info('Cliente de permuta - não criando conta a receber', [
+                        'venda_id' => $venda->id,
+                        'cliente_id' => $venda->cliente_id
+                    ]);
+                    return;
+                }
+            }
+            
             // Verificar se já existem contas a receber para esta venda
             $contasExistentes = \App\Models\ContaReceber::where('venda_id', $venda->id)->count();
             
@@ -1827,6 +1910,27 @@ class VendaController extends ResourceController
     protected function criarLancamentosCaixa(Venda $venda, Request $request)
     {
         try {
+            // Não criar lançamentos no caixa para pedidos de permuta
+            if ($venda->tipo_pedido === 'PERMUTA') {
+                \Log::info('Venda de permuta - não criando lançamento no caixa', [
+                    'venda_id' => $venda->id,
+                    'tipo_pedido' => $venda->tipo_pedido
+                ]);
+                return;
+            }
+            
+            // Verificar se o cliente é de permuta
+            if ($venda->cliente_id) {
+                $cliente = \App\Models\Cliente::find($venda->cliente_id);
+                if ($cliente && $cliente->is_cliente_permuta) {
+                    \Log::info('Cliente de permuta - não criando lançamento no caixa', [
+                        'venda_id' => $venda->id,
+                        'cliente_id' => $venda->cliente_id
+                    ]);
+                    return;
+                }
+            }
+            
             \Log::info('Iniciando criação de lançamentos no caixa para venda', [
                 'venda_id' => $venda->id,
                 'venda_codigo' => $venda->codigo,
@@ -2421,6 +2525,63 @@ class VendaController extends ResourceController
             ]);
             
             return $this->error('Erro ao gerar relatório com metas: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Cria uma entrega de frete para a venda
+     * 
+     * @param Venda $venda
+     * @return void
+     */
+    protected function criarFreteEntrega(Venda $venda)
+    {
+        try {
+            // Verificar se já existe entrega para esta venda
+            $entregaExistente = \App\Models\FreteEntrega::where('venda_id', $venda->id)->first();
+            if ($entregaExistente) {
+                \Log::info('Entrega de frete já existe para esta venda', [
+                    'venda_id' => $venda->id,
+                    'entrega_id' => $entregaExistente->id
+                ]);
+                return;
+            }
+
+            if (!$venda->opcao_frete_id || !$venda->entregador_id) {
+                \Log::info('Venda não tem frete configurado, não criando entrega', [
+                    'venda_id' => $venda->id
+                ]);
+                return;
+            }
+
+            $entrega = \App\Models\FreteEntrega::create([
+                'tenant_id' => $venda->tenant_id,
+                'venda_id' => $venda->id,
+                'opcao_frete_id' => $venda->opcao_frete_id,
+                'entregador_id' => $venda->entregador_id,
+                'cliente_id' => $venda->cliente_id,
+                'valor_frete' => $venda->valor_frete ?? 0,
+                'prazo_frete' => $venda->prazo_frete,
+                'data_entrega' => $venda->data_emissao,
+                'bairro' => $venda->bairro_entrega,
+                'cidade' => $venda->cidade_entrega,
+                'estado' => $venda->estado_entrega,
+                'cep' => $venda->cep_entrega,
+                'status' => 'pendente',
+                'status_pagamento' => 'pendente',
+            ]);
+
+            \Log::info('Entrega de frete criada com sucesso', [
+                'venda_id' => $venda->id,
+                'entrega_id' => $entrega->id,
+                'entregador_id' => $venda->entregador_id,
+                'valor_frete' => $entrega->valor_frete
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Erro ao criar entrega de frete para venda', [
+                'venda_id' => $venda->id,
+                'erro' => $e->getMessage()
+            ]);
         }
     }
 }

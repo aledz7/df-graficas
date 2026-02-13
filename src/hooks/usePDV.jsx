@@ -382,7 +382,8 @@ export const usePDV = (vendedorAtualProp) => {
     clienteNomeLivre = '',
     preVendaId = null,
     dadosPontos = null,
-    orcamentoOrigemId = null
+    orcamentoOrigemId = null,
+    frete = null
   ) => {
     if (carrinho.length === 0) {
       toast({ title: "Carrinho Vazio", description: "Adicione produtos ao carrinho para finalizar.", variant: "destructive" });
@@ -458,6 +459,12 @@ export const usePDV = (vendedorAtualProp) => {
       orcamentoId: orcamentoOrigemId || null,
       // Dados de pontos
       dadosPontos: dadosPontos,
+      // Dados de frete
+      opcao_frete_id: frete?.opcao_frete_id || null,
+      entregador_id: frete?.entregador_id || null,
+      valor_frete: frete ? parseFloat(frete.valor_frete || 0) : null,
+      prazo_entrega_dias: frete?.prazo_entrega_dias || null,
+      quem_entrega: frete?.quem_entrega || null,
     };
     
     if (tipoDocumento === 'venda') {

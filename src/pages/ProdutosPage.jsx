@@ -406,6 +406,55 @@ const ProdutosPage = ({ vendedorAtual }) => {
     setIsCompartilharModalOpen(true);
   };
 
+  const handleDuplicateProduto = async (produto) => {
+    try {
+      // Criar cópia do produto removendo campos que devem ser únicos
+      const produtoDuplicado = {
+        ...produto,
+        id: undefined,
+        codigo_produto: gerarCodigoProduto(), // Gerar novo código único
+        codigo_barras: produto.codigo_barras ? `${produto.codigo_barras}-COPY-${Date.now()}` : null, // Modificar código de barras se existir
+        nome: `${produto.nome} (Cópia)`,
+        // Copiar variações se existirem
+        variacoes: produto.variacoes ? produto.variacoes.map(v => ({
+          ...v,
+          id: undefined,
+          id_variacao: undefined,
+          codigo_barras: v.codigo_barras ? `${v.codigo_barras}-COPY-${Date.now()}` : null
+        })) : undefined
+      };
+
+      // Remover campos que não devem ser copiados
+      delete produtoDuplicado.created_at;
+      delete produtoDuplicado.updated_at;
+      delete produtoDuplicado.deleted_at;
+
+      // Criar o produto duplicado
+      const response = await produtoService.create(produtoDuplicado);
+      
+      toast({
+        title: "Produto duplicado",
+        description: `O produto "${produto.nome}" foi duplicado com sucesso!`,
+      });
+
+      // Recarregar dados
+      await loadData(currentPage, searchTerm);
+
+      // Abrir o produto duplicado para edição
+      if (response.data) {
+        setProdutoSelecionado(response.data);
+        setIsModalOpen(true);
+      }
+    } catch (error) {
+      console.error("Erro ao duplicar produto:", error);
+      toast({
+        title: "Erro ao duplicar produto",
+        description: error.response?.data?.message || "Ocorreu um erro ao duplicar o produto.",
+        variant: "destructive"
+      });
+    }
+  };
+
   const handleImportProdutos = async (file) => {
     try {
       const importedData = await importFromExcel(file);
@@ -758,6 +807,7 @@ const ProdutosPage = ({ vendedorAtual }) => {
               onEdit={handleEditProduto}
               onDelete={handleDeleteProduto}
               onShare={handleShareProduto}
+              onDuplicate={handleDuplicateProduto}
               selectedProdutos={selectedProdutosIds}
               setSelectedProdutos={setSelectedProdutosIds}
               canEdit={canEdit}

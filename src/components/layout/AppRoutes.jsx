@@ -38,6 +38,13 @@ const ContasBancariasPage = lazy(() => import('@/pages/ContasBancariasPage'));
 const MaquinasCartaoPage = lazy(() => import('@/pages/MaquinasCartaoPage'));
 const FormasPagamentoPage = lazy(() => import('@/pages/FormasPagamentoPage'));
 const CuponsPage = lazy(() => import('@/pages/CuponsPage'));
+const OpcoesFretePage = lazy(() => import('@/pages/OpcoesFretePage'));
+const EntregadoresPage = lazy(() => import('@/pages/EntregadoresPage'));
+const RelatorioFretesPage = lazy(() => import('@/pages/RelatorioFretesPage'));
+const RelatorioProducaoPage = lazy(() => import('@/pages/RelatorioProducaoPage'));
+const DashboardConfigPage = lazy(() => import('@/pages/DashboardConfigPage'));
+const MontarRomaneioPage = lazy(() => import('@/pages/MontarRomaneioPage'));
+const RomaneiosPage = lazy(() => import('@/pages/RomaneiosPage'));
 const PDVHistoricoPage = lazy(() => import('@/pages/PDVHistoricoPage'));
 const PDVReciboPage = lazy(() => import('@/pages/PDVReciboPage'));
 const OSReciboPage = lazy(() => import('@/pages/OSReciboPage'));
@@ -73,6 +80,7 @@ const RelatorioMovimentacoesBancariasPage = lazy(() => import('@/components/rela
 const RelatorioPagamentosPage = lazy(() => import('@/components/relatorios/financeiros/RelatorioPagamentos'));
 const RelatorioSangriasSuprimentosPage = lazy(() => import('@/components/relatorios/financeiros/RelatorioSangriasSuprimentos'));
 const RelatorioGeralRecebimentosPage = lazy(() => import('@/components/relatorios/financeiros/RelatorioRecebimentos'));
+const RelatorioDREPage = lazy(() => import('@/components/relatorios/financeiros/RelatorioDRE'));
 
 // Relatórios Operacionais
 const VendasGeraisRelatorioPage = lazy(() => import('@/components/relatorios/operacionais/RelatorioVendas'));
@@ -126,6 +134,8 @@ const AppRoutes = ({ logoUrl, nomeEmpresa, vendedorAtual, theme, setTheme, setAp
       <Route path="/cadastros/maquinas-cartao" element={<MaquinasCartaoPage />} />
       <Route path="/cadastros/formas-pagamento" element={<FormasPagamentoPage />} />
       <Route path="/cadastros/cupons" element={<CuponsPage />} />
+      <Route path="/cadastros/opcoes-frete" element={<OpcoesFretePage />} />
+      <Route path="/cadastros/entregadores" element={<EntregadoresPage />} />
 
       {/* Operacional */}
       <Route path="/operacional/ordens-servico" element={<OrdensServicoPage logoUrl={logoUrl} nomeEmpresa={nomeEmpresa} vendedorAtual={vendedorAtual} />} />
@@ -175,6 +185,7 @@ const AppRoutes = ({ logoUrl, nomeEmpresa, vendedorAtual, theme, setTheme, setAp
       <Route path="/relatorios/financeiro/pagamentos-recebidos" element={<RelatorioPagamentosPage />} />
       <Route path="/relatorios/financeiro/sangrias-suprimentos" element={<RelatorioSangriasSuprimentosPage />} />
       <Route path="/relatorios/financeiro/geral-recebimentos" element={<RelatorioGeralRecebimentosPage />} />
+      <Route path="/relatorios/financeiro/dre" element={<RelatorioDREPage />} />
 
       <Route path="/relatorios/operacional/vendas-gerais" element={<VendasGeraisRelatorioPage vendedorAtual={vendedorAtual} />} />
       <Route path="/relatorios/operacional/ordens-de-servico" element={<OrdensServicoRelatorioPage />} />
@@ -182,6 +193,10 @@ const AppRoutes = ({ logoUrl, nomeEmpresa, vendedorAtual, theme, setTheme, setAp
       <Route path="/relatorios/operacional/produtos-e-estoque" element={<EstoqueRelatorioPage />} />
       <Route path="/relatorios/operacional/lucratividade-por-produto" element={<RelatorioLucratividadeProdutosPage />} />
       <Route path="/relatorios/operacional/analitico" element={<RelatorioAnaliticoPage />} />
+      <Route path="/relatorios/operacional/fretes" element={<RelatorioFretesPage />} />
+      <Route path="/relatorios/operacional/producao" element={<RelatorioProducaoPage />} />
+      <Route path="/operacional/romaneio" element={<MontarRomaneioPage />} />
+      <Route path="/operacional/romaneios" element={<RomaneiosPage />} />
       <Route path="/relatorios/operacional/vendas-com-metas" element={<RelatorioVendasComMetasPage />} />
       
       <Route path="/relatorios/gerencial/comissoes" element={<RelatorioComissoesPage />} />
@@ -227,6 +242,7 @@ const AppRoutes = ({ logoUrl, nomeEmpresa, vendedorAtual, theme, setTheme, setAp
       <Route path="/configuracoes/produtos-estoque" element={<ProdutoConfigPage />} />
       <Route path="/configuracoes/pontos" element={<ConfiguracaoPontosPage />} />
       <Route path="/configuracoes/nota-fiscal" element={<NfeSettingsPage />} />
+      <Route path="/configuracoes/dashboard" element={<DashboardConfigPage />} />
       <Route path="/configuracoes/modelos" element={<AdminSettingsPage section="modelos" />} />
       <Route path="/configuracoes/taxas" element={<AdminSettingsPage section="taxas" />} />
       <Route path="/configuracoes/impressao" element={<AdminSettingsPage section="impressao" />} />

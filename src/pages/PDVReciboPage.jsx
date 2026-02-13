@@ -156,6 +156,12 @@ const PDVReciboPage = ({ logoUrl: appLogoUrl, nomeEmpresa: appNomeEmpresa }) => 
                 <p><strong>Data:</strong> {venda.data_venda ? format(new Date(venda.data_venda), 'dd/MM/yyyy HH:mm', { locale: ptBR }) : 'N/A'}</p>
                 <p><strong>Vendedor:</strong> {venda.vendedor?.nome_completo || venda.usuario?.name || 'N/A'}</p>
                 <p><strong>Status:</strong> {venda.status || 'Finalizada'}</p>
+                {venda.tipo_pedido === 'PERMUTA' && (
+                  <>
+                    <p className="mt-2"><strong className="text-orange-600">Tipo do Pedido:</strong> <span className="text-orange-600 font-bold">PERMUTA</span></p>
+                    <p className="text-sm text-orange-600 italic">Pedido sem impacto financeiro</p>
+                  </>
+                )}
               </div>
               <div>
                 <h3 className="font-semibold mb-2">Informações do Cliente</h3>

@@ -34,6 +34,10 @@ use App\Http\Controllers\Api\UserNotificationPreferencesController;
 use App\Http\Controllers\Api\CatalogoParteController;
 use App\Http\Controllers\Api\CaixaController;
 use App\Http\Controllers\Api\EmpresaController;
+use App\Http\Controllers\Api\OpcaoFreteController;
+use App\Http\Controllers\Api\EntregadorController;
+use App\Http\Controllers\Api\FreteEntregaController;
+use App\Http\Controllers\Api\RomaneioController;
 use App\Http\Controllers\Api\AparenciaController;
 use App\Http\Controllers\Api\LixeiraController;
 use App\Http\Controllers\Api\AdminConfiguracaoController;
@@ -66,6 +70,8 @@ use App\Http\Controllers\Api\PerfilVendedorController;
 use App\Http\Controllers\Api\EventoCalendarioController;
 use App\Http\Controllers\Api\TermometroController;
 use App\Http\Controllers\Api\PosVendaController;
+use App\Http\Controllers\Api\RelatorioProducaoController;
+use App\Http\Controllers\Api\DashboardController;
 
 /*
 |--------------------------------------------------------------------------
@@ -226,7 +232,29 @@ Route::middleware(['api.auth'])->group(function () {
         Route::post('premiacoes/{id}/entregar', [GamificacaoController::class, 'entregarPremiacao']);
     });
     Route::apiResource('vendas', VendaController::class);
+    
+    // Rotas de Fretes (rotas específicas ANTES do apiResource)
+    Route::get('opcoes-frete/ativas/listar', [OpcaoFreteController::class, 'ativas'])->name('api.opcoes-frete.ativas');
+    Route::apiResource('opcoes-frete', OpcaoFreteController::class);
+    
+    // Rotas de Entregadores (rotas específicas ANTES do apiResource)
+    Route::get('entregadores/ativos/listar', [EntregadorController::class, 'ativos'])->name('api.entregadores.ativos');
+    Route::get('entregadores/tipo/{tipo}', [EntregadorController::class, 'porTipo'])->name('api.entregadores.por-tipo');
+    Route::apiResource('entregadores', EntregadorController::class);
+    
+    // Rotas de Entregas de Frete
+    Route::get('fretes-entregas/relatorio', [FreteEntregaController::class, 'relatorio'])->name('api.fretes-entregas.relatorio');
+    Route::post('vendas/{vendaId}/criar-entrega', [FreteEntregaController::class, 'criarEntrega'])->name('api.fretes-entregas.criar');
+    Route::post('fretes-entregas/{id}/marcar-pago', [FreteEntregaController::class, 'marcarComoPago'])->name('api.fretes-entregas.marcar-pago');
+    Route::post('fretes-entregas/{id}/integrar-holerite', [FreteEntregaController::class, 'integrarHolerite'])->name('api.fretes-entregas.integrar-holerite');
     Route::delete('vendas/codigo/{codigo}', [VendaController::class, 'destroyByCodigo']);
+    
+    // Rotas de Romaneios
+    Route::get('romaneios/pedidos-disponiveis', [RomaneioController::class, 'pedidosDisponiveis'])->name('api.romaneios.pedidos-disponiveis');
+    Route::post('romaneios/calcular-rota', [RomaneioController::class, 'calcularRota'])->name('api.romaneios.calcular-rota');
+    Route::post('romaneios/{id}/atualizar-status', [RomaneioController::class, 'updateStatus'])->name('api.romaneios.atualizar-status');
+    Route::post('romaneios/{id}/confirmar-entrega', [RomaneioController::class, 'confirmarEntrega'])->name('api.romaneios.confirmar-entrega');
+    Route::apiResource('romaneios', RomaneioController::class);
     
     // Itens Venda
     Route::get('itens-venda', [ItemVendaController::class, 'index']);
@@ -592,6 +620,18 @@ Route::middleware(['api.auth'])->group(function () {
         Route::post('corrigir-758', [OrdemServicoController::class, 'corrigirOS758']);
     });
     Route::apiResource('ordens-servico', OrdemServicoController::class);
+
+    // Relatório de Produção
+    Route::get('relatorio-producao', [RelatorioProducaoController::class, 'index']);
+
+    // Dashboard Configurável
+    Route::prefix('dashboard')->group(function () {
+        Route::get('widgets-disponiveis', [DashboardController::class, 'getWidgetsDisponiveis']);
+        Route::get('configuracao', [DashboardController::class, 'getConfiguracao']);
+        Route::post('configuracao', [DashboardController::class, 'salvarConfiguracao']);
+        Route::get('widget/{widgetCodigo}', [DashboardController::class, 'getDadosWidget']);
+        Route::post('widgets', [DashboardController::class, 'getDadosWidgets']);
+    });
 
     // Notas Fiscais (NFe / NFSe)
     Route::prefix('notas-fiscais')->group(function () {

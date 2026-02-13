@@ -19,6 +19,7 @@ const reportCategories = [
       { id: 'pagamentos_recebidos', title: 'Pagamentos Recebidos', description: 'Total por forma de pagamento.', icon: DollarSign, path: '/relatorios/financeiro/pagamentos-recebidos' },
       { id: 'sangrias_suprimentos', title: 'Sangrias e Suprimentos', description: 'Movimentações manuais de caixa.', icon: ArrowDownUp, path: '/relatorios/financeiro/sangrias-suprimentos' },
       { id: 'geral_recebimentos', title: 'Geral de Recebimentos', description: 'Todas as entradas de valor.', icon: TrendingUp, path: '/relatorios/financeiro/geral-recebimentos' },
+      { id: 'dre', title: 'DRE - Demonstração do Resultado do Exercício', description: 'Receitas, custos, despesas e resultado do período.', icon: FileText, path: '/relatorios/financeiro/dre' },
     ]
   },
   {
@@ -32,6 +33,7 @@ const reportCategories = [
       { id: 'lucratividade_produtos', title: 'Lucratividade por Produto', description: 'Análise de margens e lucro de cada produto.', icon: TrendingUp, path: '/relatorios/operacional/lucratividade-por-produto' },
       { id: 'analitico', title: 'Relatório Analítico Completo', description: 'Faturamento, ticket médio, curva ABC, clientes ativos/inativos e mais.', icon: BarChart2, path: '/relatorios/operacional/analitico' },
       { id: 'vendas_metas', title: 'Vendas com Metas', description: 'Acompanhamento de vendas com metas da empresa e vendedores.', icon: Target, path: '/relatorios/operacional/vendas-com-metas' },
+      { id: 'producao', title: 'Relatório de Produção', description: 'Análise detalhada do desempenho da produção com indicadores de prazos, atrasos e refações.', icon: BarChart2, path: '/relatorios/operacional/producao' },
     ]
   },
   {

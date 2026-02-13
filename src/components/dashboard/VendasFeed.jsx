@@ -69,6 +69,7 @@ const VendasFeed = ({ showValues = true, title = "Feed de Vendas", defaultDateTo
                         client: venda.cliente_nome || venda.cliente?.nome || 'Consumidor Final',
                         value: parseFloat(venda.total || venda.valor_total || 0),
                         status: isPreVenda ? 'Pré-Venda' : 'Finalizado',
+                        tipo_pedido: venda.tipo_pedido,
                         timestamp: parseISO(venda.data_emissao || venda.data_venda || new Date().toISOString()),
                         details: { itens: venda.itens, pagamentos: venda.pagamentos || venda.dados_pagamento, observacoes: venda.observacoes }
                     };
@@ -208,9 +209,19 @@ const VendasFeed = ({ showValues = true, title = "Feed de Vendas", defaultDateTo
                                                 <CardDescription className="text-xs">{isValid(item.timestamp) ? format(item.timestamp, 'HH:mm:ss dd/MM/yy') : 'Data inválida'}</CardDescription>
                                             </div>
                                         </div>
-                                        <Badge variant={getStatusVariant(item.status)} className="text-xs">{item.status}</Badge>
+                                        <div className="flex items-center gap-2">
+                                            {item.tipo_pedido === 'PERMUTA' && (
+                                                <Badge variant="outline" className="text-xs text-orange-600 border-orange-600">PERMUTA</Badge>
+                                            )}
+                                            <Badge variant={getStatusVariant(item.status)} className="text-xs">{item.status}</Badge>
+                                        </div>
                                     </CardHeader>
                                     <CardContent className="p-3 text-xs space-y-2">
+                                        {item.tipo_pedido === 'PERMUTA' && (
+                                            <div className="mb-2 p-2 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded text-orange-700 dark:text-orange-300">
+                                                <span className="font-semibold">PERMUTA</span> - Pedido sem impacto financeiro
+                                            </div>
+                                        )}
                                         <div className="flex justify-between items-center">
                                             <span className="font-medium flex items-center gap-1"><User size={12}/> Cliente:</span>
                                             <span>{item.client}</span>
