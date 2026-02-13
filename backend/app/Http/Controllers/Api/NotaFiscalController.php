@@ -222,10 +222,12 @@ class NotaFiscalController extends Controller
                 ], 422);
             }
 
+            $tipoIntegracao = $nota->dados_envio['_tipo_integracao'] ?? null;
             $resultado = $this->focusNfeService->cancelar(
                 $nota->referencia,
                 $nota->tipo,
-                $request->justificativa
+                $request->justificativa,
+                $tipoIntegracao
             );
 
             if (!($resultado['sucesso'] ?? false)) {
@@ -296,8 +298,18 @@ class NotaFiscalController extends Controller
                 'icms_situacao_tributaria'    => ['Situação Tributária ICMS', 'texto', 28],
                 'pis_situacao_tributaria'     => ['Situação Tributária PIS', 'texto', 29],
                 'cofins_situacao_tributaria'  => ['Situação Tributária COFINS', 'texto', 30],
+                'tipo_nfse'                   => ['Tipo de Integração NFSe', 'select', 170],
+                'natureza_operacao_nfse'      => ['Natureza da Operação NFSe (1-6)', 'select', 175],
+                'optante_simples_nacional'   => ['Optante Simples Nacional', 'select', 176],
+                'regime_especial_tributacao'  => ['Regime Especial de Tributação', 'select', 177],
+                'regime_tributario_simples_nacional' => ['Regime de Apuração SN', 'select', 178],
+                'incentivo_fiscal'            => ['Incentivo Fiscal (NFSe)', 'select', 179],
+                'tributacao_iss'              => ['Tributação do ISSQN (NFSe Nacional)', 'select', 181],
+                'tipo_retencao_iss'           => ['Tipo Retenção ISSQN (NFSe Nacional)', 'select', 182],
                 'codigo_tributario_municipio' => ['Código Tributário do Município (NFSe)', 'texto', 180],
-                'item_lista_servico'          => ['Item da Lista de Serviço (NFSe)', 'texto', 190],
+                'item_lista_servico'          => ['Item da Lista de Serviço / cTribNac (NFSe)', 'texto', 190],
+                'codigo_cnae'                 => ['Código CNAE (NFSe)', 'texto', 195],
+                'codigo_nbs'                  => ['Código NBS (NFSe)', 'texto', 196],
                 'aliquota_iss'                => ['Alíquota ISS % (NFSe)', 'texto', 200],
             ];
 
