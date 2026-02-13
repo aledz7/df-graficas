@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Settings, Building, Palette, Package, CreditCard, Barcode, Trash2, SlidersHorizontal, Download, Upload, ShieldAlert, Loader2, Star, Receipt } from 'lucide-react';
+import { Settings, Building, Palette, Package, CreditCard, Barcode, Trash2, SlidersHorizontal, Download, Upload, ShieldAlert, Loader2, Star, Receipt, LayoutDashboard } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useToast } from "@/components/ui/use-toast";
 import { safeJsonParse } from '@/lib/utils';
@@ -12,6 +12,7 @@ import { carregarConfiguracoesEmpresa } from '@/services/configService';
 const settingsOptionsBase = [
   { id: 'empresa', title: 'Dados da Empresa', description: 'Configure nome, CNPJ, endereço e logo.', icon: Building, path: '/configuracoes/empresa' },
   { id: 'aparencia', title: 'Aparência e Tema', description: 'Personalize cores e temas do sistema.', icon: Palette, path: '/configuracoes/aparencia' },
+  { id: 'dashboard', title: 'Dashboard', description: 'Configure widgets e layout do dashboard.', icon: LayoutDashboard, path: '/configuracoes/dashboard' },
   { id: 'produtos_conf', title: 'Produtos e Estoque (Conf.)', description: 'Defina padrões para produtos e estoque.', icon: Package, path: '/configuracoes/produtos-estoque' },
   { id: 'financeiro_conf', title: 'Financeiro (Conf.)', description: 'Contas bancárias, formas de pagamento.', icon: CreditCard, path: '/configuracoes/financeiro' },
   { id: 'pontos', title: 'Programa de Pontos', description: 'Configure o programa de fidelidade e pontos.', icon: Star, path: '/configuracoes/pontos' },

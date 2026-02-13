@@ -71,6 +71,7 @@ use App\Http\Controllers\Api\EventoCalendarioController;
 use App\Http\Controllers\Api\TermometroController;
 use App\Http\Controllers\Api\PosVendaController;
 use App\Http\Controllers\Api\RelatorioProducaoController;
+use App\Http\Controllers\Api\DashboardController;
 
 /*
 |--------------------------------------------------------------------------
@@ -622,6 +623,15 @@ Route::middleware(['api.auth'])->group(function () {
 
     // Relatório de Produção
     Route::get('relatorio-producao', [RelatorioProducaoController::class, 'index']);
+
+    // Dashboard Configurável
+    Route::prefix('dashboard')->group(function () {
+        Route::get('widgets-disponiveis', [DashboardController::class, 'getWidgetsDisponiveis']);
+        Route::get('configuracao', [DashboardController::class, 'getConfiguracao']);
+        Route::post('configuracao', [DashboardController::class, 'salvarConfiguracao']);
+        Route::get('widget/{widgetCodigo}', [DashboardController::class, 'getDadosWidget']);
+        Route::post('widgets', [DashboardController::class, 'getDadosWidgets']);
+    });
 
     // Notas Fiscais (NFe / NFSe)
     Route::prefix('notas-fiscais')->group(function () {

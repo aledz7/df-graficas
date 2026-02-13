@@ -42,6 +42,7 @@ const OpcoesFretePage = lazy(() => import('@/pages/OpcoesFretePage'));
 const EntregadoresPage = lazy(() => import('@/pages/EntregadoresPage'));
 const RelatorioFretesPage = lazy(() => import('@/pages/RelatorioFretesPage'));
 const RelatorioProducaoPage = lazy(() => import('@/pages/RelatorioProducaoPage'));
+const DashboardConfigPage = lazy(() => import('@/pages/DashboardConfigPage'));
 const MontarRomaneioPage = lazy(() => import('@/pages/MontarRomaneioPage'));
 const RomaneiosPage = lazy(() => import('@/pages/RomaneiosPage'));
 const PDVHistoricoPage = lazy(() => import('@/pages/PDVHistoricoPage'));
@@ -239,6 +240,7 @@ const AppRoutes = ({ logoUrl, nomeEmpresa, vendedorAtual, theme, setTheme, setAp
       <Route path="/configuracoes/produtos-estoque" element={<ProdutoConfigPage />} />
       <Route path="/configuracoes/pontos" element={<ConfiguracaoPontosPage />} />
       <Route path="/configuracoes/nota-fiscal" element={<NfeSettingsPage />} />
+      <Route path="/configuracoes/dashboard" element={<DashboardConfigPage />} />
       <Route path="/configuracoes/modelos" element={<AdminSettingsPage section="modelos" />} />
       <Route path="/configuracoes/taxas" element={<AdminSettingsPage section="taxas" />} />
       <Route path="/configuracoes/impressao" element={<AdminSettingsPage section="impressao" />} />

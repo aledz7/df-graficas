@@ -2,7 +2,7 @@
 -- SCRIPT COMPLETO PARA BANCO DE DADOS ONLINE
 -- Execute este script no banco de dados MySQL/MariaDB
 -- Data inicial: 2025-01-28
--- Última atualização: 2026-02-14 (Relatório de Produção)
+-- Última atualização: 2026-02-14 (Dashboard Configurável)
 -- =====================================================
 
 -- =====================================================
@@ -984,6 +984,139 @@ FROM information_schema.columns
 WHERE table_schema = DATABASE() 
 AND table_name = 'ordens_servico_itens' 
 AND column_name = 'is_refacao';
+
+-- =====================================================
+-- 9. ALTERAÇÕES - DASHBOARD CONFIGURÁVEL
+-- =====================================================
+-- Data: 2026-02-14
+-- Descrição: Sistema de dashboard configurável com widgets personalizáveis e controle de acesso por área
+
+-- Verificar e criar tabela dashboard_widgets (se não existir)
+CREATE TABLE IF NOT EXISTS `dashboard_widgets` (
+    `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `codigo` VARCHAR(255) NOT NULL UNIQUE,
+    `nome` VARCHAR(255) NOT NULL,
+    `descricao` TEXT NULL,
+    `categoria` VARCHAR(50) NOT NULL DEFAULT 'geral' COMMENT 'geral, financeiro, operacional, vendas, producao',
+    `tipo` VARCHAR(50) NOT NULL DEFAULT 'card' COMMENT 'card, grafico, tabela, feed',
+    `configuracao_padrao` JSON NULL,
+    `ativo` TINYINT(1) NOT NULL DEFAULT 1,
+    `ordem` INT NOT NULL DEFAULT 0,
+    `icone` VARCHAR(100) NULL,
+    `cor_padrao` VARCHAR(50) NULL,
+    `created_at` TIMESTAMP NULL DEFAULT NULL,
+    `updated_at` TIMESTAMP NULL DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    INDEX `idx_widgets_categoria` (`categoria`),
+    INDEX `idx_widgets_ativo` (`ativo`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Verificar e criar tabela dashboard_configs (se não existir)
+CREATE TABLE IF NOT EXISTS `dashboard_configs` (
+    `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `tenant_id` BIGINT UNSIGNED NOT NULL,
+    `user_id` BIGINT UNSIGNED NULL COMMENT 'null = configuração padrão do tenant',
+    `nome_configuracao` VARCHAR(255) NULL COMMENT 'Nome da configuração (para templates)',
+    `layout` JSON NULL COMMENT 'Grid layout, posições dos widgets',
+    `widgets_visiveis` JSON NULL COMMENT 'Array de códigos de widgets visíveis',
+    `is_padrao` TINYINT(1) NOT NULL DEFAULT 0,
+    `created_at` TIMESTAMP NULL DEFAULT NULL,
+    `updated_at` TIMESTAMP NULL DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `dashboard_configs_tenant_user_unique` (`tenant_id`, `user_id`),
+    INDEX `idx_configs_tenant` (`tenant_id`),
+    INDEX `idx_configs_user` (`user_id`),
+    CONSTRAINT `fk_dashboard_configs_tenant` 
+        FOREIGN KEY (`tenant_id`) 
+        REFERENCES `tenants` (`id`) 
+        ON DELETE CASCADE,
+    CONSTRAINT `fk_dashboard_configs_user` 
+        FOREIGN KEY (`user_id`) 
+        REFERENCES `users` (`id`) 
+        ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Verificar e criar tabela dashboard_permissions (se não existir)
+CREATE TABLE IF NOT EXISTS `dashboard_permissions` (
+    `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `tenant_id` BIGINT UNSIGNED NOT NULL,
+    `tipo_permissao` VARCHAR(50) NOT NULL DEFAULT 'perfil' COMMENT 'perfil, area, funcao',
+    `referencia_id` VARCHAR(255) NULL COMMENT 'ID do perfil, área ou função',
+    `widget_codigo` VARCHAR(255) NOT NULL,
+    `pode_ver` TINYINT(1) NOT NULL DEFAULT 1,
+    `pode_configurar` TINYINT(1) NOT NULL DEFAULT 0,
+    `created_at` TIMESTAMP NULL DEFAULT NULL,
+    `updated_at` TIMESTAMP NULL DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    INDEX `idx_dash_perm_tenant_tipo_ref` (`tenant_id`, `tipo_permissao`, `referencia_id`),
+    INDEX `idx_dash_perm_tenant_widget` (`tenant_id`, `widget_codigo`),
+    CONSTRAINT `fk_dashboard_permissions_tenant` 
+        FOREIGN KEY (`tenant_id`) 
+        REFERENCES `tenants` (`id`) 
+        ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Inserir widgets padrão
+INSERT IGNORE INTO `dashboard_widgets` (`codigo`, `nome`, `descricao`, `categoria`, `tipo`, `icone`, `cor_padrao`, `ordem`, `ativo`) VALUES
+('vendas_dia_qtd', 'Vendas do Dia (Qtd)', 'Quantidade de vendas realizadas hoje', 'vendas', 'card', 'ShoppingCart', 'green', 1, 1),
+('vendas_dia_valor', 'Vendas do Dia (Valor)', 'Valor total vendido hoje', 'vendas', 'card', 'DollarSign', 'green', 2, 1),
+('os_aberto', 'OS em Aberto', 'Quantidade de ordens de serviço em aberto', 'operacional', 'card', 'ClipboardList', 'indigo', 3, 1),
+('os_em_producao', 'OS em Produção', 'Quantidade de ordens em produção', 'operacional', 'card', 'Package', 'blue', 4, 1),
+('envelopamentos_orcados', 'Orç. Envelopamento', 'Envelopamentos orçados', 'operacional', 'card', 'Palette', 'purple', 5, 1),
+('estoque_baixo', 'Estoque Baixo', 'Itens com estoque abaixo do mínimo', 'operacional', 'card', 'Archive', 'orange', 6, 1),
+('total_clientes', 'Total de Clientes', 'Quantidade total de clientes cadastrados', 'geral', 'card', 'Users', 'blue', 7, 1),
+('total_receber', 'Total à Receber', 'Valor total a receber de clientes', 'financeiro', 'card', 'DollarSign', 'green', 8, 1),
+('total_pagar', 'Total à Pagar', 'Valor total a pagar', 'financeiro', 'card', 'MinusCircle', 'red', 9, 1),
+('ticket_medio', 'Ticket Médio', 'Valor médio por venda', 'vendas', 'card', 'TrendingUp', 'blue', 10, 1),
+('novos_clientes_mes', 'Novos Clientes (Mês)', 'Clientes cadastrados este mês', 'vendas', 'card', 'UserPlus', 'green', 11, 1),
+('vendas_mes', 'Vendas do Mês', 'Total de vendas realizadas este mês', 'vendas', 'card', 'Calendar', 'blue', 12, 1),
+('faturamento_mes', 'Faturamento do Mês', 'Faturamento total do mês atual', 'financeiro', 'card', 'TrendingUp', 'green', 13, 1),
+('producao_trabalhos', 'Trabalhos em Produção', 'Total de trabalhos em produção', 'producao', 'card', 'Factory', 'yellow', 14, 1),
+('producao_concluidos', 'Trabalhos Concluídos', 'Trabalhos concluídos no período', 'producao', 'card', 'CheckCircle2', 'green', 15, 1),
+('producao_atrasados', 'Trabalhos Atrasados', 'Trabalhos com atraso', 'producao', 'card', 'AlertCircle', 'red', 16, 1),
+('feed_vendas', 'Feed de Vendas', 'Últimas vendas realizadas', 'vendas', 'feed', 'ShoppingCart', 'blue', 20, 1),
+('feed_os', 'Feed de OS', 'Últimas ordens de serviço', 'operacional', 'feed', 'ClipboardList', 'indigo', 21, 1),
+('feed_envelopamentos', 'Feed de Envelopamentos', 'Últimos envelopamentos', 'operacional', 'feed', 'Palette', 'purple', 22, 1),
+('grafico_vendas_mes', 'Gráfico de Vendas (Mês)', 'Gráfico de vendas do mês', 'vendas', 'grafico', 'BarChart3', 'blue', 30, 1),
+('grafico_faturamento', 'Gráfico de Faturamento', 'Gráfico de faturamento', 'financeiro', 'grafico', 'TrendingUp', 'green', 31, 1),
+('tabela_produtos_vendidos', 'Produtos Mais Vendidos', 'Tabela com produtos mais vendidos', 'vendas', 'tabela', 'Package', 'blue', 40, 1),
+('tabela_contas_receber', 'Contas a Receber', 'Tabela de contas a receber', 'financeiro', 'tabela', 'DollarSign', 'green', 41, 1),
+('tabela_contas_pagar', 'Contas a Pagar', 'Tabela de contas a pagar', 'financeiro', 'tabela', 'MinusCircle', 'red', 42, 1),
+('agenda_hoje', 'Agenda de Hoje', 'Compromissos agendados para hoje', 'geral', 'tabela', 'Calendar', 'blue', 50, 1),
+('proximos_compromissos', 'Próximos Compromissos', 'Próximos compromissos agendados', 'geral', 'tabela', 'CalendarClock', 'blue', 51, 1);
+
+-- =====================================================
+-- 10. RESUMO FINAL ATUALIZADO
+-- =====================================================
+
+SELECT '' AS '';
+SELECT 'Tabelas de Dashboard verificadas:' AS '';
+SELECT 
+    CASE 
+        WHEN COUNT(*) > 0 THEN CONCAT('✓ dashboard_widgets - ', COUNT(*), ' registro(s)')
+        ELSE '✗ dashboard_widgets - Tabela não encontrada'
+    END AS status
+FROM information_schema.tables 
+WHERE table_schema = DATABASE() 
+AND table_name = 'dashboard_widgets';
+
+SELECT 
+    CASE 
+        WHEN COUNT(*) > 0 THEN CONCAT('✓ dashboard_configs - ', COUNT(*), ' registro(s)')
+        ELSE '✗ dashboard_configs - Tabela não encontrada'
+    END AS status
+FROM information_schema.tables 
+WHERE table_schema = DATABASE() 
+AND table_name = 'dashboard_configs';
+
+SELECT 
+    CASE 
+        WHEN COUNT(*) > 0 THEN CONCAT('✓ dashboard_permissions - ', COUNT(*), ' registro(s)')
+        ELSE '✗ dashboard_permissions - Tabela não encontrada'
+    END AS status
+FROM information_schema.tables 
+WHERE table_schema = DATABASE() 
+AND table_name = 'dashboard_permissions';
 
 SELECT '' AS '';
 SELECT '========================================' AS '';

@@ -1815,6 +1815,59 @@ export const relatorioProducaoService = {
   },
 };
 
+// Serviços para Dashboard Configurável
+export const dashboardService = {
+  getWidgetsDisponiveis: async () => {
+    try {
+      const response = await api.get('/api/dashboard/widgets-disponiveis');
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao buscar widgets disponíveis:', error);
+      throw error;
+    }
+  },
+  
+  getConfiguracao: async () => {
+    try {
+      const response = await api.get('/api/dashboard/configuracao');
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao buscar configuração do dashboard:', error);
+      throw error;
+    }
+  },
+  
+  salvarConfiguracao: async (dados) => {
+    try {
+      const response = await api.post('/api/dashboard/configuracao', dados);
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao salvar configuração do dashboard:', error);
+      throw error;
+    }
+  },
+  
+  getDadosWidget: async (widgetCodigo, filtros = {}) => {
+    try {
+      const response = await api.get(`/api/dashboard/widget/${widgetCodigo}`, { params: filtros });
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao buscar dados do widget:', error);
+      throw error;
+    }
+  },
+  
+  getDadosWidgets: async (widgets, filtros = {}) => {
+    try {
+      const response = await api.post('/api/dashboard/widgets', { widgets, ...filtros });
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao buscar dados dos widgets:', error);
+      throw error;
+    }
+  },
+};
+
 // Serviços para Clientes Diminuindo Compras
 export const clienteTendenciaService = {
   getClientesComQueda: (params = {}) => api.get('/api/clientes-tendencia', { params }),
