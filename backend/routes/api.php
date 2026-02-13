@@ -37,6 +37,7 @@ use App\Http\Controllers\Api\EmpresaController;
 use App\Http\Controllers\Api\OpcaoFreteController;
 use App\Http\Controllers\Api\EntregadorController;
 use App\Http\Controllers\Api\FreteEntregaController;
+use App\Http\Controllers\Api\RomaneioController;
 use App\Http\Controllers\Api\AparenciaController;
 use App\Http\Controllers\Api\LixeiraController;
 use App\Http\Controllers\Api\AdminConfiguracaoController;
@@ -245,6 +246,13 @@ Route::middleware(['api.auth'])->group(function () {
     Route::post('fretes-entregas/{id}/marcar-pago', [FreteEntregaController::class, 'marcarComoPago'])->name('api.fretes-entregas.marcar-pago');
     Route::post('fretes-entregas/{id}/integrar-holerite', [FreteEntregaController::class, 'integrarHolerite'])->name('api.fretes-entregas.integrar-holerite');
     Route::delete('vendas/codigo/{codigo}', [VendaController::class, 'destroyByCodigo']);
+    
+    // Rotas de Romaneios
+    Route::get('romaneios/pedidos-disponiveis', [RomaneioController::class, 'pedidosDisponiveis'])->name('api.romaneios.pedidos-disponiveis');
+    Route::post('romaneios/calcular-rota', [RomaneioController::class, 'calcularRota'])->name('api.romaneios.calcular-rota');
+    Route::post('romaneios/{id}/atualizar-status', [RomaneioController::class, 'updateStatus'])->name('api.romaneios.atualizar-status');
+    Route::post('romaneios/{id}/confirmar-entrega', [RomaneioController::class, 'confirmarEntrega'])->name('api.romaneios.confirmar-entrega');
+    Route::apiResource('romaneios', RomaneioController::class);
     
     // Itens Venda
     Route::get('itens-venda', [ItemVendaController::class, 'index']);

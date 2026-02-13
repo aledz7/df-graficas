@@ -3,8 +3,8 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useNomeSistema } from '@/hooks/useNomeSistema.jsx';
 import {
-  LayoutDashboard, ShoppingCart, Package, Users, Truck, Banknote,
-  Settings, BarChart3, FileText, SprayCan, Calculator,
+  LayoutDashboard, ShoppingCart, Package, Users, Truck, Banknote, FileText,
+  Settings, BarChart3, SprayCan, Calculator,
   Palette, Boxes, BookOpen, Wrench, HardHat, FileClock, CheckCircle2, History, SlidersHorizontal, Trash2, Barcode, Store, Activity, CalendarDays, FileSpreadsheet, Box, LogIn, LogOut, PackagePlus, ListChecks, Printer, DollarSign, ShieldAlert, Ruler, Star, TrendingUp, CreditCard, Ticket, Gift, Receipt,   Trophy, Target, Maximize2, GraduationCap, Bell, TrendingDown, Thermometer, MessageSquare
 } from 'lucide-react';
 import IndiqueGanheModal from '@/components/IndiqueGanheModal';
@@ -112,6 +112,8 @@ const menuItems = [
     subItems: [
       { path: '/relatorios', label: 'Central de Relatórios', icon: BarChart3 },
       { path: '/relatorios/operacional/fretes', label: 'Relatório de Fretes', icon: Truck },
+      { path: '/operacional/romaneio', label: 'Montar Romaneio', icon: Truck },
+      { path: '/operacional/romaneios', label: 'Gestão de Romaneios', icon: FileText },
     ]
   },
   { path: '/catalogo-publico', label: 'Catálogo Público', icon: BookOpen },

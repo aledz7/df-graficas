@@ -809,6 +809,80 @@ PREPARE stmt2 FROM @sql2;
 EXECUTE stmt2;
 DEALLOCATE PREPARE stmt2;
 
+-- ========================================
+-- ROMANEIO DE ENTREGA
+-- ========================================
+
+-- Tabela romaneios
+CREATE TABLE IF NOT EXISTS `romaneios` (
+    `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `tenant_id` BIGINT UNSIGNED NOT NULL,
+    `numero_romaneio` VARCHAR(50) NOT NULL,
+    `entregador_id` BIGINT UNSIGNED NULL,
+    `data_romaneio` DATE NOT NULL,
+    `hora_saida` TIME NULL,
+    `hora_retorno` TIME NULL,
+    `status` ENUM('aberto', 'em_rota', 'finalizado', 'cancelado') NOT NULL DEFAULT 'aberto',
+    `quantidade_entregas` INT NOT NULL DEFAULT 0,
+    `entregas_realizadas` INT NOT NULL DEFAULT 0,
+    `entregas_pendentes` INT NOT NULL DEFAULT 0,
+    `observacoes` TEXT NULL,
+    `rota_sugerida` JSON NULL COMMENT 'Ordem sugerida dos endereços',
+    `distancia_total_km` DECIMAL(10, 2) NULL,
+    `tempo_estimado_minutos` INT NULL,
+    `endereco_origem` VARCHAR(255) NULL COMMENT 'Endereço da gráfica (ponto de partida)',
+    `usuario_criacao_id` BIGINT UNSIGNED NULL,
+    `created_at` TIMESTAMP NULL DEFAULT NULL,
+    `updated_at` TIMESTAMP NULL DEFAULT NULL,
+    `deleted_at` TIMESTAMP NULL DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `romaneios_numero_romaneio_unique` (`numero_romaneio`),
+    KEY `romaneios_tenant_id_data_romaneio_index` (`tenant_id`, `data_romaneio`),
+    KEY `romaneios_entregador_id_status_index` (`entregador_id`, `status`),
+    CONSTRAINT `romaneios_tenant_id_foreign` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `romaneios_entregador_id_foreign` FOREIGN KEY (`entregador_id`) REFERENCES `entregadores` (`id`) ON DELETE SET NULL,
+    CONSTRAINT `romaneios_usuario_criacao_id_foreign` FOREIGN KEY (`usuario_criacao_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Tabela romaneio_entregas
+CREATE TABLE IF NOT EXISTS `romaneio_entregas` (
+    `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `romaneio_id` BIGINT UNSIGNED NOT NULL,
+    `venda_id` BIGINT UNSIGNED NOT NULL,
+    `ordem_entrega` INT NOT NULL DEFAULT 0 COMMENT 'Ordem na rota sugerida',
+    `status` ENUM('pendente', 'entregue', 'nao_entregue', 'cancelado') NOT NULL DEFAULT 'pendente',
+    `data_hora_entrega` DATETIME NULL,
+    `observacao_entrega` TEXT NULL,
+    `motivo_nao_entrega` TEXT NULL,
+    `usuario_confirmacao_id` BIGINT UNSIGNED NULL,
+    `created_at` TIMESTAMP NULL DEFAULT NULL,
+    `updated_at` TIMESTAMP NULL DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `romaneio_entregas_romaneio_id_venda_id_unique` (`romaneio_id`, `venda_id`),
+    KEY `romaneio_entregas_romaneio_id_ordem_entrega_index` (`romaneio_id`, `ordem_entrega`),
+    KEY `romaneio_entregas_venda_id_status_index` (`venda_id`, `status`),
+    CONSTRAINT `romaneio_entregas_romaneio_id_foreign` FOREIGN KEY (`romaneio_id`) REFERENCES `romaneios` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `romaneio_entregas_venda_id_foreign` FOREIGN KEY (`venda_id`) REFERENCES `vendas` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `romaneio_entregas_usuario_confirmacao_id_foreign` FOREIGN KEY (`usuario_confirmacao_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Adicionar campo endereco_grafica na tabela empresas
+SET @col_exists_grafica = (
+    SELECT COUNT(*)
+    FROM information_schema.columns
+    WHERE table_schema = DATABASE()
+    AND table_name = 'empresas'
+    AND column_name = 'endereco_grafica'
+);
+
+SET @sql_grafica = IF(@col_exists_grafica = 0,
+    'ALTER TABLE `empresas` ADD COLUMN `endereco_grafica` TEXT NULL COMMENT ''Endereço fixo da gráfica para ponto de partida das rotas'' AFTER `endereco_completo`',
+    'SELECT ''Coluna endereco_grafica já existe'' AS status'
+);
+PREPARE stmt_grafica FROM @sql_grafica;
+EXECUTE stmt_grafica;
+DEALLOCATE PREPARE stmt_grafica;
+
 SELECT '' AS '';
 SELECT '========================================' AS '';
 SELECT 'FIM DO SCRIPT' AS '';

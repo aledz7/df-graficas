@@ -406,6 +406,14 @@ class Venda extends Model
     }
 
     /**
+     * Relacionamento com romaneio entregas
+     */
+    public function romaneioEntregas()
+    {
+        return $this->hasMany(RomaneioEntrega::class);
+    }
+
+    /**
      * Scope a query to only include vendas abertas.
      */
     public function scopeAbertas($query)

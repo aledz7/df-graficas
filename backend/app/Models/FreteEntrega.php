@@ -83,6 +83,29 @@ class FreteEntrega extends Model
     }
 
     /**
+     * Relacionamento com romaneio entrega (através da venda)
+     */
+    public function romaneioEntrega()
+    {
+        return $this->hasOne(RomaneioEntrega::class, 'venda_id', 'venda_id');
+    }
+
+    /**
+     * Relacionamento com romaneio (através de romaneioEntrega)
+     */
+    public function romaneio()
+    {
+        return $this->hasOneThrough(
+            Romaneio::class,
+            RomaneioEntrega::class,
+            'venda_id', // Foreign key on romaneio_entregas table
+            'id', // Foreign key on romaneios table
+            'venda_id', // Local key on fretes_entregas table
+            'romaneio_id' // Local key on romaneio_entregas table
+        );
+    }
+
+    /**
      * Scope para entregas pendentes
      */
     public function scopePendentes($query)

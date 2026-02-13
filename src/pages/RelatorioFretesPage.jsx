@@ -207,12 +207,12 @@ const RelatorioFretesPage = () => {
                         </div>
                         <div>
                             <Label>Entregador</Label>
-                            <Select value={entregadorId} onValueChange={setEntregadorId}>
+                            <Select value={entregadorId || undefined} onValueChange={(value) => setEntregadorId(value === 'all' ? '' : value)}>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Todos" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="">Todos</SelectItem>
+                                    <SelectItem value="all">Todos</SelectItem>
                                     {entregadores.map(ent => (
                                         <SelectItem key={ent.id} value={ent.id.toString()}>{ent.nome}</SelectItem>
                                     ))}
@@ -221,12 +221,12 @@ const RelatorioFretesPage = () => {
                         </div>
                         <div>
                             <Label>Tipo</Label>
-                            <Select value={tipo} onValueChange={setTipo}>
+                            <Select value={tipo || undefined} onValueChange={(value) => setTipo(value === 'all' ? '' : value)}>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Todos" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="">Todos</SelectItem>
+                                    <SelectItem value="all">Todos</SelectItem>
                                     <SelectItem value="proprio">Próprio</SelectItem>
                                     <SelectItem value="terceirizado">Terceirizado</SelectItem>
                                 </SelectContent>
@@ -234,12 +234,12 @@ const RelatorioFretesPage = () => {
                         </div>
                         <div>
                             <Label>Status</Label>
-                            <Select value={status} onValueChange={setStatus}>
+                            <Select value={status || undefined} onValueChange={(value) => setStatus(value === 'all' ? '' : value)}>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Todos" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="">Todos</SelectItem>
+                                    <SelectItem value="all">Todos</SelectItem>
                                     <SelectItem value="pendente">Pendente</SelectItem>
                                     <SelectItem value="entregue">Entregue</SelectItem>
                                     <SelectItem value="cancelado">Cancelado</SelectItem>
@@ -248,12 +248,12 @@ const RelatorioFretesPage = () => {
                         </div>
                         <div>
                             <Label>Status Pagamento</Label>
-                            <Select value={statusPagamento} onValueChange={setStatusPagamento}>
+                            <Select value={statusPagamento || undefined} onValueChange={(value) => setStatusPagamento(value === 'all' ? '' : value)}>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Todos" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="">Todos</SelectItem>
+                                    <SelectItem value="all">Todos</SelectItem>
                                     <SelectItem value="pendente">Pendente</SelectItem>
                                     <SelectItem value="pago">Pago</SelectItem>
                                     <SelectItem value="integrado_holerite">Integrado Holerite</SelectItem>
@@ -307,6 +307,7 @@ const RelatorioFretesPage = () => {
                                     <TableHead>Pedido</TableHead>
                                     <TableHead>Cliente</TableHead>
                                     <TableHead>Local</TableHead>
+                                    <TableHead>Romaneio</TableHead>
                                     <TableHead>Entregador</TableHead>
                                     <TableHead>Tipo</TableHead>
                                     <TableHead className="text-right">Valor</TableHead>
@@ -318,7 +319,7 @@ const RelatorioFretesPage = () => {
                             <TableBody>
                                 {isLoading ? (
                                     <TableRow>
-                                        <TableCell colSpan={10} className="h-24 text-center">
+                                        <TableCell colSpan={11} className="h-24 text-center">
                                             <div className="flex items-center justify-center">
                                                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mr-2"></div>
                                                 <span>Carregando relatório...</span>
@@ -341,6 +342,15 @@ const RelatorioFretesPage = () => {
                                                 {entrega.bairro && `${entrega.bairro}, `}
                                                 {entrega.cidade && `${entrega.cidade} - `}
                                                 {entrega.estado || ''}
+                                            </TableCell>
+                                            <TableCell>
+                                                {entrega.romaneio_entrega?.romaneio ? (
+                                                    <Badge variant="outline" className="text-xs">
+                                                        {entrega.romaneio_entrega.romaneio.numero_romaneio}
+                                                    </Badge>
+                                                ) : (
+                                                    '-'
+                                                )}
                                             </TableCell>
                                             <TableCell>{entrega.entregador?.nome || '-'}</TableCell>
                                             <TableCell>
@@ -371,7 +381,7 @@ const RelatorioFretesPage = () => {
                                     ))
                                 ) : (
                                     <TableRow>
-                                        <TableCell colSpan={10} className="h-24 text-center text-muted-foreground">
+                                        <TableCell colSpan={11} className="h-24 text-center text-muted-foreground">
                                             Nenhuma entrega encontrada para os filtros selecionados.
                                         </TableCell>
                                     </TableRow>

@@ -34,6 +34,7 @@ class Empresa extends Model
         'telefone',
         'whatsapp',
         'endereco_completo',
+        'endereco_grafica',
         'logradouro',
         'numero_endereco',
         'complemento',

@@ -1875,3 +1875,15 @@ export const freteEntregaService = {
   marcarComoPago: (id, data) => api.post(`/api/fretes-entregas/${id}/marcar-pago`, data),
   integrarHolerite: (id, data) => api.post(`/api/fretes-entregas/${id}/integrar-holerite`, data),
 };
+
+// Serviços para Romaneios
+export const romaneioService = {
+  getAll: (params = {}) => api.get('/api/romaneios', { params }),
+  getById: (id) => api.get(`/api/romaneios/${id}`),
+  getPedidosDisponiveis: (params = {}) => api.get('/api/romaneios/pedidos-disponiveis', { params }),
+  calcularRota: (data) => api.post('/api/romaneios/calcular-rota', data),
+  create: (data) => api.post('/api/romaneios', data),
+  updateStatus: (id, data) => api.post(`/api/romaneios/${id}/atualizar-status`, data),
+  confirmarEntrega: (id, data) => api.post(`/api/romaneios/${id}/confirmar-entrega`, data),
+  delete: (id) => api.delete(`/api/romaneios/${id}`),
+};

@@ -18,7 +18,7 @@ class FreteEntregaController extends BaseController
         $tenantId = auth()->user()->tenant_id;
         
         $query = FreteEntrega::where('tenant_id', $tenantId)
-            ->with(['venda', 'opcaoFrete', 'entregador', 'cliente']);
+            ->with(['venda', 'opcaoFrete', 'entregador', 'cliente', 'romaneioEntrega.romaneio']);
 
         // Filtros
         if ($request->has('data_inicio')) {
