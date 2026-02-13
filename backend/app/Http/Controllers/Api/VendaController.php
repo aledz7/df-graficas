@@ -138,6 +138,38 @@ class VendaController extends ResourceController
                 'vendedor_nome' => $data['vendedor_nome'] ?? 'não fornecido'
             ]);
             
+            // Verificar se o cliente é de permuta
+            $cliente = null;
+            $isClientePermuta = false;
+            if (!empty($data['cliente_id'])) {
+                $cliente = \App\Models\Cliente::find($data['cliente_id']);
+                if ($cliente && $cliente->is_cliente_permuta) {
+                    $isClientePermuta = true;
+                    // Configurar venda como permuta
+                    $data['tipo_pedido'] = 'PERMUTA';
+                    $data['forma_pagamento'] = 'Permuta';
+                    // Garantir que não há dados de pagamento que gerem contas
+                    if (empty($data['dados_pagamento'])) {
+                        $data['dados_pagamento'] = [
+                            [
+                                'metodo' => 'Permuta',
+                                'valor' => $data['valor_total'] ?? 0,
+                                'valorOriginal' => $data['valor_total'] ?? 0,
+                                'valorFinal' => $data['valor_total'] ?? 0,
+                                'parcelas' => 1
+                            ]
+                        ];
+                    }
+                    // Adicionar observação sobre permuta
+                    $observacaoPermuta = 'Pedido sem impacto financeiro';
+                    if (!empty($data['observacoes'])) {
+                        $data['observacoes'] = $data['observacoes'] . ' | ' . $observacaoPermuta;
+                    } else {
+                        $data['observacoes'] = $observacaoPermuta;
+                    }
+                }
+            }
+            
             $venda = $this->model::create($data);
             
             // Log para confirmar que a venda foi criada
@@ -148,23 +180,32 @@ class VendaController extends ResourceController
                 'cliente_id' => $venda->cliente_id,
                 'vendedor_nome' => $venda->vendedor_nome,
                 'forma_pagamento' => $venda->forma_pagamento,
+                'tipo_pedido' => $venda->tipo_pedido,
+                'is_cliente_permuta' => $isClientePermuta,
                 'dados_pagamento' => $venda->dados_pagamento
             ]);
             
             // Adiciona os itens e atualiza o estoque
             $this->processarItensVenda($venda, $request->input('itens'), 'decrement');
             
-            // Criar conta a receber apenas para vendas concluídas (não para orçamentos)
-            if ($venda->status === 'concluida') {
+            // Criar conta a receber apenas para vendas concluídas (não para orçamentos) e que NÃO sejam permutas
+            if ($venda->status === 'concluida' && !$isClientePermuta) {
                 $this->criarContaReceber($venda, $request);
                 
                 // Criar lançamentos no fluxo de caixa
                 $this->criarLancamentosCaixa($venda, $request);
             } else {
-                \Log::info('Venda não está com status concluida, não criando lançamentos', [
-                    'venda_id' => $venda->id,
-                    'status' => $venda->status
-                ]);
+                if ($isClientePermuta) {
+                    \Log::info('Venda de permuta - não criando contas a receber nem lançamentos no caixa', [
+                        'venda_id' => $venda->id,
+                        'cliente_id' => $venda->cliente_id
+                    ]);
+                } else {
+                    \Log::info('Venda não está com status concluida, não criando lançamentos', [
+                        'venda_id' => $venda->id,
+                        'status' => $venda->status
+                    ]);
+                }
             }
             
             // Recarrega a venda com os relacionamentos
@@ -1633,6 +1674,27 @@ class VendaController extends ResourceController
     protected function criarContaReceber(Venda $venda, Request $request)
     {
         try {
+            // Não criar contas a receber para pedidos de permuta
+            if ($venda->tipo_pedido === 'PERMUTA') {
+                \Log::info('Venda de permuta - não criando conta a receber', [
+                    'venda_id' => $venda->id,
+                    'tipo_pedido' => $venda->tipo_pedido
+                ]);
+                return;
+            }
+            
+            // Verificar se o cliente é de permuta
+            if ($venda->cliente_id) {
+                $cliente = \App\Models\Cliente::find($venda->cliente_id);
+                if ($cliente && $cliente->is_cliente_permuta) {
+                    \Log::info('Cliente de permuta - não criando conta a receber', [
+                        'venda_id' => $venda->id,
+                        'cliente_id' => $venda->cliente_id
+                    ]);
+                    return;
+                }
+            }
+            
             // Verificar se já existem contas a receber para esta venda
             $contasExistentes = \App\Models\ContaReceber::where('venda_id', $venda->id)->count();
             
@@ -1827,6 +1889,27 @@ class VendaController extends ResourceController
     protected function criarLancamentosCaixa(Venda $venda, Request $request)
     {
         try {
+            // Não criar lançamentos no caixa para pedidos de permuta
+            if ($venda->tipo_pedido === 'PERMUTA') {
+                \Log::info('Venda de permuta - não criando lançamento no caixa', [
+                    'venda_id' => $venda->id,
+                    'tipo_pedido' => $venda->tipo_pedido
+                ]);
+                return;
+            }
+            
+            // Verificar se o cliente é de permuta
+            if ($venda->cliente_id) {
+                $cliente = \App\Models\Cliente::find($venda->cliente_id);
+                if ($cliente && $cliente->is_cliente_permuta) {
+                    \Log::info('Cliente de permuta - não criando lançamento no caixa', [
+                        'venda_id' => $venda->id,
+                        'cliente_id' => $venda->cliente_id
+                    ]);
+                    return;
+                }
+            }
+            
             \Log::info('Iniciando criação de lançamentos no caixa para venda', [
                 'venda_id' => $venda->id,
                 'venda_codigo' => $venda->codigo,

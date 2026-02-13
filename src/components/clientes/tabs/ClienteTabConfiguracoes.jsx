@@ -5,8 +5,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
+import { useAuth } from '@/contexts/AuthContext';
+import { AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const ClienteTabConfiguracoes = ({ cliente, handleInputChange, handleSwitchChange }) => {
+  const { user } = useAuth();
+  const isAdmin = user?.is_admin === true;
   
   const handleClienteTerceirizadoChange = (checked) => {
     handleSwitchChange('is_terceirizado', checked);
@@ -71,6 +76,31 @@ const ClienteTabConfiguracoes = ({ cliente, handleInputChange, handleSwitchChang
           <Switch id="status" name="status" checked={cliente.status === undefined ? true : cliente.status} onCheckedChange={(checked) => handleSwitchChange('status', checked)} />
           <Label htmlFor="status">Cliente Ativo</Label>
         </div>
+
+        {isAdmin && (
+          <>
+            <div className="border-t pt-4 mt-4">
+              <div className="flex items-center space-x-2">
+                <Switch 
+                  id="is_cliente_permuta" 
+                  name="is_cliente_permuta" 
+                  checked={cliente.is_cliente_permuta || false} 
+                  onCheckedChange={(checked) => handleSwitchChange('is_cliente_permuta', checked)} 
+                />
+                <Label htmlFor="is_cliente_permuta" className="font-medium text-base">Cliente de Permuta</Label>
+              </div>
+              {cliente.is_cliente_permuta && (
+                <Alert className="mt-3">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription className="text-sm">
+                    Pedidos para este cliente não gerarão contas a receber nem impactarão o fluxo de caixa. 
+                    O valor do pedido será registrado normalmente para histórico e produção.
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
+          </>
+        )}
       </CardContent>
     </Card>
   );

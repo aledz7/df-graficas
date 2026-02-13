@@ -1,7 +1,8 @@
 -- =====================================================
 -- SCRIPT COMPLETO PARA BANCO DE DADOS ONLINE
 -- Execute este script no banco de dados MySQL/MariaDB
--- Data: 2025-01-28
+-- Data inicial: 2025-01-28
+-- Última atualização: 2026-02-13
 -- =====================================================
 
 -- =====================================================
@@ -317,7 +318,53 @@ CREATE TABLE IF NOT EXISTS `historico_fechamento_mes` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =====================================================
--- 5. RESUMO FINAL
+-- 5. ALTERAÇÕES - PEDIDOS EM PERMUTA
+-- =====================================================
+-- Data: 2026-02-13
+-- Descrição: Adiciona suporte para pedidos em permuta (sem impacto financeiro)
+
+-- Verificar e adicionar coluna is_cliente_permuta em clientes (se não existir)
+SET @col_permuta_cliente = (
+    SELECT COUNT(*) 
+    FROM information_schema.columns 
+    WHERE table_schema = DATABASE() 
+    AND table_name = 'clientes' 
+    AND column_name = 'is_cliente_permuta'
+);
+
+SET @sql = IF(@col_permuta_cliente = 0,
+    'ALTER TABLE `clientes` 
+    ADD COLUMN `is_cliente_permuta` TINYINT(1) NOT NULL DEFAULT 0 
+    AFTER `is_terceirizado`;',
+    'SELECT ''Coluna is_cliente_permuta já existe em clientes.'' AS mensagem;'
+);
+
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Verificar e adicionar coluna tipo_pedido em vendas (se não existir)
+SET @col_tipo_pedido = (
+    SELECT COUNT(*) 
+    FROM information_schema.columns 
+    WHERE table_schema = DATABASE() 
+    AND table_name = 'vendas' 
+    AND column_name = 'tipo_pedido'
+);
+
+SET @sql = IF(@col_tipo_pedido = 0,
+    'ALTER TABLE `vendas` 
+    ADD COLUMN `tipo_pedido` VARCHAR(20) NULL 
+    AFTER `tipo_documento`;',
+    'SELECT ''Coluna tipo_pedido já existe em vendas.'' AS mensagem;'
+);
+
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- =====================================================
+-- 6. RESUMO FINAL
 -- =====================================================
 
 SELECT '========================================' AS '';
@@ -417,6 +464,30 @@ FROM information_schema.columns
 WHERE table_schema = DATABASE() 
 AND table_name = 'itens_venda' 
 AND column_name = 'venda_referencia_id';
+
+SELECT '' AS '';
+SELECT 'Colunas verificadas em clientes:' AS '';
+SELECT 
+    CASE 
+        WHEN COUNT(*) > 0 THEN '✓ is_cliente_permuta'
+        ELSE '✗ is_cliente_permuta - Coluna não encontrada'
+    END AS status
+FROM information_schema.columns 
+WHERE table_schema = DATABASE() 
+AND table_name = 'clientes' 
+AND column_name = 'is_cliente_permuta';
+
+SELECT '' AS '';
+SELECT 'Colunas verificadas em vendas:' AS '';
+SELECT 
+    CASE 
+        WHEN COUNT(*) > 0 THEN '✓ tipo_pedido'
+        ELSE '✗ tipo_pedido - Coluna não encontrada'
+    END AS status
+FROM information_schema.columns 
+WHERE table_schema = DATABASE() 
+AND table_name = 'vendas' 
+AND column_name = 'tipo_pedido';
 
 SELECT '' AS '';
 SELECT '========================================' AS '';

@@ -52,6 +52,7 @@ class Venda extends Model
         'usuario_id',
         'vendedor_id',
         'tipo_documento',
+        'tipo_pedido',
         'status',
         'status_pagamento',
         'forma_pagamento',

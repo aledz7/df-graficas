@@ -40,6 +40,7 @@ const defaultCliente = {
     classificacao_cliente: 'Padrão', 
     desconto_fixo_os_terceirizado: '0',
     is_terceirizado: false,
+    is_cliente_permuta: false,
     atendimentos: [],
     pontos: {
         total_ganhos: 0,
