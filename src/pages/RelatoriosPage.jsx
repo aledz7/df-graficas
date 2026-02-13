@@ -19,6 +19,7 @@ const reportCategories = [
       { id: 'pagamentos_recebidos', title: 'Pagamentos Recebidos', description: 'Total por forma de pagamento.', icon: DollarSign, path: '/relatorios/financeiro/pagamentos-recebidos' },
       { id: 'sangrias_suprimentos', title: 'Sangrias e Suprimentos', description: 'Movimentações manuais de caixa.', icon: ArrowDownUp, path: '/relatorios/financeiro/sangrias-suprimentos' },
       { id: 'geral_recebimentos', title: 'Geral de Recebimentos', description: 'Todas as entradas de valor.', icon: TrendingUp, path: '/relatorios/financeiro/geral-recebimentos' },
+      { id: 'dre', title: 'DRE - Demonstração do Resultado do Exercício', description: 'Receitas, custos, despesas e resultado do período.', icon: FileText, path: '/relatorios/financeiro/dre' },
     ]
   },
   {

@@ -80,6 +80,7 @@ const RelatorioMovimentacoesBancariasPage = lazy(() => import('@/components/rela
 const RelatorioPagamentosPage = lazy(() => import('@/components/relatorios/financeiros/RelatorioPagamentos'));
 const RelatorioSangriasSuprimentosPage = lazy(() => import('@/components/relatorios/financeiros/RelatorioSangriasSuprimentos'));
 const RelatorioGeralRecebimentosPage = lazy(() => import('@/components/relatorios/financeiros/RelatorioRecebimentos'));
+const RelatorioDREPage = lazy(() => import('@/components/relatorios/financeiros/RelatorioDRE'));
 
 // Relatórios Operacionais
 const VendasGeraisRelatorioPage = lazy(() => import('@/components/relatorios/operacionais/RelatorioVendas'));
@@ -184,6 +185,7 @@ const AppRoutes = ({ logoUrl, nomeEmpresa, vendedorAtual, theme, setTheme, setAp
       <Route path="/relatorios/financeiro/pagamentos-recebidos" element={<RelatorioPagamentosPage />} />
       <Route path="/relatorios/financeiro/sangrias-suprimentos" element={<RelatorioSangriasSuprimentosPage />} />
       <Route path="/relatorios/financeiro/geral-recebimentos" element={<RelatorioGeralRecebimentosPage />} />
+      <Route path="/relatorios/financeiro/dre" element={<RelatorioDREPage />} />
 
       <Route path="/relatorios/operacional/vendas-gerais" element={<VendasGeraisRelatorioPage vendedorAtual={vendedorAtual} />} />
       <Route path="/relatorios/operacional/ordens-de-servico" element={<OrdensServicoRelatorioPage />} />

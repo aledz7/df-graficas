@@ -228,6 +228,80 @@ const OrdensServicoPage = ({ vendedorAtual }) => {
         }
     }, [location.state]);
 
+    // Processar dados vindos do PDV
+    const processedPDVRef = useRef(false);
+    useEffect(() => {
+        if (location.state && location.state.fromPDV && !processedPDVRef.current) {
+            processedPDVRef.current = true;
+            
+            // Processar cliente se existir
+            let clienteProcessado = null;
+            if (location.state.cliente) {
+                clienteProcessado = {
+                    id: location.state.cliente.id || null,
+                    nome: location.state.cliente.nome || location.state.cliente.nome_completo,
+                    nome_completo: location.state.cliente.nome_completo || location.state.cliente.nome,
+                    email: location.state.cliente.email || '',
+                    telefone: location.state.cliente.telefone || '',
+                    cpf_cnpj: location.state.cliente.cpf_cnpj || ''
+                };
+            } else if (location.state.clienteNome) {
+                // Cliente avulso (sem cadastro)
+                clienteProcessado = null;
+            }
+            
+            // Processar itens do PDV para formato de OS
+            const itensProcessados = (location.state.itens || []).map(item => ({
+                ...item,
+                id_item_os: item.id_item_os || `item-${Date.now()}-${Math.random()}`,
+                nome_servico_produto: item.nome_servico_produto || 'Produto sem nome',
+                tipo_item: item.tipo_item || 'unidade',
+                quantidade: parseFloat(item.quantidade) || 1,
+                valor_unitario: parseFloat(item.valor_unitario) || 0,
+                subtotal_item: parseFloat(item.subtotal_item) || (parseFloat(item.quantidade) || 1) * (parseFloat(item.valor_unitario) || 0),
+                produto_id: item.produto_id || null,
+                variacao_selecionada: item.variacao_selecionada || null,
+                observacoes: item.observacoes || ''
+            }));
+            
+            // Atualizar estado da OS com os dados do PDV
+            const novoEstado = {
+                ...ordemServico,
+                itens: itensProcessados,
+                cliente_nome_manual: location.state.clienteNome || '',
+                cliente_id: clienteProcessado?.id || null,
+                cliente_info: clienteProcessado || null,
+                observacoes_gerais_os: location.state.observacoes_gerais_os || '',
+                valor_total_os: parseFloat(location.state.valor_total_os) || 0,
+                desconto_geral_tipo: location.state.desconto_geral_tipo || 'percentual',
+                desconto_geral_valor: parseFloat(location.state.desconto_geral_valor) || 0,
+                frete_valor: parseFloat(location.state.frete_valor) || 0
+            };
+            
+            setOrdemServico(novoEstado);
+            
+            // Se há cliente processado, selecioná-lo
+            if (clienteProcessado) {
+                handleClienteSelecionado(clienteProcessado);
+            }
+            
+            toast({
+                title: "Dados do PDV carregados",
+                description: "Os produtos foram convertidos para Ordem de Serviço.",
+            });
+            
+            // Limpar o state após processar os dados do PDV
+            navigate(location.pathname, { replace: true, state: {} });
+        }
+    }, [location.state?.fromPDV, setOrdemServico, handleClienteSelecionado, navigate, toast]);
+
+    // Reset da ref quando não há dados do PDV
+    useEffect(() => {
+        if (!location.state?.fromPDV) {
+            processedPDVRef.current = false;
+        }
+    }, [location.state]);
+
     const [isNovoClienteModalOpen, setIsNovoClienteModalOpen] = useState(false);
 
     // Log de debug removido para evitar loop infinito

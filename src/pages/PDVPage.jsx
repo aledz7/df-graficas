@@ -338,6 +338,67 @@ const PDVPage = ({ vendedorAtual }) => {
     }
   }, [searchTerm, produtos, addProdutoAoCarrinho]);
     
+    const handleTransformarEmOS = () => {
+        if (carrinho.length === 0) {
+            toast({ title: "Carrinho Vazio", description: "Adicione produtos antes de transformar em O.S.", variant: "destructive" });
+            return;
+        }
+        if (!clienteSelecionado && !clienteNomeLivre) {
+            toast({ title: "Cliente não informado", description: "Selecione ou informe um cliente.", variant: "destructive" });
+            return;
+        }
+
+        // Converter itens do carrinho para formato de OS
+        const itensOS = carrinho.map((item, index) => {
+            const idItemOS = `item-${Date.now()}-${index}`;
+            return {
+                id_item_os: idItemOS,
+                nome_servico_produto: item.nome || 'Produto sem nome',
+                tipo_item: 'unidade', // PDV trabalha com unidades
+                quantidade: parseFloat(item.quantidade) || 1,
+                valor_unitario: parseFloat(item.preco_venda_aplicado || item.preco_venda_unitario || 0),
+                subtotal_item: (parseFloat(item.quantidade) || 1) * (parseFloat(item.preco_venda_aplicado || item.preco_venda_unitario || 0)),
+                produto_id: item.id_produto || null,
+                variacao_selecionada: item.variacao || null,
+                observacoes: item.observacoes || ''
+            };
+        });
+
+        // Preparar dados do cliente
+        const clienteInfo = clienteSelecionado ? {
+            id: clienteSelecionado.id,
+            nome: clienteSelecionado.nome_completo || clienteSelecionado.nome,
+            nome_completo: clienteSelecionado.nome_completo || clienteSelecionado.nome,
+            email: clienteSelecionado.email || '',
+            telefone: clienteSelecionado.telefone || '',
+            cpf_cnpj: clienteSelecionado.cpf_cnpj || ''
+        } : null;
+
+        // Calcular valores
+        const subtotalCalculado = calcularSubtotal();
+        const descontoValor = calcularDescontoValor();
+        const valorTotalCalculado = valorTotal;
+        const freteValor = frete ? parseFloat(frete.valor_frete || 0) : 0;
+
+        // Navegar para a página de OS com os dados
+        navigate('/operacional/ordens-servico', {
+            state: {
+                fromPDV: true,
+                cliente: clienteInfo,
+                clienteNome: clienteNomeLivre || clienteInfo?.nome,
+                itens: itensOS,
+                observacoes_gerais_os: observacoes || '',
+                valor_total_os: valorTotalCalculado + freteValor,
+                subtotal: subtotalCalculado,
+                desconto: descontoValor,
+                desconto_geral_tipo: desconto.tipo || 'percentual',
+                desconto_geral_valor: desconto.valor || 0,
+                frete_valor: freteValor,
+                frete: frete
+            }
+        });
+    };
+
     const handleFinalizarDocumentoAction = async () => {
         if (carrinho.length === 0) {
             toast({ title: "Carrinho Vazio", description: "Adicione produtos antes de finalizar.", variant: "destructive" });
@@ -571,6 +632,7 @@ const PDVPage = ({ vendedorAtual }) => {
                     setModoDocumento={setModoDocumento}
                     frete={frete}
                     setFrete={setFrete}
+                    handleTransformarEmOS={handleTransformarEmOS}
                 />
             </div>
 

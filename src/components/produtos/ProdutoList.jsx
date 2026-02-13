@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { MoreVertical, Edit, Trash2, Package, Share2 } from 'lucide-react';
+import { MoreVertical, Edit, Trash2, Package, Share2, Copy } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { motion } from 'framer-motion';
 import { calcularEstoqueTotal } from '@/utils/estoqueUtils';
@@ -56,6 +56,7 @@ const ProdutoList = ({
     onEdit, 
     onDelete, 
     onShare,
+    onDuplicate,
     selectedProdutos, 
     setSelectedProdutos,
     canEdit = true,
@@ -155,6 +156,17 @@ const ProdutoList = ({
                                                         <Share2 className="mr-2 h-4 w-4" />
                                                         Compartilhar
                                                     </Button>
+                                                    {onDuplicate && (
+                                                        <Button 
+                                                            variant="outline" 
+                                                            size="sm" 
+                                                            onClick={() => onDuplicate(produto)}
+                                                            className="flex-1 text-purple-600 hover:text-purple-700 border-purple-300 hover:border-purple-400"
+                                                        >
+                                                            <Copy className="mr-2 h-4 w-4" />
+                                                            Duplicar
+                                                        </Button>
+                                                    )}
                                                     {canEdit && (
                                                         <Button 
                                                             variant="outline" 
@@ -254,10 +266,13 @@ const ProdutoList = ({
                                                     >
                                                         <Share2 className="h-4 w-4" />
                                                     </Button>
-                                                    {(canEdit || canDelete) && (
+                                                    {(canEdit || canDelete || onDuplicate) && (
                                                         <DropdownMenu>
                                                             <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
                                                             <DropdownMenuContent>
+                                                                {onDuplicate && (
+                                                                    <DropdownMenuItem onClick={() => onDuplicate(produto)}><Copy className="mr-2 h-4 w-4"/>Duplicar</DropdownMenuItem>
+                                                                )}
                                                                 {canEdit && (
                                                                     <DropdownMenuItem onClick={() => onEdit(produto)}><Edit className="mr-2 h-4 w-4"/>Editar</DropdownMenuItem>
                                                                 )}

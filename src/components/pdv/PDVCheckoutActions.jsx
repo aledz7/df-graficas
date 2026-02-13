@@ -5,7 +5,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { XCircle, UserPlus, FileText, Save, Truck } from 'lucide-react';
+import { XCircle, UserPlus, FileText, Save, Truck, Wrench } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { opcaoFreteService, entregadorService } from '@/services/api';
 
 const PDVCheckoutActions = ({
@@ -27,6 +28,7 @@ const PDVCheckoutActions = ({
   setModoDocumento,
   frete,
   setFrete,
+  handleTransformarEmOS,
 }) => {
   const [opcoesFrete, setOpcoesFrete] = useState([]);
   const [entregadores, setEntregadores] = useState([]);
@@ -231,6 +233,17 @@ const PDVCheckoutActions = ({
         </div>
       </div>
 
+      {handleTransformarEmOS && (
+        <Button 
+          variant="outline" 
+          className="w-full mb-3 border-purple-500 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20"
+          onClick={handleTransformarEmOS}
+          disabled={carrinho.length === 0}
+        >
+          <Wrench size={18} className="mr-2"/>
+          Transformar em O.S
+        </Button>
+      )}
 
       <div className="mt-auto grid grid-cols-2 gap-3 pt-3 border-t">
         <Button variant="outline" className="w-full" onClick={handleCancelarVenda}>
