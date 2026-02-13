@@ -122,7 +122,7 @@ class AuthController extends Controller
 
         if (! $user || ! Hash::check($request->password, $user->password)) {
             throw ValidationException::withMessages([
-                'email' => ['The provided credentials are incorrect.'],
+                'email' => ['As credenciais fornecidas estão incorretas.'],
             ]);
         }
 
@@ -147,20 +147,25 @@ class AuthController extends Controller
                 'two_factor_code_expires_at' => $expiresAt
             ]);
 
-            // Enviar email com o código
-            try {
-                Mail::send('emails.two-factor-code', [
-                    'code' => $code,
-                    'user' => $user,
-                    'expires_at' => $expiresAt->format('d/m/Y H:i')
-                ], function ($message) use ($user) {
-                    $message->to($user->email, $user->name)
-                            ->subject('Código de Verificação - Autenticação de Dois Fatores');
-                });
-            } catch (\Exception $e) {
-                // Log do erro, mas não falhar o login
-                \Log::error('Erro ao enviar código 2FA: ' . $e->getMessage());
-            }
+            // Enviar email com o código APÓS retornar a resposta (não bloqueia o request)
+            $userEmail = $user->email;
+            $userName = $user->name;
+            $expiresFormatted = $expiresAt->format('d/m/Y H:i');
+            
+            defer(function () use ($code, $userEmail, $userName, $expiresFormatted) {
+                try {
+                    Mail::send('emails.two-factor-code', [
+                        'code' => $code,
+                        'user' => (object) ['name' => $userName, 'email' => $userEmail],
+                        'expires_at' => $expiresFormatted
+                    ], function ($message) use ($userEmail, $userName) {
+                        $message->to($userEmail, $userName)
+                                ->subject('Código de Verificação - Autenticação de Dois Fatores');
+                    });
+                } catch (\Exception $e) {
+                    \Log::error('Erro ao enviar código 2FA: ' . $e->getMessage());
+                }
+            });
 
             return response()->json([
                 'success' => true,
@@ -335,27 +340,30 @@ class AuthController extends Controller
             'two_factor_code_expires_at' => $expiresAt
         ]);
 
-        // Enviar email com o código
-        try {
-            Mail::send('emails.two-factor-code', [
-                'code' => $code,
-                'user' => $user,
-                'expires_at' => $expiresAt->format('d/m/Y H:i')
-            ], function ($message) use ($user) {
-                $message->to($user->email, $user->name)
-                        ->subject('Código de Verificação - Autenticação de Dois Fatores');
-            });
+        // Enviar email com o código APÓS retornar a resposta (não bloqueia o request)
+        $userEmail = $user->email;
+        $userName = $user->name;
+        $expiresFormatted = $expiresAt->format('d/m/Y H:i');
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Código de verificação enviado para seu email.'
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erro ao enviar código de verificação. Tente novamente.'
-            ], 500);
-        }
+        defer(function () use ($code, $userEmail, $userName, $expiresFormatted) {
+            try {
+                Mail::send('emails.two-factor-code', [
+                    'code' => $code,
+                    'user' => (object) ['name' => $userName, 'email' => $userEmail],
+                    'expires_at' => $expiresFormatted
+                ], function ($message) use ($userEmail, $userName) {
+                    $message->to($userEmail, $userName)
+                            ->subject('Código de Verificação - Autenticação de Dois Fatores');
+                });
+            } catch (\Exception $e) {
+                \Log::error('Erro ao enviar código 2FA: ' . $e->getMessage());
+            }
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Código de verificação enviado para seu email.'
+        ]);
     }
 
     public function verifyTwoFactorCode(Request $request)
