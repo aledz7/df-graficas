@@ -575,17 +575,15 @@ class ClienteController extends ResourceController
         }
 
         // Normalizar campos booleanos
-        $booleanFields = ['status', 'autorizado_prazo', 'is_terceirizado'];
+        $booleanFields = ['autorizado_prazo', 'is_terceirizado'];
         foreach ($booleanFields as $field) {
             if (array_key_exists($field, $data)) {
                 $data[$field] = $this->toBool($data[$field]);
             }
         }
 
-        // Defaults para campos booleanos ausentes
-        if (!array_key_exists('status', $data)) {
-            $data['status'] = true;
-        }
+        // Importação sempre entra como ativo, independente do valor na planilha
+        $data['status'] = true;
         if (!array_key_exists('autorizado_prazo', $data)) {
             $data['autorizado_prazo'] = false;
         }
