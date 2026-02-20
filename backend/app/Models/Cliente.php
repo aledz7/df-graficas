@@ -201,6 +201,14 @@ class Cliente extends Model
     }
 
     /**
+     * Obtém as ordens de serviço do cliente.
+     */
+    public function ordensServico()
+    {
+        return $this->hasMany(OrdemServico::class, 'cliente_id');
+    }
+
+    /**
      * Obtém os atendimentos do cliente.
      */
     public function atendimentos()

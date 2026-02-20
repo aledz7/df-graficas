@@ -729,37 +729,50 @@ export const moverParaLixeiraPDV = async (venda, justificativa, deletedBy, regis
     }
 
   } else if (venda.tipo === 'Orçamento PDV') {
-    let orcamentosSalvos = await apiDataManager.getDataAsArray('orcamentosPDV', []);
-    
-    // Garantir que orcamentosSalvos seja um array
-    if (!Array.isArray(orcamentosSalvos)) {
-      console.warn('orcamentosSalvos não é um array válido. Inicializando como array vazio.');
-      orcamentosSalvos = [];
-    }
-    
-    const novosOrcamentos = orcamentosSalvos.filter(o => o.id !== venda.id);
-    
-    // Salvar no backend apenas se houver orçamentos restantes
-    if (novosOrcamentos.length > 0) {
+    if (venda.id && !venda.id.toString().startsWith('local-')) {
       try {
-        await pdvService.salvarHistoricoOrcamentos(novosOrcamentos);
+        await api.delete(`/api/vendas/${venda.id}`, {
+          data: {
+            justificativa_exclusao: justificativa
+          }
+        });
       } catch (error) {
-        console.error('Erro ao atualizar histórico de orçamentos no backend após exclusão:', error);
-        throw error; // Re-throw para que o erro seja tratado pelo chamador
+        console.error('Erro ao excluir orçamento via API:', error);
+        throw new Error(`Erro ao excluir orçamento: ${error.response?.data?.message || error.message}`);
+      }
+
+      if (registrarAcaoCallback && typeof registrarAcaoCallback === 'function') {
+        registrarAcaoCallback([], 'Orçamento PDV');
       }
     } else {
-      // Se não há orçamentos restantes, remover completamente do backend
-      try {
-        await apiDataManager.removeItem('orcamentosPDV');
-      } catch (error) {
-        console.error('Erro ao limpar histórico de orçamentos no backend após exclusão:', error);
-        throw error; // Re-throw para que o erro seja tratado pelo chamador
+      let orcamentosSalvos = await apiDataManager.getDataAsArray('orcamentosPDV', []);
+      
+      if (!Array.isArray(orcamentosSalvos)) {
+        console.warn('orcamentosSalvos não é um array válido. Inicializando como array vazio.');
+        orcamentosSalvos = [];
       }
-    }
-    
-    // Se o callback for fornecido, passa os dados atualizados e o tipo de documento
-    if (registrarAcaoCallback && typeof registrarAcaoCallback === 'function') {
-      registrarAcaoCallback(novosOrcamentos, 'Orçamento PDV');
+      
+      const novosOrcamentos = orcamentosSalvos.filter(o => o.id !== venda.id);
+      
+      if (novosOrcamentos.length > 0) {
+        try {
+          await pdvService.salvarHistoricoOrcamentos(novosOrcamentos);
+        } catch (error) {
+          console.error('Erro ao atualizar histórico de orçamentos no backend após exclusão:', error);
+          throw error;
+        }
+      } else {
+        try {
+          await apiDataManager.removeItem('orcamentosPDV');
+        } catch (error) {
+          console.error('Erro ao limpar histórico de orçamentos no backend após exclusão:', error);
+          throw error;
+        }
+      }
+
+      if (registrarAcaoCallback && typeof registrarAcaoCallback === 'function') {
+        registrarAcaoCallback(novosOrcamentos, 'Orçamento PDV');
+      }
     }
   }
   

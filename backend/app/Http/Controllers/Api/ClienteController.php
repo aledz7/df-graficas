@@ -207,13 +207,12 @@ class ClienteController extends ResourceController
      */
     public function destroy($id): JsonResponse
     {
-        $cliente = Cliente::withCount(['vendas', 'orcamentos'])->find($id);
+        $cliente = Cliente::withCount(['vendas', 'orcamentos', 'ordensServico'])->find($id);
 
         if (!$cliente) {
             return $this->notFound('Cliente não encontrado');
         }
 
-        // Verificar se o cliente tem vendas ou orçamentos associados
         if ($cliente->vendas_count > 0) {
             return $this->error('Não é possível excluir o cliente pois ele possui vendas associadas', 422);
         }
@@ -222,8 +221,21 @@ class ClienteController extends ResourceController
             return $this->error('Não é possível excluir o cliente pois ele possui orçamentos associados', 422);
         }
 
+        if ($cliente->ordens_servico_count > 0) {
+            return $this->error('Não é possível excluir o cliente pois ele possui ordens de serviço ativas', 422);
+        }
+
         try {
-            $cliente->delete();
+            DB::transaction(function () use ($cliente) {
+                // Limpar referência do cliente em OS que já foram excluídas (soft deleted)
+                DB::table('ordens_servico')
+                    ->where('cliente_id', $cliente->id)
+                    ->whereNotNull('deleted_at')
+                    ->update(['cliente_id' => null]);
+
+                $cliente->delete();
+            });
+
             return $this->success(null, 'Cliente removido com sucesso');
         } catch (\Exception $e) {
             return $this->error('Não foi possível remover o cliente: ' . $e->getMessage());

@@ -100,17 +100,6 @@ const AdminSettingsPage = () => {
   };
 
   const handleSaveSenhaMaster = async () => {
-    // Verificar se há senha master configurada
-    const temSenha = await adminConfigService.temSenhaMaster();
-    
-    if (temSenha) {
-      // Se há senha master, solicitar confirmação
-      setOperacaoPendente('salvar_senha_master');
-      setShowSenhaMasterModal(true);
-      return;
-    }
-    
-    // Se não há senha master, executar diretamente
     await executarSalvarSenhaMaster();
   };
 
