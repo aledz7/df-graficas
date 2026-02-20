@@ -357,12 +357,12 @@ const ClientesPage = ({ vendedorAtual }) => {
       const totalItens = itens.length;
       const totalBatches = Math.ceil(totalItens / BATCH_SIZE);
       let totalImportados = 0;
-      let totalAtualizados = 0;
+      let totalIgnorados = 0;
       let allImportadosNomes = [];
-      let allAtualizadosNomes = [];
+      let allIgnoradosNomes = [];
       let allErros = [];
 
-      setImportProgress({ current: 0, total: totalItens, importados: 0, atualizados: 0, erros: 0 });
+      setImportProgress({ current: 0, total: totalItens, importados: 0, ignorados: 0, erros: 0 });
 
       for (let i = 0; i < totalBatches; i++) {
         const batch = itens.slice(i * BATCH_SIZE, (i + 1) * BATCH_SIZE);
@@ -372,9 +372,9 @@ const ClientesPage = ({ vendedorAtual }) => {
           const response = await api.post('/api/clientes/importar', { itens: batch });
           const result = response.data?.data || {};
           totalImportados += result.importados || 0;
-          totalAtualizados += result.atualizados || 0;
+          totalIgnorados += result.ignorados || 0;
           if (result.importados_nomes?.length) allImportadosNomes.push(...result.importados_nomes);
-          if (result.atualizados_nomes?.length) allAtualizadosNomes.push(...result.atualizados_nomes);
+          if (result.ignorados_nomes?.length) allIgnoradosNomes.push(...result.ignorados_nomes);
           if (result.erros?.length) allErros.push(...result.erros);
         } catch (err) {
           allErros.push({ nome: `Lote ${i + 1}`, erro: err.message });
@@ -384,7 +384,7 @@ const ClientesPage = ({ vendedorAtual }) => {
           current: enviados,
           total: totalItens,
           importados: totalImportados,
-          atualizados: totalAtualizados,
+          ignorados: totalIgnorados,
           erros: allErros.length,
         });
       }
@@ -393,14 +393,14 @@ const ClientesPage = ({ vendedorAtual }) => {
 
       setImportResult({
         importados: totalImportados,
-        atualizados: totalAtualizados,
+        ignorados: totalIgnorados,
         importadosNomes: allImportadosNomes,
-        atualizadosNomes: allAtualizadosNomes,
+        ignoradosNomes: allIgnoradosNomes,
         erros: allErros,
         total: totalItens,
       });
 
-      if (totalImportados + totalAtualizados > 0) {
+      if (totalImportados > 0) {
         await fetchClientes(1);
       }
     } catch (error) {
@@ -522,8 +522,8 @@ const ClientesPage = ({ vendedorAtual }) => {
             <span className="flex items-center gap-1 text-green-600 dark:text-green-400">
               <CheckCircle2 className="h-3.5 w-3.5" /> {importProgress.importados} novo(s)
             </span>
-            <span className="flex items-center gap-1 text-blue-600 dark:text-blue-400">
-              <RefreshCcw className="h-3.5 w-3.5" /> {importProgress.atualizados} atualizado(s)
+            <span className="flex items-center gap-1 text-yellow-600 dark:text-yellow-400">
+              <AlertCircle className="h-3.5 w-3.5" /> {importProgress.ignorados} ignorado(s)
             </span>
             {importProgress.erros > 0 && (
               <span className="flex items-center gap-1 text-red-600 dark:text-red-400">
@@ -667,9 +667,9 @@ const ClientesPage = ({ vendedorAtual }) => {
                 <p className="text-2xl font-bold text-green-600 dark:text-green-400">{importResult.importados}</p>
                 <p className="text-xs text-green-700 dark:text-green-300 mt-1">Novos</p>
               </div>
-              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 text-center border border-blue-200 dark:border-blue-800">
-                <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{importResult.atualizados}</p>
-                <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">Atualizados</p>
+              <div className={`rounded-lg p-3 text-center border ${importResult.ignorados > 0 ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800' : 'bg-gray-50 dark:bg-gray-700/30 border-gray-200 dark:border-gray-600'}`}>
+                <p className={`text-2xl font-bold ${importResult.ignorados > 0 ? 'text-yellow-600 dark:text-yellow-400' : 'text-gray-400 dark:text-gray-500'}`}>{importResult.ignorados}</p>
+                <p className={`text-xs mt-1 ${importResult.ignorados > 0 ? 'text-yellow-700 dark:text-yellow-300' : 'text-gray-500 dark:text-gray-400'}`}>Ignorados</p>
               </div>
               <div className={`rounded-lg p-3 text-center border ${importResult.erros.length > 0 ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' : 'bg-gray-50 dark:bg-gray-700/30 border-gray-200 dark:border-gray-600'}`}>
                 <p className={`text-2xl font-bold ${importResult.erros.length > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-400 dark:text-gray-500'}`}>{importResult.erros.length}</p>
@@ -696,16 +696,16 @@ const ClientesPage = ({ vendedorAtual }) => {
                 </details>
               )}
 
-              {importResult.atualizadosNomes.length > 0 && (
+              {importResult.ignoradosNomes.length > 0 && (
                 <details className="group">
-                  <summary className="flex items-center gap-2 cursor-pointer text-sm font-medium text-blue-700 dark:text-blue-400 select-none">
-                    <RefreshCcw className="h-4 w-4" />
-                    Clientes atualizados ({importResult.atualizadosNomes.length})
+                  <summary className="flex items-center gap-2 cursor-pointer text-sm font-medium text-yellow-700 dark:text-yellow-400 select-none">
+                    <AlertCircle className="h-4 w-4" />
+                    Clientes ignorados — já cadastrados ({importResult.ignoradosNomes.length})
                   </summary>
                   <ul className="mt-2 ml-6 space-y-1 max-h-40 overflow-y-auto">
-                    {importResult.atualizadosNomes.map((nome, i) => (
+                    {importResult.ignoradosNomes.map((nome, i) => (
                       <li key={i} className="text-sm text-gray-600 dark:text-gray-300 flex items-center gap-1.5">
-                        <span className="h-1.5 w-1.5 rounded-full bg-blue-400 flex-shrink-0" />
+                        <span className="h-1.5 w-1.5 rounded-full bg-yellow-400 flex-shrink-0" />
                         {nome}
                       </li>
                     ))}

@@ -437,7 +437,7 @@ class ClienteController extends ResourceController
     }
 
     /**
-     * Importação em lote de clientes (com upsert por CPF/CNPJ)
+     * Importação em lote de clientes (ignora duplicados por CPF/CNPJ, e-mail ou telefone)
      */
     public function importar(Request $request): JsonResponse
     {
@@ -448,9 +448,9 @@ class ClienteController extends ResourceController
 
         $tenantId = auth()->user()->tenant_id;
         $importadosCount = 0;
-        $atualizadosCount = 0;
+        $ignoradosCount = 0;
         $importadosNomes = [];
-        $atualizadosNomes = [];
+        $ignoradosNomes = [];
         $erros = [];
 
         foreach ($itens as $index => $item) {
@@ -471,18 +471,13 @@ class ClienteController extends ResourceController
                     $data['cpf_cnpj'] = null;
                 }
 
-                $existente = null;
-                if (!empty($data['cpf_cnpj'])) {
-                    $existente = Cliente::where('tenant_id', $tenantId)
-                        ->where('cpf_cnpj', $data['cpf_cnpj'])
-                        ->first();
-                }
+                // Verificar duplicidade por CPF/CNPJ, e-mail ou telefone
+                $existente = $this->findExistingCliente($tenantId, $data);
 
                 if ($existente) {
-                    unset($data['tenant_id']);
-                    $existente->update($data);
-                    $atualizadosCount++;
-                    $atualizadosNomes[] = $nome;
+                    $ignoradosCount++;
+                    $motivo = $this->motivoDuplicidade($existente, $data);
+                    $ignoradosNomes[] = "{$nome} ({$motivo})";
                 } else {
                     Cliente::create($data);
                     $importadosCount++;
@@ -496,11 +491,66 @@ class ClienteController extends ResourceController
 
         return $this->success([
             'importados' => $importadosCount,
-            'atualizados' => $atualizadosCount,
+            'ignorados' => $ignoradosCount,
             'importados_nomes' => $importadosNomes,
-            'atualizados_nomes' => $atualizadosNomes,
+            'ignorados_nomes' => $ignoradosNomes,
             'erros' => $erros,
         ]);
+    }
+
+    /**
+     * Busca cliente existente no tenant por CPF/CNPJ, e-mail ou telefone
+     */
+    private function findExistingCliente(int $tenantId, array $data): ?Cliente
+    {
+        $cpf = $data['cpf_cnpj'] ?? null;
+        $email = !empty($data['email']) ? trim($data['email']) : null;
+        $telefone = !empty($data['telefone_principal']) ? preg_replace('/[^0-9]/', '', $data['telefone_principal']) : null;
+        $whatsapp = !empty($data['whatsapp']) ? preg_replace('/[^0-9]/', '', $data['whatsapp']) : null;
+
+        return Cliente::where('tenant_id', $tenantId)
+            ->where(function ($query) use ($cpf, $email, $telefone, $whatsapp) {
+                if (!empty($cpf)) {
+                    $query->orWhere('cpf_cnpj', $cpf);
+                }
+                if (!empty($email)) {
+                    $query->orWhere('email', $email);
+                }
+                if (!empty($telefone)) {
+                    $query->orWhereRaw("REPLACE(REPLACE(REPLACE(REPLACE(telefone_principal, ' ', ''), '-', ''), '(', ''), ')', '') = ?", [$telefone]);
+                }
+                if (!empty($whatsapp)) {
+                    $query->orWhereRaw("REPLACE(REPLACE(REPLACE(REPLACE(whatsapp, ' ', ''), '-', ''), '(', ''), ')', '') = ?", [$whatsapp]);
+                }
+            })
+            ->first();
+    }
+
+    /**
+     * Identifica o motivo da duplicidade para exibir ao usuário
+     */
+    private function motivoDuplicidade(Cliente $existente, array $data): string
+    {
+        $motivos = [];
+        $cpf = $data['cpf_cnpj'] ?? null;
+        $email = !empty($data['email']) ? trim($data['email']) : null;
+        $telefone = !empty($data['telefone_principal']) ? preg_replace('/[^0-9]/', '', $data['telefone_principal']) : null;
+
+        if (!empty($cpf) && $existente->cpf_cnpj === $cpf) {
+            $motivos[] = 'CPF/CNPJ';
+        }
+        if (!empty($email) && mb_strtolower($existente->email) === mb_strtolower($email)) {
+            $motivos[] = 'e-mail';
+        }
+        if (!empty($telefone)) {
+            $telExistente = preg_replace('/[^0-9]/', '', $existente->telefone_principal ?? '');
+            $whatsExistente = preg_replace('/[^0-9]/', '', $existente->whatsapp ?? '');
+            if ($telExistente === $telefone || $whatsExistente === $telefone) {
+                $motivos[] = 'telefone';
+            }
+        }
+
+        return !empty($motivos) ? 'já existe por ' . implode(', ', $motivos) : 'já cadastrado';
     }
 
     /**
