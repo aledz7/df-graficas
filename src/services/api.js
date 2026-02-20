@@ -260,11 +260,11 @@ export const clienteService = {
     return response.data.data || response.data;
   },
 
-  delete: async (id) => {
-    // Excluir exclusivamente via API
+  delete: async (id, { forcar = false } = {}) => {
     const cleanId = id.toString().replace(/^(cli-|local-)/, '');
-    const response = await api.delete(`/api/clientes/${cleanId}`);
-    // A API retorna os dados em response.data.data conforme BaseController
+    const response = await api.delete(`/api/clientes/${cleanId}`, {
+      data: { forcar }
+    });
     return response.data.data || response.data;
   }
 };

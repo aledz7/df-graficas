@@ -4,7 +4,7 @@ import ClienteList from '@/components/clientes/ClienteList';
 import ClienteForm from '@/components/clientes/ClienteForm';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { PlusCircle, Search, Upload, Download, Trash2, Loader2, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
+import { PlusCircle, Search, Upload, Download, Trash2, Loader2, RefreshCw, ChevronLeft, ChevronRight, CheckCircle2, AlertCircle, RefreshCcw, X } from 'lucide-react';
 import { safeJsonParse } from '@/lib/utils';
 import { useToast } from '@/components/ui/use-toast';
 import { motion } from 'framer-motion';
@@ -36,8 +36,11 @@ const ClientesPage = ({ vendedorAtual }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [clienteParaDeletar, setClienteParaDeletar] = useState(null);
+  const [forceDeleteInfo, setForceDeleteInfo] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pagination, setPagination] = useState(null);
+  const [importProgress, setImportProgress] = useState(null);
+  const [importResult, setImportResult] = useState(null);
 
   // Refs para paginação server-side
   const searchTimerRef = useRef(null);
@@ -217,42 +220,48 @@ const ClientesPage = ({ vendedorAtual }) => {
     setClienteParaDeletar(cliente);
   };
 
-  const confirmDeleteCliente = async () => {
-    if (!clienteParaDeletar) return;
+  const confirmDeleteCliente = async (forcar = false) => {
+    const cliente = forcar ? forceDeleteInfo?.cliente : clienteParaDeletar;
+    if (!cliente) return;
     
     setIsLoading(true);
     try {
-      // Excluir cliente via API
-      await clienteService.delete(clienteParaDeletar.id);
+      await clienteService.delete(cliente.id, { forcar });
       
       toast({ 
         title: "Cliente Deletado", 
-        description: `O cliente "${clienteParaDeletar.nome_completo || clienteParaDeletar.nome}" foi deletado do banco de dados.` 
+        description: `O cliente "${cliente.nome_completo || cliente.nome}" foi deletado do banco de dados.` 
       });
       
-      // Recarregar a lista de clientes para refletir as mudanças
+      setClienteParaDeletar(null);
+      setForceDeleteInfo(null);
       await fetchClientes(currentPageRef.current);
     } catch (error) {
       console.error('Erro ao excluir cliente:', error);
       
-      // Verificar se é um erro de autenticação
       if (error.response?.status === 401) {
         toast({
           title: "Erro de Autenticação",
           description: "Sua sessão expirou. Por favor, faça login novamente.",
           variant: "destructive"
         });
+      } else if (error.response?.status === 422 && !forcar) {
+        setForceDeleteInfo({
+          message: error.response?.data?.message,
+          cliente
+        });
+        return;
       } else {
-        // Exibir mensagem de erro genérica
         toast({ 
           title: "Erro ao excluir cliente", 
           description: error.response?.data?.message || "Não foi possível excluir o cliente do servidor.", 
           variant: "destructive" 
         });
       }
+      setClienteParaDeletar(null);
+      setForceDeleteInfo(null);
     } finally {
       setIsLoading(false);
-      setClienteParaDeletar(null);
     }
   };
   
@@ -271,54 +280,133 @@ const ClientesPage = ({ vendedorAtual }) => {
         return;
       }
 
-      // Campos que não devem ser enviados na criação (são gerados pelo servidor)
       const camposIgnorados = [
         'id', 'tenant_id', 'created_at', 'updated_at', 'deleted_at',
         'codigo_cliente', 'total_pontos_ganhos', 'pontos_utilizados',
         'pontos_expirados', 'saldo_pontos_atual'
       ];
 
-      let importados = 0;
-      let erros = 0;
+      const toBool = (val) => {
+        if (typeof val === 'boolean') return val;
+        if (typeof val === 'number') return val !== 0;
+        const str = String(val ?? '').toLowerCase().trim();
+        return ['true', '1', 'sim', 'yes', 's', 'y', 'ativo', 'ativa'].includes(str);
+      };
 
-      for (const item of data) {
-        try {
-          // Montar dados removendo campos do servidor e campos vazios
-          const clienteData = {};
-          for (const [key, value] of Object.entries(item)) {
-            if (camposIgnorados.includes(key)) continue;
-            if (value === null || value === undefined || value === '') continue;
-            clienteData[key] = value;
-          }
-
-          // Garantir que tenha pelo menos o nome
-          if (!clienteData.nome_completo && !clienteData.nome) continue;
-
-          await clienteService.create(clienteData);
-          importados++;
-        } catch (error) {
-          console.error('Erro ao importar cliente:', item.nome_completo || item.nome, error);
-          erros++;
+      const normalizeDate = (val) => {
+        if (!val) return null;
+        if (typeof val === 'number' && val > 10000) {
+          const date = new Date((val - 25569) * 86400 * 1000);
+          if (!isNaN(date.getTime())) return date.toISOString().split('T')[0];
+          return null;
         }
+        const date = new Date(val);
+        if (!isNaN(date.getTime())) return date.toISOString().split('T')[0];
+        return null;
+      };
+
+      // Preparar todos os itens normalizados
+      const itens = [];
+      for (const item of data) {
+        const clienteData = {};
+        for (const [key, value] of Object.entries(item)) {
+          if (camposIgnorados.includes(key)) continue;
+          if (value === null || value === undefined || value === '') continue;
+          clienteData[key] = value;
+        }
+
+        if (!clienteData.nome_completo && !clienteData.nome) continue;
+
+        if (clienteData.status !== undefined) clienteData.status = toBool(clienteData.status);
+        else clienteData.status = true;
+
+        if (clienteData.autorizado_prazo !== undefined) clienteData.autorizado_prazo = toBool(clienteData.autorizado_prazo);
+        else clienteData.autorizado_prazo = false;
+
+        if (clienteData.is_terceirizado !== undefined) clienteData.is_terceirizado = toBool(clienteData.is_terceirizado);
+        else clienteData.is_terceirizado = false;
+
+        if (clienteData.tipo_pessoa) {
+          const tipo = clienteData.tipo_pessoa.toLowerCase().trim();
+          if (['pessoa física', 'pessoa fisica', 'pf', 'física', 'fisica', 'f'].includes(tipo)) {
+            clienteData.tipo_pessoa = 'Pessoa Física';
+          } else if (['pessoa jurídica', 'pessoa juridica', 'pj', 'jurídica', 'juridica', 'j'].includes(tipo)) {
+            clienteData.tipo_pessoa = 'Pessoa Jurídica';
+          }
+        }
+        if (!clienteData.tipo_pessoa || !['Pessoa Física', 'Pessoa Jurídica'].includes(clienteData.tipo_pessoa)) {
+          clienteData.tipo_pessoa = 'Pessoa Física';
+        }
+
+        if (clienteData.data_nascimento_abertura) {
+          clienteData.data_nascimento_abertura = normalizeDate(clienteData.data_nascimento_abertura);
+          if (!clienteData.data_nascimento_abertura) delete clienteData.data_nascimento_abertura;
+        }
+
+        itens.push(clienteData);
       }
 
-      if (importados > 0) {
-        toast({
-          title: "Importação Concluída",
-          description: `${importados} cliente(s) importado(s) com sucesso.${erros > 0 ? ` ${erros} erro(s).` : ''}`,
-          variant: erros > 0 ? 'default' : 'success'
+      if (itens.length === 0) {
+        toast({ title: "Importação Vazia", description: "Nenhum cliente válido encontrado no arquivo.", variant: "destructive" });
+        setIsLoading(false);
+        event.target.value = null;
+        return;
+      }
+
+      const BATCH_SIZE = 50;
+      const totalItens = itens.length;
+      const totalBatches = Math.ceil(totalItens / BATCH_SIZE);
+      let totalImportados = 0;
+      let totalAtualizados = 0;
+      let allImportadosNomes = [];
+      let allAtualizadosNomes = [];
+      let allErros = [];
+
+      setImportProgress({ current: 0, total: totalItens, importados: 0, atualizados: 0, erros: 0 });
+
+      for (let i = 0; i < totalBatches; i++) {
+        const batch = itens.slice(i * BATCH_SIZE, (i + 1) * BATCH_SIZE);
+        const enviados = Math.min((i + 1) * BATCH_SIZE, totalItens);
+
+        try {
+          const response = await api.post('/api/clientes/importar', { itens: batch });
+          const result = response.data?.data || {};
+          totalImportados += result.importados || 0;
+          totalAtualizados += result.atualizados || 0;
+          if (result.importados_nomes?.length) allImportadosNomes.push(...result.importados_nomes);
+          if (result.atualizados_nomes?.length) allAtualizadosNomes.push(...result.atualizados_nomes);
+          if (result.erros?.length) allErros.push(...result.erros);
+        } catch (err) {
+          allErros.push({ nome: `Lote ${i + 1}`, erro: err.message });
+        }
+
+        setImportProgress({
+          current: enviados,
+          total: totalItens,
+          importados: totalImportados,
+          atualizados: totalAtualizados,
+          erros: allErros.length,
         });
+      }
+
+      setImportProgress(null);
+
+      setImportResult({
+        importados: totalImportados,
+        atualizados: totalAtualizados,
+        importadosNomes: allImportadosNomes,
+        atualizadosNomes: allAtualizadosNomes,
+        erros: allErros,
+        total: totalItens,
+      });
+
+      if (totalImportados + totalAtualizados > 0) {
         await fetchClientes(1);
-      } else {
-        toast({
-          title: "Erro na Importação",
-          description: `Nenhum cliente foi importado. ${erros} erro(s) encontrado(s).`,
-          variant: "destructive"
-        });
       }
     } catch (error) {
       console.error('Erro ao processar arquivo de importação:', error);
       toast({ title: "Erro na Importação", description: error.message || "Não foi possível ler o arquivo.", variant: "destructive" });
+      setImportProgress(null);
     } finally {
       setIsLoading(false);
       event.target.value = null;
@@ -411,7 +499,42 @@ const ClientesPage = ({ vendedorAtual }) => {
         </div>
       </div>
       
-      {isLoading ? (
+      {importProgress && (
+        <div className="mb-4 bg-white dark:bg-gray-800 rounded-lg border border-blue-200 dark:border-blue-800 p-5 shadow-md">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
+              <span className="text-base font-semibold text-gray-700 dark:text-gray-200">
+                Importando clientes...
+              </span>
+            </div>
+            <span className="text-sm font-medium text-gray-600 dark:text-gray-300">
+              {importProgress.current} de {importProgress.total} ({Math.round((importProgress.current / importProgress.total) * 100)}%)
+            </span>
+          </div>
+          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 mb-3">
+            <div
+              className="bg-gradient-to-r from-blue-500 to-blue-600 h-3 rounded-full transition-all duration-500 ease-out"
+              style={{ width: `${Math.round((importProgress.current / importProgress.total) * 100)}%` }}
+            />
+          </div>
+          <div className="flex gap-5 text-sm">
+            <span className="flex items-center gap-1 text-green-600 dark:text-green-400">
+              <CheckCircle2 className="h-3.5 w-3.5" /> {importProgress.importados} novo(s)
+            </span>
+            <span className="flex items-center gap-1 text-blue-600 dark:text-blue-400">
+              <RefreshCcw className="h-3.5 w-3.5" /> {importProgress.atualizados} atualizado(s)
+            </span>
+            {importProgress.erros > 0 && (
+              <span className="flex items-center gap-1 text-red-600 dark:text-red-400">
+                <AlertCircle className="h-3.5 w-3.5" /> {importProgress.erros} erro(s)
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {isLoading && !importProgress ? (
          <div className="flex justify-center items-center h-64">
           <Loader2 className="h-8 w-8 animate-spin text-gray-400 mr-2" />
           <p>Carregando clientes...</p>
@@ -467,7 +590,7 @@ const ClientesPage = ({ vendedorAtual }) => {
         />
       )}
 
-      <AlertDialog open={!!clienteParaDeletar} onOpenChange={() => setClienteParaDeletar(null)}>
+      <AlertDialog open={!!clienteParaDeletar && !forceDeleteInfo} onOpenChange={() => setClienteParaDeletar(null)}>
         <AlertDialogContent>
             <AlertDialogHeader>
                 <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
@@ -477,12 +600,145 @@ const ClientesPage = ({ vendedorAtual }) => {
             </AlertDialogHeader>
             <AlertDialogFooter>
                 <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                <AlertDialogAction onClick={confirmDeleteCliente} className="bg-red-600 hover:bg-red-700">
+                <AlertDialogAction onClick={() => confirmDeleteCliente(false)} className="bg-red-600 hover:bg-red-700">
                   <Trash2 className="mr-2 h-4 w-4" /> Deletar
                 </AlertDialogAction>
             </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={!!forceDeleteInfo} onOpenChange={(open) => { if (!open) { setForceDeleteInfo(null); setClienteParaDeletar(null); } }}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle className="text-red-600">Exclusao com registros vinculados</AlertDialogTitle>
+                <AlertDialogDescription className="space-y-2">
+                    <span className="block">{forceDeleteInfo?.message}</span>
+                    <span className="block font-semibold text-red-500">
+                      Deseja forcar a exclusao? Todos os registros vinculados serao movidos para a lixeira ou desvinculados.
+                    </span>
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={(e) => {
+                    e.preventDefault();
+                    confirmDeleteCliente(true);
+                  }}
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" /> Forcar Exclusao
+                </AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Modal de Resultado da Importação */}
+      {importResult && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setImportResult(null)}>
+          <div
+            className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-lg max-h-[85vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-5 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center gap-3">
+                {importResult.erros.length === 0 ? (
+                  <div className="h-10 w-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                    <CheckCircle2 className="h-6 w-6 text-green-600 dark:text-green-400" />
+                  </div>
+                ) : (
+                  <div className="h-10 w-10 rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center">
+                    <AlertCircle className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
+                  </div>
+                )}
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Resultado da Importação</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{importResult.total} cliente(s) processado(s)</p>
+                </div>
+              </div>
+              <button onClick={() => setImportResult(null)} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                <X className="h-5 w-5 text-gray-500" />
+              </button>
+            </div>
+
+            {/* Resumo em cards */}
+            <div className="grid grid-cols-3 gap-3 p-5">
+              <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 text-center border border-green-200 dark:border-green-800">
+                <p className="text-2xl font-bold text-green-600 dark:text-green-400">{importResult.importados}</p>
+                <p className="text-xs text-green-700 dark:text-green-300 mt-1">Novos</p>
+              </div>
+              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 text-center border border-blue-200 dark:border-blue-800">
+                <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{importResult.atualizados}</p>
+                <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">Atualizados</p>
+              </div>
+              <div className={`rounded-lg p-3 text-center border ${importResult.erros.length > 0 ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' : 'bg-gray-50 dark:bg-gray-700/30 border-gray-200 dark:border-gray-600'}`}>
+                <p className={`text-2xl font-bold ${importResult.erros.length > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-400 dark:text-gray-500'}`}>{importResult.erros.length}</p>
+                <p className={`text-xs mt-1 ${importResult.erros.length > 0 ? 'text-red-700 dark:text-red-300' : 'text-gray-500 dark:text-gray-400'}`}>Erros</p>
+              </div>
+            </div>
+
+            {/* Listas detalhadas */}
+            <div className="flex-1 overflow-y-auto px-5 pb-5 space-y-4">
+              {importResult.importadosNomes.length > 0 && (
+                <details open className="group">
+                  <summary className="flex items-center gap-2 cursor-pointer text-sm font-medium text-green-700 dark:text-green-400 select-none">
+                    <CheckCircle2 className="h-4 w-4" />
+                    Novos clientes ({importResult.importadosNomes.length})
+                  </summary>
+                  <ul className="mt-2 ml-6 space-y-1 max-h-40 overflow-y-auto">
+                    {importResult.importadosNomes.map((nome, i) => (
+                      <li key={i} className="text-sm text-gray-600 dark:text-gray-300 flex items-center gap-1.5">
+                        <span className="h-1.5 w-1.5 rounded-full bg-green-400 flex-shrink-0" />
+                        {nome}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+
+              {importResult.atualizadosNomes.length > 0 && (
+                <details className="group">
+                  <summary className="flex items-center gap-2 cursor-pointer text-sm font-medium text-blue-700 dark:text-blue-400 select-none">
+                    <RefreshCcw className="h-4 w-4" />
+                    Clientes atualizados ({importResult.atualizadosNomes.length})
+                  </summary>
+                  <ul className="mt-2 ml-6 space-y-1 max-h-40 overflow-y-auto">
+                    {importResult.atualizadosNomes.map((nome, i) => (
+                      <li key={i} className="text-sm text-gray-600 dark:text-gray-300 flex items-center gap-1.5">
+                        <span className="h-1.5 w-1.5 rounded-full bg-blue-400 flex-shrink-0" />
+                        {nome}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+
+              {importResult.erros.length > 0 && (
+                <details open className="group">
+                  <summary className="flex items-center gap-2 cursor-pointer text-sm font-medium text-red-700 dark:text-red-400 select-none">
+                    <AlertCircle className="h-4 w-4" />
+                    Erros ({importResult.erros.length})
+                  </summary>
+                  <ul className="mt-2 ml-6 space-y-1.5 max-h-40 overflow-y-auto">
+                    {importResult.erros.map((err, i) => (
+                      <li key={i} className="text-sm">
+                        <span className="font-medium text-gray-700 dark:text-gray-200">{err.nome || err}:</span>{' '}
+                        <span className="text-red-600 dark:text-red-400">{err.erro || ''}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+            </div>
+
+            <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+              <Button onClick={() => setImportResult(null)} className="w-full">
+                Fechar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 };

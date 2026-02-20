@@ -79,6 +79,10 @@ class ClienteController extends ResourceController
      */
     public function store(Request $request): JsonResponse
     {
+        // Normalizar dados antes da validação (importante para importação via planilha)
+        $input = $this->normalizeImportData($request->all());
+        $request->merge($input);
+
         // Validação customizada para CPF/CNPJ único por tenant
         $rules = $this->storeRules;
         $rules['cpf_cnpj'] = [
@@ -89,7 +93,6 @@ class ClienteController extends ResourceController
                 return $query->where('tenant_id', auth()->user()->tenant_id);
             }),
             function ($attribute, $value, $fail) {
-                // Só validar se o valor não for vazio e não for apenas espaços
                 if (empty(trim($value)) || $value === null) {
                     return;
                 }
@@ -111,7 +114,7 @@ class ClienteController extends ResourceController
 
         $data = $request->all();
         
-        // Garantir que o tenant_id seja definido
+        // Sempre usar o tenant_id do usuário logado (ignora o que vier da planilha)
         $data['tenant_id'] = auth()->user()->tenant_id;
 
         // Manter coluna nome em sincronia com nome_completo
@@ -207,31 +210,95 @@ class ClienteController extends ResourceController
      */
     public function destroy($id): JsonResponse
     {
-        $cliente = Cliente::withCount(['vendas', 'orcamentos', 'ordensServico'])->find($id);
+        $cliente = Cliente::find($id);
 
         if (!$cliente) {
             return $this->notFound('Cliente não encontrado');
         }
 
-        if ($cliente->vendas_count > 0) {
-            return $this->error('Não é possível excluir o cliente pois ele possui vendas associadas', 422);
-        }
+        $forcar = request()->boolean('forcar', false);
 
-        if ($cliente->orcamentos_count > 0) {
-            return $this->error('Não é possível excluir o cliente pois ele possui orçamentos associados', 422);
-        }
+        // Contar apenas registros ATIVOS (não-excluídos) via query direta
+        $vendasAtivas = DB::table('vendas')
+            ->where('cliente_id', $cliente->id)
+            ->whereNull('deleted_at')
+            ->count();
 
-        if ($cliente->ordens_servico_count > 0) {
-            return $this->error('Não é possível excluir o cliente pois ele possui ordens de serviço ativas', 422);
+        $orcamentosAtivos = DB::table('orcamentos')
+            ->where('cliente_id', $cliente->id)
+            ->whereNull('deleted_at')
+            ->count();
+
+        $osAtivas = DB::table('ordens_servico')
+            ->where('cliente_id', $cliente->id)
+            ->whereNull('deleted_at')
+            ->count();
+
+        if (!$forcar && ($vendasAtivas > 0 || $orcamentosAtivos > 0 || $osAtivas > 0)) {
+            $detalhes = [];
+            if ($vendasAtivas > 0) $detalhes[] = "$vendasAtivas venda(s)";
+            if ($orcamentosAtivos > 0) $detalhes[] = "$orcamentosAtivos orçamento(s)";
+            if ($osAtivas > 0) $detalhes[] = "$osAtivas OS";
+
+            return $this->error(
+                'Este cliente possui registros ativos: ' . implode(', ', $detalhes) .
+                '. Exclua esses registros primeiro ou force a exclusão.',
+                422
+            );
         }
 
         try {
-            DB::transaction(function () use ($cliente) {
-                // Limpar referência do cliente em OS que já foram excluídas (soft deleted)
-                DB::table('ordens_servico')
-                    ->where('cliente_id', $cliente->id)
+            DB::transaction(function () use ($cliente, $forcar) {
+                $clienteId = $cliente->id;
+
+                // Se forçando, soft-deletar vendas e orçamentos ativos
+                if ($forcar) {
+                    DB::table('vendas')
+                        ->where('cliente_id', $clienteId)
+                        ->whereNull('deleted_at')
+                        ->update([
+                            'deleted_at' => now(),
+                            'data_exclusao' => now(),
+                            'justificativa_exclusao' => 'Exclusão em cascata ao remover cliente',
+                        ]);
+
+                    DB::table('orcamentos')
+                        ->where('cliente_id', $clienteId)
+                        ->whereNull('deleted_at')
+                        ->update(['deleted_at' => now()]);
+
+                    DB::table('ordens_servico')
+                        ->where('cliente_id', $clienteId)
+                        ->whereNull('deleted_at')
+                        ->update(['cliente_id' => null]);
+                }
+
+                // Desvincular referências de registros já excluídos (soft deleted)
+                DB::table('vendas')
+                    ->where('cliente_id', $clienteId)
                     ->whereNotNull('deleted_at')
                     ->update(['cliente_id' => null]);
+
+                DB::table('orcamentos')
+                    ->where('cliente_id', $clienteId)
+                    ->whereNotNull('deleted_at')
+                    ->update(['cliente_id' => null]);
+
+                DB::table('ordens_servico')
+                    ->where('cliente_id', $clienteId)
+                    ->update(['cliente_id' => null]);
+
+                // Remover registros dependentes que não permitem cliente_id nulo
+                DB::table('contas_receber')->where('cliente_id', $clienteId)->delete();
+                DB::table('atendimentos')->where('cliente_id', $clienteId)->delete();
+                DB::table('pos_venda')->where('cliente_id', $clienteId)->delete();
+
+                // Desvincular em tabelas que permitem cliente_id nulo
+                DB::table('compromissos')->where('cliente_id', $clienteId)->update(['cliente_id' => null]);
+                DB::table('contas_pagar')->where('fornecedor_id', $clienteId)->update(['fornecedor_id' => null]);
+                if (DB::getSchemaBuilder()->hasTable('fretes_entregas')) {
+                    DB::table('fretes_entregas')->where('cliente_id', $clienteId)->update(['cliente_id' => null]);
+                }
 
                 $cliente->delete();
             });
@@ -258,7 +325,7 @@ class ClienteController extends ResourceController
                 $q->where('nome', 'like', "%{$search}%")
                   ->orWhere('cpf_cnpj', 'like', "%{$search}%")
                   ->orWhere('email', 'like', "%{$search}%")
-                  ->orWhere('nome_fantasia', 'like', "%{$search}%");
+                  ->orWhere('apelido_fantasia', 'like', "%{$search}%");
             });
         }
 
@@ -367,6 +434,165 @@ class ClienteController extends ResourceController
         $clientes = $query->get();
 
         return $this->success($clientes, 'Clientes ativos recuperados com sucesso');
+    }
+
+    /**
+     * Importação em lote de clientes (com upsert por CPF/CNPJ)
+     */
+    public function importar(Request $request): JsonResponse
+    {
+        $itens = $request->input('itens', []);
+        if (empty($itens)) {
+            return $this->error('Nenhum item para importar', 422);
+        }
+
+        $tenantId = auth()->user()->tenant_id;
+        $importadosCount = 0;
+        $atualizadosCount = 0;
+        $importadosNomes = [];
+        $atualizadosNomes = [];
+        $erros = [];
+
+        foreach ($itens as $index => $item) {
+            try {
+                $data = $this->normalizeImportData($item);
+                $data['tenant_id'] = $tenantId;
+
+                $nome = $data['nome_completo'] ?? $data['nome'] ?? "Linha " . ($index + 1);
+
+                if (!empty($data['nome_completo'])) {
+                    $data['nome'] = $data['nome_completo'];
+                }
+
+                $cpfCnpj = $data['cpf_cnpj'] ?? null;
+                if ($cpfCnpj !== null && trim($cpfCnpj) !== '') {
+                    $data['cpf_cnpj'] = preg_replace('/[^0-9]/', '', $cpfCnpj);
+                } else {
+                    $data['cpf_cnpj'] = null;
+                }
+
+                $existente = null;
+                if (!empty($data['cpf_cnpj'])) {
+                    $existente = Cliente::where('tenant_id', $tenantId)
+                        ->where('cpf_cnpj', $data['cpf_cnpj'])
+                        ->first();
+                }
+
+                if ($existente) {
+                    unset($data['tenant_id']);
+                    $existente->update($data);
+                    $atualizadosCount++;
+                    $atualizadosNomes[] = $nome;
+                } else {
+                    Cliente::create($data);
+                    $importadosCount++;
+                    $importadosNomes[] = $nome;
+                }
+            } catch (\Exception $e) {
+                $nome = $item['nome_completo'] ?? $item['nome'] ?? "Linha " . ($index + 1);
+                $erros[] = ['nome' => $nome, 'erro' => $e->getMessage()];
+            }
+        }
+
+        return $this->success([
+            'importados' => $importadosCount,
+            'atualizados' => $atualizadosCount,
+            'importados_nomes' => $importadosNomes,
+            'atualizados_nomes' => $atualizadosNomes,
+            'erros' => $erros,
+        ]);
+    }
+
+    /**
+     * Normaliza dados vindos de importação (planilha) para garantir tipos corretos
+     */
+    private function normalizeImportData(array $data): array
+    {
+        // Remover tenant_id se vier na requisição (sempre usar o do usuário logado)
+        unset($data['tenant_id']);
+
+        // Normalizar tipo_pessoa
+        if (isset($data['tipo_pessoa'])) {
+            $tipo = mb_strtolower(trim($data['tipo_pessoa']));
+            if (in_array($tipo, ['pessoa física', 'pessoa fisica', 'pf', 'física', 'fisica', 'f'])) {
+                $data['tipo_pessoa'] = 'Pessoa Física';
+            } elseif (in_array($tipo, ['pessoa jurídica', 'pessoa juridica', 'pj', 'jurídica', 'juridica', 'j'])) {
+                $data['tipo_pessoa'] = 'Pessoa Jurídica';
+            }
+        }
+        if (empty($data['tipo_pessoa']) || !in_array($data['tipo_pessoa'], ['Pessoa Física', 'Pessoa Jurídica'])) {
+            $data['tipo_pessoa'] = 'Pessoa Física';
+        }
+
+        // Normalizar campos booleanos
+        $booleanFields = ['status', 'autorizado_prazo', 'is_terceirizado'];
+        foreach ($booleanFields as $field) {
+            if (array_key_exists($field, $data)) {
+                $data[$field] = $this->toBool($data[$field]);
+            }
+        }
+
+        // Defaults para campos booleanos ausentes
+        if (!array_key_exists('status', $data)) {
+            $data['status'] = true;
+        }
+        if (!array_key_exists('autorizado_prazo', $data)) {
+            $data['autorizado_prazo'] = false;
+        }
+        if (!array_key_exists('is_terceirizado', $data)) {
+            $data['is_terceirizado'] = false;
+        }
+
+        // Normalizar data_nascimento_abertura (pode vir como serial do Excel ou formato inválido)
+        if (array_key_exists('data_nascimento_abertura', $data) && $data['data_nascimento_abertura'] !== null) {
+            $data['data_nascimento_abertura'] = $this->normalizeDate($data['data_nascimento_abertura']);
+        }
+
+        // Limpar CPF/CNPJ (remover pontos, traços, barras)
+        if (!empty($data['cpf_cnpj'])) {
+            $data['cpf_cnpj'] = preg_replace('/[^0-9]/', '', $data['cpf_cnpj']);
+            if (trim($data['cpf_cnpj']) === '') {
+                $data['cpf_cnpj'] = null;
+            }
+        }
+
+        return $data;
+    }
+
+    /**
+     * Normaliza valor de data que pode vir em diversos formatos (serial Excel, string, etc.)
+     * Retorna string Y-m-d ou null se não conseguir converter
+     */
+    private function normalizeDate($value): ?string
+    {
+        if (empty($value)) return null;
+
+        // Serial numérico do Excel (ex: 44927 = 2023-01-01)
+        if (is_numeric($value) && (int)$value > 10000) {
+            try {
+                return Carbon::createFromTimestamp(($value - 25569) * 86400)->format('Y-m-d');
+            } catch (\Exception $e) {
+                return null;
+            }
+        }
+
+        // Tentar parsear como data normal
+        try {
+            return Carbon::parse($value)->format('Y-m-d');
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+
+    /**
+     * Converte diversos formatos para booleano
+     */
+    private function toBool($value): bool
+    {
+        if (is_bool($value)) return $value;
+        if (is_numeric($value)) return (bool) intval($value);
+        $str = mb_strtolower(trim((string) $value));
+        return in_array($str, ['true', '1', 'sim', 'yes', 's', 'y', 'ativo', 'ativa']);
     }
 
     /**

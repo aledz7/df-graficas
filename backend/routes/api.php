@@ -177,6 +177,7 @@ Route::middleware(['api.auth'])->group(function () {
     
     // Clientes
     Route::apiResource('clientes', ClienteController::class);
+    Route::post('clientes/importar', [ClienteController::class, 'importar']);
     Route::get('clientes/relatorio/aniversariantes-mes', [ClienteController::class, 'aniversariantesDoMes']);
     Route::get('clientes/relatorio/que-mais-compraram', [ClienteController::class, 'clientesQueMaisCompraram']);
     
