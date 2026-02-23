@@ -1,22 +1,21 @@
 RewriteEngine On
 
-# Teste do .htaccess
-RewriteRule ^test-htaccess$ test-htaccess.php [L]
+# Preservar o header Authorization para o Laravel
+RewriteCond %{HTTP:Authorization} .
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 
-# Teste da API
-RewriteRule ^test-api$ test-api.php [L]
-
-# Teste da rota de login
-RewriteRule ^test-login$ test-login.php [L]
-
-# Verificar usuários no banco
-RewriteRule ^check-users$ check-users.php [L]
-
-# Redirecionar requisições da API para a API simulada (temporário)
+# Redirecionar requisições da API para o backend Laravel (backend/public/index.php)
 RewriteCond %{REQUEST_URI} ^/api/
-RewriteRule ^api/(.*)$ api-test.php [L]
+RewriteRule ^(.*)$ backend/public/index.php [L]
 
-# Para todas as outras requisições, servir o frontend
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^(.*)$ dist/index.html [L] 
+# Redirecionar storage do backend
+RewriteCond %{REQUEST_URI} ^/storage/
+RewriteRule ^storage/(.*)$ backend/storage/app/public/$1 [L]
+
+# Para arquivos e diretórios que existem, servir diretamente
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Para todas as outras requisições (SPA frontend), servir dist/index.html
+RewriteRule ^(.*)$ dist/index.html [L]

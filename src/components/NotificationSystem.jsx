@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, X, ShoppingCart, AlertCircle } from 'lucide-react';
+import { Bell, X, ShoppingCart, AlertCircle, Lightbulb, Printer, FileText, Flame } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,8 +9,10 @@ import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover
 import { format, parseISO } from 'date-fns';
 import { notificationService } from '@/services/notificationService';
 import { pdvService } from '@/services/pdvService';
+import { useNavigate } from 'react-router-dom';
 
 const NotificationSystem = () => {
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
@@ -20,7 +22,10 @@ const NotificationSystem = () => {
     loadNotifications();
     
     // Verificar novas pré-vendas a cada 2 minutos (menos frequente para evitar spam)
-    const interval = setInterval(checkNewPreVendas, 120000);
+    const interval = setInterval(() => {
+      checkNewPreVendas();
+      loadNotifications(); // Recarregar notificações periodicamente
+    }, 30000); // Verificar a cada 30 segundos
     
     // Verificação inicial imediata para pegar pré-vendas existentes
     checkNewPreVendas();
@@ -132,6 +137,61 @@ const NotificationSystem = () => {
     }
   };
 
+  const handleOpenOS = (notification) => {
+    if (notification.data?.os_id) {
+      navigate(`/operacional/ordens-servico?osId=${notification.data.os_id}`);
+      markAsRead(notification.id);
+      setIsOpen(false);
+    }
+  };
+
+  const getNotificationIcon = (type, data) => {
+    if (type === 'nova_os_criacao') {
+      return <Lightbulb className="h-4 w-4 text-blue-600 dark:text-blue-400" />;
+    }
+    if (type === 'nova_os_producao') {
+      return <Printer className="h-4 w-4 text-green-600 dark:text-green-400" />;
+    }
+    if (type === 'pre-venda') {
+      return <ShoppingCart className="h-4 w-4 text-blue-600 dark:text-blue-400" />;
+    }
+    return <AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-400" />;
+  };
+
+  const getNotificationPriority = (notification) => {
+    const data = notification.data || {};
+    const badges = data.badges || [];
+    
+    // Prioridade máxima: arte pronta + prazo específico
+    if (badges.includes('ARTE PRONTA') && badges.includes('PRAZO ESPECÍFICO')) {
+      return 'maxima';
+    }
+    // Prioridade alta: apenas prazo específico
+    if (badges.includes('PRAZO ESPECÍFICO')) {
+      return 'alta';
+    }
+    // Prioridade média: apenas arte pronta
+    if (badges.includes('ARTE PRONTA')) {
+      return 'media';
+    }
+    return 'normal';
+  };
+
+  const getNotificationBgColor = (priority, read) => {
+    if (read) return '';
+    
+    switch (priority) {
+      case 'maxima':
+        return 'bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800';
+      case 'alta':
+        return 'bg-yellow-50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-800';
+      case 'media':
+        return 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800';
+      default:
+        return 'bg-gray-50 dark:bg-gray-950/20 border-gray-200 dark:border-gray-800';
+    }
+  };
+
   // Removido: solicitação de permissão de notificação do navegador
   // Não usaremos notificações do sistema operacional
 
@@ -156,6 +216,17 @@ const NotificationSystem = () => {
         <div className="flex items-center justify-between p-4 border-b">
           <h4 className="font-semibold">Notificações</h4>
           <div className="flex gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setIsOpen(false);
+                navigate('/ferramentas/central-notificacoes');
+              }}
+              className="text-xs"
+            >
+              Ver todas
+            </Button>
             {unreadCount > 0 && (
               <Button variant="ghost" size="sm" onClick={markAllAsRead}>
                 Marcar como lidas
@@ -195,46 +266,96 @@ const NotificationSystem = () => {
                   );
                 }
                 
-                return filteredNotifications.map((notification, index) => (
-                  <motion.div
-                    key={notification.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ delay: index * 0.05 }}
-                  >
-                    <Card 
-                      className={`mb-2 cursor-pointer transition-colors ${
-                        !notification.read ? 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800' : ''
-                      }`}
-                      onClick={() => markAsRead(notification.id)}
+                return filteredNotifications.map((notification, index) => {
+                  const priority = getNotificationPriority(notification);
+                  const isOSNotification = ['nova_os_criacao', 'nova_os_producao'].includes(notification.type);
+                  
+                  return (
+                    <motion.div
+                      key={notification.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ delay: index * 0.05 }}
                     >
-                      <CardContent className="p-3">
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-start gap-2 flex-1">
-                            <div className="p-1 bg-blue-100 dark:bg-blue-900/30 rounded">
-                              {notification.type === 'pre-venda' ? (
-                                <ShoppingCart className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                              ) : (
-                                <AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                              )}
+                      <Card 
+                        className={`mb-2 transition-colors ${
+                          getNotificationBgColor(priority, notification.read)
+                        } ${!notification.read ? 'cursor-pointer' : ''}`}
+                        onClick={() => !notification.read && markAsRead(notification.id)}
+                      >
+                        <CardContent className="p-3">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex items-start gap-2 flex-1 min-w-0">
+                              <div className="p-1 bg-blue-100 dark:bg-blue-900/30 rounded flex-shrink-0">
+                                {getNotificationIcon(notification.type, notification.data)}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-start gap-2 flex-wrap">
+                                  <p className="text-sm font-medium flex-1">{notification.title}</p>
+                                  {notification.data?.badges && notification.data.badges.length > 0 && (
+                                    <div className="flex gap-1 flex-wrap">
+                                      {notification.data.badges.map((badge, idx) => (
+                                        <Badge 
+                                          key={idx}
+                                          variant="outline"
+                                          className={`text-xs ${
+                                            badge === 'ARTE PRONTA' 
+                                              ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 border-yellow-300'
+                                              : 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 border-orange-300'
+                                          }`}
+                                        >
+                                          <Flame className="h-3 w-3 mr-1" />
+                                          {badge}
+                                        </Badge>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-1">{notification.message}</p>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  {format(parseISO(notification.created_at), 'dd/MM/yyyy HH:mm')}
+                                </p>
+                                {isOSNotification && notification.data?.os_id && (
+                                  <div className="mt-2 flex gap-2">
+                                    <Button
+                                      size="sm"
+                                      variant="default"
+                                      className="h-7 text-xs"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleOpenOS(notification);
+                                      }}
+                                    >
+                                      <FileText className="h-3 w-3 mr-1" />
+                                      Abrir OS
+                                    </Button>
+                                    {!notification.read && (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-7 text-xs"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          markAsRead(notification.id);
+                                        }}
+                                      >
+                                        Marcar como lida
+                                      </Button>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium">{notification.title}</p>
-                              <p className="text-xs text-muted-foreground mt-1">{notification.message}</p>
-                              <p className="text-xs text-muted-foreground mt-1">
-                                {format(parseISO(notification.created_at), 'dd/MM/yyyy HH:mm')}
-                              </p>
-                            </div>
+                            {!notification.read && (
+                              <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 mt-1" />
+                            )}
                           </div>
-                          {!notification.read && (
-                            <div className="w-2 h-2 bg-blue-500 rounded-full ml-2 flex-shrink-0" />
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                ));
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  );
+                });
               })()}
             </AnimatePresence>
           </div>

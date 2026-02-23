@@ -11,17 +11,21 @@ class Notification extends Model
 
     protected $fillable = [
         'type',
+        'priority',
         'title',
         'message',
         'data',
         'read',
+        'read_at',
         'user_id',
-        'tenant_id'
+        'tenant_id',
+        'os_id'
     ];
 
     protected $casts = [
         'data' => 'array',
         'read' => 'boolean',
+        'read_at' => 'datetime',
     ];
 
     public function scopeUnread($query)

@@ -16,18 +16,22 @@ use App\Models\ItemVenda;
 use App\Models\LancamentoCaixa;
 use App\Models\ContaBancaria;
 use App\Models\CategoriaCaixa;
+use App\Models\Notification;
 use App\Services\ComissaoOSService;
 use App\Services\EstoqueMinimoService;
+use App\Services\NotificationOSService;
 
 class OrdemServicoController extends Controller
 {
     protected $comissaoService;
     protected $estoqueMinimoService;
+    protected $notificationOSService;
 
-    public function __construct(ComissaoOSService $comissaoService, EstoqueMinimoService $estoqueMinimoService)
+    public function __construct(ComissaoOSService $comissaoService, EstoqueMinimoService $estoqueMinimoService, NotificationOSService $notificationOSService)
     {
         $this->comissaoService = $comissaoService;
         $this->estoqueMinimoService = $estoqueMinimoService;
+        $this->notificationOSService = $notificationOSService;
     }
     /**
      * Display a listing of the resource.
@@ -233,6 +237,11 @@ class OrdemServicoController extends Controller
             'tipo_origem' => 'nullable|string',
             'dados_consumo_material' => 'nullable|array',
             'id_os' => 'nullable|string',
+            'tem_arte_pronta' => 'nullable|boolean',
+            'destino_os' => 'nullable|in:CRIACAO,PRODUCAO',
+            'prazo_tipo' => 'nullable|in:PADRAO,ESPECIFICO',
+            'prazo_datahora' => 'nullable|date',
+            'responsavel_criacao' => 'nullable|exists:users,id',
         ];
         
         $messages = [
@@ -381,6 +390,12 @@ class OrdemServicoController extends Controller
             $os->observacoes_gerais_os = $request->observacoes_gerais_os;
             $os->tipo_origem = $request->tipo_origem;
             $os->dados_consumo_material = $request->dados_consumo_material;
+            // Campos de finalização obrigatória
+            $os->tem_arte_pronta = $request->tem_arte_pronta;
+            $os->destino_os = $request->destino_os;
+            $os->prazo_tipo = $request->prazo_tipo;
+            $os->prazo_datahora = $request->prazo_datahora ? \Carbon\Carbon::parse($request->prazo_datahora) : null;
+            $os->responsavel_criacao = $request->responsavel_criacao;
             // Usar o usuário logado como vendedor se não foi especificado
             $user = auth()->user();
             $os->vendedor_id = $request->vendedor_id ?? $user->id;
@@ -455,6 +470,9 @@ class OrdemServicoController extends Controller
                 
                 // Criar lançamentos de caixa para os pagamentos (exceto Crediário)
                 $this->criarLancamentosCaixaOS($os);
+                
+                // Criar notificações automáticas quando OS é finalizada e direcionada
+                $this->criarNotificacoesOS($os);
             }
             
             \Log::info('OS salva com sucesso:', [
@@ -864,6 +882,11 @@ class OrdemServicoController extends Controller
             'maquina_impressao_id' => 'nullable|integer',
             'observacoes_gerais_os' => 'nullable|string',
             'evoluir_para_producao' => 'nullable|boolean',
+            'tem_arte_pronta' => 'nullable|boolean',
+            'destino_os' => 'nullable|in:CRIACAO,PRODUCAO',
+            'prazo_tipo' => 'nullable|in:PADRAO,ESPECIFICO',
+            'prazo_datahora' => 'nullable|date',
+            'responsavel_criacao' => 'nullable|exists:users,id',
         ];
         
         $messages = [
@@ -924,6 +947,22 @@ class OrdemServicoController extends Controller
         $os->maquina_impressao_id = $request->maquina_impressao_id ?? $os->maquina_impressao_id;
         $os->observacoes = $request->observacoes ?? $os->observacoes;
         $os->observacoes_gerais_os = $request->observacoes_gerais_os ?? $os->observacoes_gerais_os;
+        // Campos de finalização obrigatória
+        if ($request->has('tem_arte_pronta')) {
+            $os->tem_arte_pronta = $request->tem_arte_pronta;
+        }
+        if ($request->has('destino_os')) {
+            $os->destino_os = $request->destino_os;
+        }
+        if ($request->has('prazo_tipo')) {
+            $os->prazo_tipo = $request->prazo_tipo;
+        }
+        if ($request->has('prazo_datahora')) {
+            $os->prazo_datahora = $request->prazo_datahora ? \Carbon\Carbon::parse($request->prazo_datahora) : null;
+        }
+        if ($request->has('responsavel_criacao')) {
+            $os->responsavel_criacao = $request->responsavel_criacao;
+        }
         
         // Se um orçamento está sendo finalizado, atualizar data_criacao para agora
         $isOrcamentoOriginal = in_array($statusOriginal, ['Orçamento Salvo', 'Orçamento Salvo (Editado)']);
@@ -984,8 +1023,14 @@ class OrdemServicoController extends Controller
                 $dadosProducao = [];
             }
             $evoluirParaProducao = $request->boolean('evoluir_para_producao', true);
+            $statusProducaoAnterior = $dadosProducao['status_producao'] ?? null;
             if (!isset($dadosProducao['status_producao']) || $dadosProducao['status_producao'] === null) {
                 $dadosProducao['status_producao'] = $evoluirParaProducao ? 'Em Produção' : 'Aguardando';
+            }
+            
+            // Notificar quando OS entra em produção
+            if ($dadosProducao['status_producao'] === 'Em Produção' && $statusProducaoAnterior !== 'Em Produção') {
+                $this->notificationOSService->notificarOSEmProducao($os);
             }
             if (!isset($dadosProducao['prazo_estimado'])) {
                 // Transferir automaticamente a data_prevista_entrega para prazo_estimado se disponível
@@ -1021,7 +1066,15 @@ class OrdemServicoController extends Controller
             ]);
         }
 
+        // Verificar se status mudou para Entregue
+        $statusMudouParaEntregue = ($statusOriginal !== 'Entregue' && $os->status_os === 'Entregue');
+        
         $os->save();
+        
+        // Notificar quando OS é entregue
+        if ($statusMudouParaEntregue) {
+            $this->notificationOSService->notificarOSEntregue($os);
+        }
         
         \Log::info('=== PROCESSANDO COMISSÃO NA API ===', [
             'os_id' => $os->id,
@@ -1091,6 +1144,9 @@ class OrdemServicoController extends Controller
             // Apenas se a OS está sendo finalizada pela primeira vez ou tem novos pagamentos
             if (!$osJaFinalizada) {
                 $this->criarLancamentosCaixaOS($os);
+                
+                // Criar notificações automáticas quando OS é finalizada pela primeira vez
+                $this->criarNotificacoesOS($os);
             }
         }
         
@@ -2921,6 +2977,132 @@ class OrdemServicoController extends Controller
                 'success' => false,
                 'message' => 'Erro ao salvar configuração de numeração: ' . $e->getMessage()
             ], 500);
+        }
+    }
+
+    /**
+     * Criar notificações automáticas quando OS é finalizada e direcionada
+     */
+    private function criarNotificacoesOS(OrdemServico $os)
+    {
+        try {
+            $tenantId = $os->tenant_id;
+            $destino = $os->destino_os;
+            $temArtePronta = $os->tem_arte_pronta ?? false;
+            $prazoTipo = $os->prazo_tipo ?? 'PADRAO';
+            $prazoDatahora = $os->prazo_datahora;
+            $responsavelCriacao = $os->responsavel_criacao;
+            
+            // Se não tem destino definido, não criar notificação
+            if (!$destino) {
+                return;
+            }
+
+            // Montar mensagem base
+            $idOS = $os->id_os ?? $os->numero_os ?? "#{$os->id}";
+            $mensagemPartes = [];
+            $badges = [];
+            
+            // Adicionar informações sobre arte pronta
+            if ($temArtePronta) {
+                $badges[] = 'ARTE PRONTA';
+            }
+            
+            // Adicionar informações sobre prazo específico
+            if ($prazoTipo === 'ESPECIFICO' && $prazoDatahora) {
+                $badges[] = 'PRAZO ESPECÍFICO';
+                $dataFormatada = \Carbon\Carbon::parse($prazoDatahora)->format('d/m H:i');
+                $mensagemPartes[] = "prazo específico: {$dataFormatada}";
+            }
+
+            // Criar notificação baseada no destino
+            if ($destino === 'CRIACAO') {
+                // Notificar o designer responsável
+                if ($responsavelCriacao) {
+                    $titulo = $temArtePronta 
+                        ? "OS {$idOS} possui arte pronta"
+                        : "Nova OS {$idOS} atribuída a você";
+                    
+                    $mensagem = $temArtePronta
+                        ? "Esta OS foi enviada para você com arte pronta."
+                        : "Nova OS {$idOS}";
+                    
+                    if (!$temArtePronta && !empty($badges)) {
+                        $mensagem .= " com " . implode(" e ", $badges);
+                    }
+                    
+                    if (!$temArtePronta && !empty($mensagemPartes)) {
+                        $mensagem .= " (" . implode(", ", $mensagemPartes) . ")";
+                    }
+                    
+                    if (!$temArtePronta) {
+                        $mensagem .= " foi atribuída a você.";
+                    }
+
+                    // Determinar prioridade
+                    $prioridade = 'media';
+                    if ($temArtePronta && $prazoTipo === 'ESPECIFICO') {
+                        $prioridade = 'alta';
+                    } elseif ($temArtePronta || $prazoTipo === 'ESPECIFICO') {
+                        $prioridade = 'alta';
+                    }
+
+                    Notification::create([
+                        'type' => $temArtePronta ? 'arte_pronta' : 'nova_os_criacao',
+                        'priority' => strtoupper($prioridade),
+                        'title' => $titulo,
+                        'message' => $mensagem,
+                        'user_id' => $responsavelCriacao,
+                        'tenant_id' => $tenantId,
+                        'os_id' => $os->id,
+                        'data' => [
+                            'os_id' => $os->id,
+                            'id_os' => $idOS,
+                            'destino' => 'CRIACAO',
+                            'tem_arte_pronta' => $temArtePronta,
+                            'prazo_tipo' => $prazoTipo,
+                            'prazo_datahora' => $prazoDatahora ? \Carbon\Carbon::parse($prazoDatahora)->toIso8601String() : null,
+                            'badges' => $badges,
+                            'prioridade' => $prioridade,
+                        ],
+                        'read' => false,
+                    ]);
+                }
+            } elseif ($destino === 'PRODUCAO') {
+                // Notificar grupo de produção
+                $titulo = "Nova OS {$idOS} enviada para Produção";
+                $mensagem = "Nova OS {$idOS} enviada para Produção.";
+                
+                if (!empty($mensagemPartes)) {
+                    $mensagem .= " Inclui " . implode(", ", $mensagemPartes) . ".";
+                }
+
+                Notification::create([
+                    'type' => 'nova_os_producao',
+                    'priority' => $prazoTipo === 'ESPECIFICO' ? 'MEDIA' : 'BAIXA',
+                    'title' => $titulo,
+                    'message' => $mensagem,
+                    'user_id' => null, // Notificação global para produção
+                    'tenant_id' => $tenantId,
+                    'os_id' => $os->id,
+                    'data' => [
+                        'os_id' => $os->id,
+                        'id_os' => $idOS,
+                        'destino' => 'PRODUCAO',
+                        'prazo_tipo' => $prazoTipo,
+                        'prazo_datahora' => $prazoDatahora ? \Carbon\Carbon::parse($prazoDatahora)->toIso8601String() : null,
+                        'prioridade' => $prazoTipo === 'ESPECIFICO' ? 'media' : 'baixa',
+                    ],
+                    'read' => false,
+                ]);
+            }
+        } catch (\Exception $e) {
+            \Log::error('Erro ao criar notificações da OS:', [
+                'os_id' => $os->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            // Não lançar exceção para não quebrar o fluxo de finalização
         }
     }
 }

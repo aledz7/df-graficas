@@ -40,7 +40,12 @@ class OrdemServico extends Model
         'dados_producao',
         'tipo_origem',
         'dados_consumo_material',
-        'tenant_id'
+        'tenant_id',
+        'tem_arte_pronta',
+        'destino_os',
+        'prazo_tipo',
+        'prazo_datahora',
+        'responsavel_criacao'
     ];
     
     protected $casts = [
@@ -52,6 +57,8 @@ class OrdemServico extends Model
         'data_finalizacao_os' => 'datetime',
         'data_validade' => 'datetime',
         'data_prevista_entrega' => 'datetime',
+        'prazo_datahora' => 'datetime',
+        'tem_arte_pronta' => 'boolean',
         'valor_total_os' => 'decimal:2',
         'desconto_terceirizado_percentual' => 'decimal:2',
         'desconto_geral_valor' => 'decimal:2',
@@ -104,6 +111,14 @@ class OrdemServico extends Model
     public function funcionario()
     {
         return $this->belongsTo(User::class, 'funcionario_id');
+    }
+
+    /**
+     * Relacionamento com o responsável pela criação
+     */
+    public function responsavelCriacao()
+    {
+        return $this->belongsTo(User::class, 'responsavel_criacao');
     }
 
     /**

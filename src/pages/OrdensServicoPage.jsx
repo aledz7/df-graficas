@@ -8,6 +8,7 @@ import { useEffect } from 'react';
 import OSClienteModal from '@/components/os/OSClienteModal';
 import OSPagamentoModal from '@/components/os/OSPagamentoModal';
 import OSDocumentModal from '@/components/os/OSDocumentModal';
+import OSFinalizacaoObrigatoriaModal from '@/components/os/OSFinalizacaoObrigatoriaModal';
 import ClienteForm from '@/components/clientes/ClienteForm'; 
 
 import OSHeader from '@/components/os/pageSections/OSHeader';
@@ -27,6 +28,10 @@ const OrdensServicoPage = ({ vendedorAtual }) => {
     
     // Estado para termo de busca inicial do cliente
     const [clienteSearchTerm, setClienteSearchTerm] = useState('');
+    
+    // Estado para modal obrigatório de finalização
+    const [isFinalizacaoObrigatoriaModalOpen, setIsFinalizacaoObrigatoriaModalOpen] = useState(false);
+    const [dadosFinalizacao, setDadosFinalizacao] = useState(null);
     
     // Debug logs removidos para evitar loop infinito
     const processedCalculadoraRef = useRef(false);
@@ -406,7 +411,7 @@ const OrdensServicoPage = ({ vendedorAtual }) => {
                 onItemChange={handleItemChange}
                 isOSFinalizada={isOSFinalizada}
                 onSalvarOrcamento={handleSalvarOrcamento}
-                onFinalizarOS={() => setIsPagamentoModalOpen(true)}
+                onFinalizarOS={() => setIsFinalizacaoObrigatoriaModalOpen(true)}
                 onAtualizarOSFinalizada={handleAtualizarOSFinalizada}
                 onGerarPdf={handleGerarPdfDocumento}
                 onImprimir={handleImpressaoDocumento}
@@ -431,6 +436,28 @@ const OrdensServicoPage = ({ vendedorAtual }) => {
               }}
               onOpenNovoCliente={handleOpenNovoClienteModal}
               initialSearchTerm={clienteSearchTerm}
+            />
+            {/* Modal Obrigatório de Finalização */}
+            <OSFinalizacaoObrigatoriaModal
+                isOpen={isFinalizacaoObrigatoriaModalOpen}
+                onClose={() => setIsFinalizacaoObrigatoriaModalOpen(false)}
+                onConfirm={(dados) => {
+                    // Salvar dados de finalização na OS
+                    setDadosFinalizacao(dados);
+                    setOrdemServico(prev => ({
+                        ...prev,
+                        tem_arte_pronta: dados.tem_arte_pronta,
+                        destino_os: dados.destino_os,
+                        prazo_tipo: dados.prazo_tipo,
+                        prazo_datahora: dados.prazo_datahora,
+                        responsavel_criacao: dados.responsavel_criacao,
+                        observacoes_gerais_os: dados.observacoes || prev.observacoes_gerais_os || '',
+                    }));
+                    // Fechar modal obrigatório e abrir modal de pagamento
+                    setIsFinalizacaoObrigatoriaModalOpen(false);
+                    setIsPagamentoModalOpen(true);
+                }}
+                ordemServico={ordemServico}
             />
             <OSPagamentoModal 
                 open={isPagamentoModalOpen} 

@@ -59,7 +59,10 @@ class NotificationController extends Controller
     public function markAsRead(Request $request, $id): JsonResponse
     {
         $notification = Notification::findOrFail($id);
-        $notification->update(['read' => true]);
+        $notification->update([
+            'read' => true,
+            'read_at' => now()
+        ]);
         
         return response()->json([
             'success' => true,
@@ -87,7 +90,10 @@ class NotificationController extends Controller
             $query->forUser(); // notificações globais
         }
         
-        $query->unread()->update(['read' => true]);
+        $query->unread()->update([
+            'read' => true,
+            'read_at' => now()
+        ]);
         
         return response()->json([
             'success' => true,
