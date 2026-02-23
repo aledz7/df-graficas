@@ -107,6 +107,7 @@ const menuItems = [
     subItems: [
       { path: '/configuracoes/empresa', label: 'Dados da Empresa', icon: Settings },
       { path: '/configuracoes/aparencia', label: 'Aparência e Tema', icon: Palette },
+      { path: '/configuracoes/personalizacoes', label: 'Personalizações', icon: SlidersHorizontal },
       { path: '/configuracoes/produtos-estoque', label: 'Produtos e Estoque', icon: Package },
       { path: '/configuracoes/nota-fiscal', label: 'Nota Fiscal', icon: Receipt },
       { path: '/configuracoes/pontos', label: 'Programa de Pontos', icon: Star },

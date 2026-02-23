@@ -66,6 +66,7 @@ const DescontosFuncionariosPage = lazy(() => import('@/pages/DescontosFuncionari
 const ConfiguracaoPrecosEnvelopamentoPage = lazy(() => import('@/pages/ConfiguracaoPrecosEnvelopamentoPage'));
 const CorrigirOS758Page = lazy(() => import('@/pages/CorrigirOS758Page'));
 const AparenciaSettingsPage = lazy(() => import('@/pages/AparenciaSettingsPage'));
+const PersonalizacoesSettingsPage = lazy(() => import('@/pages/PersonalizacoesSettingsPage'));
 const ProdutoConfigPage = lazy(() => import('@/pages/ProdutoConfigPage'));
 const ConfiguracaoPontosPage = lazy(() => import('@/pages/ConfiguracaoPontosPage'));
 const NfeSettingsPage = lazy(() => import('@/pages/NfeSettingsPage'));
@@ -239,6 +240,7 @@ const AppRoutes = ({ logoUrl, nomeEmpresa, vendedorAtual, theme, setTheme, setAp
       <Route path="/configuracoes/admin" element={<AdminSettingsPage setAppNomeSistema={setAppNomeSistema} />} />
       <Route path="/configuracoes/tenants" element={<AdminTenantsPage />} />
       <Route path="/configuracoes/aparencia" element={<AparenciaSettingsPage theme={theme} setTheme={setTheme} />} />
+      <Route path="/configuracoes/personalizacoes" element={<PersonalizacoesSettingsPage />} />
       <Route path="/configuracoes/produtos-estoque" element={<ProdutoConfigPage />} />
       <Route path="/configuracoes/pontos" element={<ConfiguracaoPontosPage />} />
       <Route path="/configuracoes/nota-fiscal" element={<NfeSettingsPage />} />

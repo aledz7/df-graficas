@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Models\Configuracao;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -271,6 +272,93 @@ class ConfiguracaoController extends ResourceController
         }
         
         return $this->success($resultado);
+    }
+
+    /**
+     * Cria/atualiza configurações de um grupo em modo upsert.
+     *
+     * Payload esperado:
+     * {
+     *   "configuracoes": [
+     *     {
+     *       "chave": "minha_chave",
+     *       "valor": true,
+     *       "tipo": "boolean",
+     *       "nome": "Nome amigável",
+     *       "descricao": "Descrição opcional",
+     *       "ordem": 10,
+     *       "visivel": true,
+     *       "editavel": true,
+     *       "obrigatorio": false
+     *     }
+     *   ]
+     * }
+     */
+    public function upsertGrupo(Request $request, $grupo): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'configuracoes' => 'required|array|min:1',
+            'configuracoes.*.chave' => 'required|string|max:100',
+            'configuracoes.*.valor' => 'nullable',
+            'configuracoes.*.tipo' => 'nullable|in:string,text,integer,float,boolean,json,date,datetime,time,array,object,texto,numero,booleano,data,data_hora,hora,select,multiselect',
+            'configuracoes.*.nome' => 'nullable|string|max:100',
+            'configuracoes.*.descricao' => 'nullable|string|max:255',
+            'configuracoes.*.ordem' => 'nullable|integer|min:0',
+            'configuracoes.*.visivel' => 'nullable|boolean',
+            'configuracoes.*.editavel' => 'nullable|boolean',
+            'configuracoes.*.obrigatorio' => 'nullable|boolean',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->validationError($validator->errors());
+        }
+
+        $tenantId = auth()->user()->tenant_id;
+        $atualizadas = [];
+
+        DB::beginTransaction();
+        try {
+            foreach ($request->input('configuracoes', []) as $item) {
+                $chave = $item['chave'];
+                $valor = $item['valor'] ?? null;
+
+                $config = $this->model::firstOrNew([
+                    'tenant_id' => $tenantId,
+                    'grupo' => $grupo,
+                    'chave' => $chave,
+                ]);
+
+                $config->nome = $item['nome'] ?? $config->nome ?? ucfirst(str_replace('_', ' ', $chave));
+                $config->descricao = $item['descricao'] ?? $config->descricao;
+                $config->tipo = $item['tipo'] ?? $config->tipo ?? $this->inferirTipoPorValor($valor);
+                $config->ordem = array_key_exists('ordem', $item) ? $item['ordem'] : ($config->ordem ?? 0);
+                $config->visivel = array_key_exists('visivel', $item) ? (bool)$item['visivel'] : ($config->visivel ?? true);
+                $config->editavel = array_key_exists('editavel', $item) ? (bool)$item['editavel'] : ($config->editavel ?? true);
+                $config->obrigatorio = array_key_exists('obrigatorio', $item) ? (bool)$item['obrigatorio'] : ($config->obrigatorio ?? false);
+                $config->valor = $valor;
+                $config->save();
+
+                $atualizadas[$chave] = $this->formatarValor($config);
+            }
+
+            DB::commit();
+            return $this->success($atualizadas, 'Configurações atualizadas com sucesso');
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return $this->error('Erro ao atualizar configurações do grupo: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Inferência simples de tipo para criação de novas configurações.
+     */
+    protected function inferirTipoPorValor($valor): string
+    {
+        if (is_bool($valor)) return 'boolean';
+        if (is_int($valor)) return 'integer';
+        if (is_float($valor)) return 'float';
+        if (is_array($valor) || is_object($valor)) return 'json';
+        return 'string';
     }
     
     /**

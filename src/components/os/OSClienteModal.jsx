@@ -8,7 +8,7 @@ import { Search, UserCircle2, UserPlus, Users, UserCheck, Loader2, UserX } from 
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Link } from 'react-router-dom';
-import { clienteService, funcionarioService } from '@/services/api';
+import { clienteService, configuracaoService, funcionarioService } from '@/services/api';
 
 const OSClienteModal = ({ isOpen, onClose, onClienteSelecionado, onOpenNovoCliente, initialSearchTerm = '' }) => {
     const [clientes, setClientes] = useState([]);
@@ -20,6 +20,8 @@ const OSClienteModal = ({ isOpen, onClose, onClienteSelecionado, onOpenNovoClien
     const [loadingFuncionarios, setLoadingFuncionarios] = useState(false);
     const [hasSearched, setHasSearched] = useState(false);
     const [mostrarInativos, setMostrarInativos] = useState(false);
+    const [preferenciaMostrarInativosPadrao, setPreferenciaMostrarInativosPadrao] = useState(false);
+    const [preferenciaCarregada, setPreferenciaCarregada] = useState(false);
     const debounceRef = useRef(null);
     const abortRef = useRef(null);
 
@@ -60,20 +62,41 @@ const OSClienteModal = ({ isOpen, onClose, onClienteSelecionado, onOpenNovoClien
             setClientes([]);
             setHasSearched(false);
             setSearchTerm('');
-            setMostrarInativos(false);
+            setMostrarInativos(preferenciaMostrarInativosPadrao);
+            setPreferenciaCarregada(false);
             return;
         }
-        searchClientes('', false);
-    }, [isOpen, searchClientes]);
+
+        const carregarPreferencia = async () => {
+            setPreferenciaCarregada(false);
+            let valorPadrao = false;
+
+            try {
+                const response = await configuracaoService.getGrupo('personalizacoes');
+                const data = response?.data?.data || response?.data || {};
+                valorPadrao = Boolean(data?.selecao_cliente_incluir_inativos_padrao);
+            } catch (error) {
+                if (error?.response?.status !== 404) {
+                    console.error('Erro ao carregar personalizações do modal de cliente:', error);
+                }
+            } finally {
+                setPreferenciaMostrarInativosPadrao(valorPadrao);
+                setMostrarInativos(valorPadrao);
+                setPreferenciaCarregada(true);
+            }
+        };
+
+        carregarPreferencia();
+    }, [isOpen]);
 
     useEffect(() => {
-        if (!isOpen) return;
+        if (!isOpen || !preferenciaCarregada) return;
         if (debounceRef.current) clearTimeout(debounceRef.current);
         debounceRef.current = setTimeout(() => {
             searchClientes(searchTerm, mostrarInativos);
         }, 300);
         return () => clearTimeout(debounceRef.current);
-    }, [searchTerm, mostrarInativos, isOpen, searchClientes]);
+    }, [searchTerm, mostrarInativos, isOpen, searchClientes, preferenciaCarregada]);
 
     useEffect(() => {
         const loadFuncionarios = async () => {
@@ -109,19 +132,8 @@ const OSClienteModal = ({ isOpen, onClose, onClienteSelecionado, onOpenNovoClien
     });
 
     const handleSelect = async (cliente) => {
-        const isInativo = cliente.status === false || cliente.status === 0;
-
-        if (isInativo) {
-            try {
-                await clienteService.update(cliente.id, { status: true });
-            } catch (err) {
-                console.error('Erro ao reativar cliente:', err);
-            }
-        }
-
         const clienteComTipo = {
             ...cliente,
-            status: true,
             tipo_pessoa: 'cliente',
             isFuncionario: false
         };
@@ -171,13 +183,13 @@ const OSClienteModal = ({ isOpen, onClose, onClienteSelecionado, onOpenNovoClien
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-[700px] max-h-[90vh] w-full">
+            <DialogContent className="sm:max-w-[700px] max-h-[90vh] w-full flex flex-col overflow-hidden">
                 <DialogHeader>
                     <DialogTitle>Buscar Cliente ou Funcionário</DialogTitle>
                     <DialogDescription>Pesquise por cliente ou funcionário para vincular à OS.</DialogDescription>
                 </DialogHeader>
                 
-                <Tabs defaultValue="clientes" className="w-full">
+                <Tabs defaultValue="clientes" className="w-full flex-1 min-h-0 flex flex-col">
                     <TabsList className="grid w-full grid-cols-2 mb-4">
                         <TabsTrigger value="clientes" className="flex items-center gap-2">
                             <Users size={16} />
@@ -189,7 +201,7 @@ const OSClienteModal = ({ isOpen, onClose, onClienteSelecionado, onOpenNovoClien
                         </TabsTrigger>
                     </TabsList>
                     
-                    <TabsContent value="clientes" className="space-y-4">
+                    <TabsContent value="clientes" className="space-y-4 mt-0 flex-1 min-h-0 flex flex-col">
                         <div className="relative">
                             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                             <Input
@@ -215,7 +227,7 @@ const OSClienteModal = ({ isOpen, onClose, onClienteSelecionado, onOpenNovoClien
                             <div className="bg-amber-50 p-2.5 rounded-md border border-amber-200">
                                 <p className="text-xs text-amber-700">
                                     <UserX size={14} className="inline mr-1" />
-                                    Clientes inativos serão <strong>reativados automaticamente</strong> ao serem selecionados.
+                                    Clientes inativos serão <strong>reativados automaticamente</strong> apenas ao salvar um novo pedido.
                                 </p>
                             </div>
                         )}
@@ -228,7 +240,7 @@ const OSClienteModal = ({ isOpen, onClose, onClienteSelecionado, onOpenNovoClien
                             </p>
                         )}
 
-                        <div className="border rounded-md max-h-[400px] overflow-y-auto">
+                        <div className="border rounded-md flex-1 min-h-[320px] max-h-[50vh] overflow-y-auto">
                             <div className="space-y-1 p-2">
                                 {isLoading ? (
                                     <div className="text-center py-10 text-muted-foreground">
@@ -275,7 +287,7 @@ const OSClienteModal = ({ isOpen, onClose, onClienteSelecionado, onOpenNovoClien
                         </div>
                     </TabsContent>
                     
-                    <TabsContent value="funcionarios" className="space-y-4">
+                    <TabsContent value="funcionarios" className="space-y-4 mt-0 flex-1 min-h-0 flex flex-col">
                         <div className="relative">
                             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                             <Input
@@ -286,7 +298,7 @@ const OSClienteModal = ({ isOpen, onClose, onClienteSelecionado, onOpenNovoClien
                             />
                         </div>
                         
-                        <div className="border rounded-md max-h-[350px] overflow-y-auto">
+                        <div className="border rounded-md flex-1 min-h-[300px] max-h-[48vh] overflow-y-auto">
                             <div className="space-y-1 p-2">
                                 {loadingFuncionarios ? (
                                     <div className="text-center py-10 text-muted-foreground">

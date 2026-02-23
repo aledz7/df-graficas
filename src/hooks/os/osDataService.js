@@ -1,7 +1,7 @@
 import { safeJsonParse, safeParseFloat } from '@/lib/utils';
 import { apiDataManager } from '@/lib/apiDataManager';
 import { initialOrdemServicoState, initialOrdemServicoStateSync } from './osConstants';
-import { osService, acabamentoService } from '@/services/api';
+import { osService, acabamentoService, clienteService } from '@/services/api';
 import { calcularSubtotalItem, garantirIdsItensOS } from './osLogic';
 import { formatDateForBackend } from '@/utils/dateUtils';
 
@@ -646,6 +646,24 @@ export const saveOSToAPI = async (osData, options = {}) => {
         payload_completo: JSON.parse(JSON.stringify(dataToSend))
       });
     };
+
+    // Reativar cliente inativo somente na criação de nova OS/pedido
+    const reativarClienteInativoSeNecessario = async (payload) => {
+      const clienteInfo = payload?.cliente_info || osData?.cliente_info;
+      const clienteId = payload?.cliente_id || clienteInfo?.id;
+      const statusCliente = clienteInfo?.status;
+      const clienteEstaInativo = statusCliente === false || statusCliente === 0;
+
+      // Se não temos status explícito de inativo ou não há cliente válido, não faz nada
+      if (!clienteId || !clienteEstaInativo) return;
+
+      console.log('🔄 [saveOSToAPI] Reativando cliente inativo antes de criar pedido...', {
+        clienteId,
+        statusCliente
+      });
+
+      await clienteService.update(clienteId, { status: true });
+    };
     
     // CRÍTICO: Verificar se estamos realmente criando uma nova OS ou editando
     // Se temos um id mas o numero_os é diferente do que está no banco, pode ser que estamos criando uma nova OS
@@ -737,6 +755,7 @@ export const saveOSToAPI = async (osData, options = {}) => {
     } else if (!isRealmenteEditando && !response) {
       console.log('🆕 [saveOSToAPI] Criando nova OS (sem id numérico)');
       garantirFuncionarioId();
+      await reativarClienteInativoSeNecessario(dataToSend);
       
       // Se tiver id_os, o backend verificará se já existe e gerará um novo se necessário
       // Não precisamos buscar manualmente no frontend para evitar converter criação em atualização indesejada
@@ -918,6 +937,7 @@ export const saveOSToAPI = async (osData, options = {}) => {
         
         // Tentar salvar novamente com novo ID
         console.log('🔄 [saveOSToAPI] Tentando salvar com novo ID...');
+        await reativarClienteInativoSeNecessario(dataToSendNovo);
         response = await osService.create(dataToSendNovo);
         
         console.log('✅ [saveOSToAPI] OS salva com sucesso usando novo ID:', response);

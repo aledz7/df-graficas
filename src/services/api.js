@@ -525,6 +525,7 @@ export const configuracaoService = {
   getEmpresa: () => api.get('/api/configuracoes/grupo/empresa'),
   getEmpresaByTenant: (tenantId) => api.get(`/api/public/configuracoes/empresa/tenant/${tenantId}`),
   getGrupo: (grupo) => api.get(`/api/configuracoes/grupo/${grupo}`),
+  upsertGrupo: (grupo, configuracoes) => api.post(`/api/configuracoes/grupo/${grupo}/upsert`, { configuracoes }),
   updateEmpresa: (data) => api.post('/api/configuracoes/bulk-update', data),
   // Método para upload de logo
   uploadLogo: (formData) => {

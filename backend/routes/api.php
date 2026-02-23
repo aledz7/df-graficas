@@ -297,6 +297,7 @@ Route::middleware(['api.auth'])->group(function () {
         Route::delete('{chave}', [ConfiguracaoController::class, 'destroy']);
         Route::post('bulk-update', [ConfiguracaoController::class, 'bulkUpdate']);
         Route::get('grupo/{grupo}', [ConfiguracaoController::class, 'grupo']);
+        Route::post('grupo/{grupo}/upsert', [ConfiguracaoController::class, 'upsertGrupo']);
         Route::post('logo', [ConfiguracaoController::class, 'uploadLogo']);
     });
 
