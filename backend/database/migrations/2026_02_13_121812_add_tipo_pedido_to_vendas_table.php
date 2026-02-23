@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (!Schema::hasTable('vendas') || Schema::hasColumn('vendas', 'tipo_pedido')) {
+            return;
+        }
+
         Schema::table('vendas', function (Blueprint $table) {
             $table->string('tipo_pedido', 20)->nullable()->after('tipo_documento')->comment('Tipo do pedido: PERMUTA, NORMAL, etc');
         });
@@ -21,6 +25,10 @@ return new class extends Migration
      */
     public function down(): void
     {
+        if (!Schema::hasTable('vendas') || !Schema::hasColumn('vendas', 'tipo_pedido')) {
+            return;
+        }
+
         Schema::table('vendas', function (Blueprint $table) {
             $table->dropColumn('tipo_pedido');
         });

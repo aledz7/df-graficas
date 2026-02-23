@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (!Schema::hasTable('notificacoes') || Schema::hasColumn('notificacoes', 'dados_adicionais')) {
+            return;
+        }
+
         Schema::table('notificacoes', function (Blueprint $table) {
             $table->json('dados_adicionais')->nullable()->after('percentual_atual');
         });
@@ -21,6 +25,10 @@ return new class extends Migration
      */
     public function down(): void
     {
+        if (!Schema::hasTable('notificacoes') || !Schema::hasColumn('notificacoes', 'dados_adicionais')) {
+            return;
+        }
+
         Schema::table('notificacoes', function (Blueprint $table) {
             $table->dropColumn('dados_adicionais');
         });

@@ -11,11 +11,23 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (!Schema::hasTable('metas_vendas')) {
+            return;
+        }
+
         Schema::table('metas_vendas', function (Blueprint $table) {
             // Campos de gamificação
-            $table->integer('pontos_meta')->default(0)->after('valor_meta')->comment('Pontos ao bater a meta');
-            $table->decimal('percentual_proximo_alerta', 5, 2)->nullable()->after('pontos_meta')->comment('Percentual para alertar que está próximo (ex: 80)');
-            $table->json('premiacao')->nullable()->after('percentual_proximo_alerta')->comment('Informações sobre premiação (bônus, brinde, folga, etc)');
+            if (!Schema::hasColumn('metas_vendas', 'pontos_meta')) {
+                $table->integer('pontos_meta')->default(0)->after('valor_meta')->comment('Pontos ao bater a meta');
+            }
+
+            if (!Schema::hasColumn('metas_vendas', 'percentual_proximo_alerta')) {
+                $table->decimal('percentual_proximo_alerta', 5, 2)->nullable()->after('pontos_meta')->comment('Percentual para alertar que está próximo (ex: 80)');
+            }
+
+            if (!Schema::hasColumn('metas_vendas', 'premiacao')) {
+                $table->json('premiacao')->nullable()->after('percentual_proximo_alerta')->comment('Informações sobre premiação (bônus, brinde, folga, etc)');
+            }
         });
     }
 
@@ -24,8 +36,22 @@ return new class extends Migration
      */
     public function down(): void
     {
+        if (!Schema::hasTable('metas_vendas')) {
+            return;
+        }
+
         Schema::table('metas_vendas', function (Blueprint $table) {
-            $table->dropColumn(['pontos_meta', 'percentual_proximo_alerta', 'premiacao']);
+            if (Schema::hasColumn('metas_vendas', 'pontos_meta')) {
+                $table->dropColumn('pontos_meta');
+            }
+
+            if (Schema::hasColumn('metas_vendas', 'percentual_proximo_alerta')) {
+                $table->dropColumn('percentual_proximo_alerta');
+            }
+
+            if (Schema::hasColumn('metas_vendas', 'premiacao')) {
+                $table->dropColumn('premiacao');
+            }
         });
     }
 };

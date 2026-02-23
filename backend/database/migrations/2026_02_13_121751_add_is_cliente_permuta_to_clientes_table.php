@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (!Schema::hasTable('clientes') || Schema::hasColumn('clientes', 'is_cliente_permuta')) {
+            return;
+        }
+
         Schema::table('clientes', function (Blueprint $table) {
             $table->boolean('is_cliente_permuta')->default(false)->after('is_terceirizado');
         });
@@ -21,6 +25,10 @@ return new class extends Migration
      */
     public function down(): void
     {
+        if (!Schema::hasTable('clientes') || !Schema::hasColumn('clientes', 'is_cliente_permuta')) {
+            return;
+        }
+
         Schema::table('clientes', function (Blueprint $table) {
             $table->dropColumn('is_cliente_permuta');
         });

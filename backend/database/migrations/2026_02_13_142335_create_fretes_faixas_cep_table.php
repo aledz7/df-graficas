@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasTable('fretes_faixas_cep')) {
+            return;
+        }
+
         Schema::create('fretes_faixas_cep', function (Blueprint $table) {
             $table->id();
             $table->foreignId('opcao_frete_id')->constrained('opcoes_frete')->onDelete('cascade');

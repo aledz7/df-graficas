@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasTable('notas_fiscais')) {
+            return;
+        }
+
         Schema::create('notas_fiscais', function (Blueprint $table) {
             $table->id();
             $table->string('tenant_id');

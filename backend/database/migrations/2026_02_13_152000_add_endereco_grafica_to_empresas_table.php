@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (!Schema::hasTable('empresas')) {
+            return;
+        }
+
         Schema::table('empresas', function (Blueprint $table) {
             if (!Schema::hasColumn('empresas', 'endereco_grafica')) {
                 $table->text('endereco_grafica')->nullable()->after('endereco_completo')->comment('Endereço fixo da gráfica para ponto de partida das rotas');
@@ -23,6 +27,10 @@ return new class extends Migration
      */
     public function down(): void
     {
+        if (!Schema::hasTable('empresas')) {
+            return;
+        }
+
         Schema::table('empresas', function (Blueprint $table) {
             if (Schema::hasColumn('empresas', 'endereco_grafica')) {
                 $table->dropColumn('endereco_grafica');

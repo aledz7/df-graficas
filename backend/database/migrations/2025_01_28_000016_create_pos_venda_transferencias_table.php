@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasTable('pos_venda_transferencias')) {
+            return;
+        }
+
         Schema::create('pos_venda_transferencias', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('tenant_id');
@@ -22,7 +26,6 @@ return new class extends Migration
             $table->timestamps();
 
             $table->foreign('tenant_id')->references('id')->on('tenants')->onDelete('cascade');
-            $table->foreign('pos_venda_id')->references('id')->on('pos_venda')->onDelete('cascade');
             $table->foreign('usuario_origem_id')->references('id')->on('users')->onDelete('restrict');
             $table->foreign('usuario_destino_id')->references('id')->on('users')->onDelete('restrict');
             $table->foreign('usuario_transferencia_id')->references('id')->on('users')->onDelete('restrict');

@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (!Schema::hasTable('holerites')) {
+            return;
+        }
+
         Schema::table('holerites', function (Blueprint $table) {
             if (!Schema::hasColumn('holerites', 'total_fretes')) {
                 $table->decimal('total_fretes', 10, 2)->default(0)->after('total_comissoes')->comment('Total de fretes próprios do período');
@@ -26,6 +30,10 @@ return new class extends Migration
      */
     public function down(): void
     {
+        if (!Schema::hasTable('holerites')) {
+            return;
+        }
+
         Schema::table('holerites', function (Blueprint $table) {
             if (Schema::hasColumn('holerites', 'fretes_itens')) {
                 $table->dropColumn('fretes_itens');

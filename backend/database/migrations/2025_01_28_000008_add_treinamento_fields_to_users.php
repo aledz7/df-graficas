@@ -11,11 +11,26 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (!Schema::hasTable('users')) {
+            return;
+        }
+
         Schema::table('users', function (Blueprint $table) {
-            $table->enum('setor', ['atendimento', 'vendas', 'producao', 'design', 'financeiro', 'geral'])->nullable()->after('cargo');
-            $table->enum('nivel_treinamento_liberado', ['iniciante', 'intermediario', 'avancado'])->default('iniciante')->after('setor');
-            $table->decimal('progresso_treinamento', 5, 2)->default(0)->comment('Percentual de progresso no treinamento')->after('nivel_treinamento_liberado');
-            $table->timestamp('ultimo_acesso_treinamento')->nullable()->after('progresso_treinamento');
+            if (!Schema::hasColumn('users', 'setor')) {
+                $table->enum('setor', ['atendimento', 'vendas', 'producao', 'design', 'financeiro', 'geral'])->nullable()->after('cargo');
+            }
+
+            if (!Schema::hasColumn('users', 'nivel_treinamento_liberado')) {
+                $table->enum('nivel_treinamento_liberado', ['iniciante', 'intermediario', 'avancado'])->default('iniciante')->after('setor');
+            }
+
+            if (!Schema::hasColumn('users', 'progresso_treinamento')) {
+                $table->decimal('progresso_treinamento', 5, 2)->default(0)->comment('Percentual de progresso no treinamento')->after('nivel_treinamento_liberado');
+            }
+
+            if (!Schema::hasColumn('users', 'ultimo_acesso_treinamento')) {
+                $table->timestamp('ultimo_acesso_treinamento')->nullable()->after('progresso_treinamento');
+            }
         });
     }
 
@@ -24,8 +39,26 @@ return new class extends Migration
      */
     public function down(): void
     {
+        if (!Schema::hasTable('users')) {
+            return;
+        }
+
         Schema::table('users', function (Blueprint $table) {
-            $table->dropColumn(['setor', 'nivel_treinamento_liberado', 'progresso_treinamento', 'ultimo_acesso_treinamento']);
+            if (Schema::hasColumn('users', 'setor')) {
+                $table->dropColumn('setor');
+            }
+
+            if (Schema::hasColumn('users', 'nivel_treinamento_liberado')) {
+                $table->dropColumn('nivel_treinamento_liberado');
+            }
+
+            if (Schema::hasColumn('users', 'progresso_treinamento')) {
+                $table->dropColumn('progresso_treinamento');
+            }
+
+            if (Schema::hasColumn('users', 'ultimo_acesso_treinamento')) {
+                $table->dropColumn('ultimo_acesso_treinamento');
+            }
         });
     }
 };

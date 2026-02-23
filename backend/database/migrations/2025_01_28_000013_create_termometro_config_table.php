@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasTable('termometro_config')) {
+            return;
+        }
+
         Schema::create('termometro_config', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('tenant_id');

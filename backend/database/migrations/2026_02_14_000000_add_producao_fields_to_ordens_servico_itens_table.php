@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (!Schema::hasTable('ordens_servico_itens')) {
+            return;
+        }
+
         Schema::table('ordens_servico_itens', function (Blueprint $table) {
             // Adicionar campos de produção se não existirem
             if (!Schema::hasColumn('ordens_servico_itens', 'data_inicio_producao')) {
@@ -32,6 +36,10 @@ return new class extends Migration
      */
     public function down(): void
     {
+        if (!Schema::hasTable('ordens_servico_itens')) {
+            return;
+        }
+
         Schema::table('ordens_servico_itens', function (Blueprint $table) {
             if (Schema::hasColumn('ordens_servico_itens', 'is_refacao')) {
                 $table->dropColumn('is_refacao');

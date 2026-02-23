@@ -11,11 +11,20 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (!Schema::hasTable('cupons')) {
+            return;
+        }
+
         Schema::table('cupons', function (Blueprint $table) {
-            $table->enum('tipo_aplicacao', ['todos_itens', 'categoria', 'item_especifico'])->default('todos_itens')->after('produto_ids');
-            $table->unsignedBigInteger('categoria_id')->nullable()->after('tipo_aplicacao');
-            
-            $table->foreign('categoria_id')->references('id')->on('categorias')->onDelete('set null');
+            if (!Schema::hasColumn('cupons', 'tipo_aplicacao')) {
+                $table->enum('tipo_aplicacao', ['todos_itens', 'categoria', 'item_especifico'])->default('todos_itens')->after('produto_ids');
+            }
+
+            if (!Schema::hasColumn('cupons', 'categoria_id')) {
+                $table->unsignedBigInteger('categoria_id')->nullable()->after('tipo_aplicacao');
+                $table->foreign('categoria_id')->references('id')->on('categorias')->onDelete('set null');
+            }
+
             $table->index(['tenant_id', 'tipo_aplicacao', 'categoria_id']);
         });
     }
@@ -25,10 +34,22 @@ return new class extends Migration
      */
     public function down(): void
     {
+        if (!Schema::hasTable('cupons')) {
+            return;
+        }
+
         Schema::table('cupons', function (Blueprint $table) {
-            $table->dropForeign(['categoria_id']);
-            $table->dropIndex(['tenant_id', 'tipo_aplicacao', 'categoria_id']);
-            $table->dropColumn(['tipo_aplicacao', 'categoria_id']);
+            if (Schema::hasColumn('cupons', 'categoria_id')) {
+                $table->dropForeign(['categoria_id']);
+            }
+
+            if (Schema::hasColumn('cupons', 'tipo_aplicacao')) {
+                $table->dropColumn('tipo_aplicacao');
+            }
+
+            if (Schema::hasColumn('cupons', 'categoria_id')) {
+                $table->dropColumn('categoria_id');
+            }
         });
     }
 };

@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasTable('pos_venda_agendamentos')) {
+            return;
+        }
+
         Schema::create('pos_venda_agendamentos', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('tenant_id');
@@ -24,7 +28,6 @@ return new class extends Migration
             $table->timestamps();
 
             $table->foreign('tenant_id')->references('id')->on('tenants')->onDelete('cascade');
-            $table->foreign('pos_venda_id')->references('id')->on('pos_venda')->onDelete('cascade');
             $table->foreign('responsavel_id')->references('id')->on('users')->onDelete('restrict');
             $table->foreign('usuario_conclusao_id')->references('id')->on('users')->onDelete('set null');
             
