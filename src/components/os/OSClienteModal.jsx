@@ -4,8 +4,9 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Search, UserCircle2, UserPlus, Users, UserCheck, Loader2 } from 'lucide-react';
+import { Search, UserCircle2, UserPlus, Users, UserCheck, Loader2, UserX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import { Link } from 'react-router-dom';
 import { clienteService, funcionarioService } from '@/services/api';
 
@@ -18,6 +19,7 @@ const OSClienteModal = ({ isOpen, onClose, onClienteSelecionado, onOpenNovoClien
     const [isLoading, setIsLoading] = useState(false);
     const [loadingFuncionarios, setLoadingFuncionarios] = useState(false);
     const [hasSearched, setHasSearched] = useState(false);
+    const [mostrarInativos, setMostrarInativos] = useState(false);
     const debounceRef = useRef(null);
     const abortRef = useRef(null);
 
@@ -27,14 +29,17 @@ const OSClienteModal = ({ isOpen, onClose, onClienteSelecionado, onOpenNovoClien
         }
     }, [isOpen, initialSearchTerm]);
 
-    const searchClientes = useCallback(async (term) => {
+    const searchClientes = useCallback(async (term, incluirInativos = false) => {
         if (abortRef.current) abortRef.current.abort();
         const controller = new AbortController();
         abortRef.current = controller;
 
         setIsLoading(true);
         try {
-            const result = await clienteService.search(term, { perPage: 50 });
+            const result = await clienteService.search(term, {
+                perPage: 50,
+                ativo: incluirInativos ? null : true,
+            });
             if (controller.signal.aborted) return;
             const list = Array.isArray(result.data) ? result.data : [];
             setClientes(list);
@@ -55,19 +60,20 @@ const OSClienteModal = ({ isOpen, onClose, onClienteSelecionado, onOpenNovoClien
             setClientes([]);
             setHasSearched(false);
             setSearchTerm('');
+            setMostrarInativos(false);
             return;
         }
-        searchClientes('');
+        searchClientes('', false);
     }, [isOpen, searchClientes]);
 
     useEffect(() => {
         if (!isOpen) return;
         if (debounceRef.current) clearTimeout(debounceRef.current);
         debounceRef.current = setTimeout(() => {
-            searchClientes(searchTerm);
+            searchClientes(searchTerm, mostrarInativos);
         }, 300);
         return () => clearTimeout(debounceRef.current);
-    }, [searchTerm, isOpen, searchClientes]);
+    }, [searchTerm, mostrarInativos, isOpen, searchClientes]);
 
     useEffect(() => {
         const loadFuncionarios = async () => {
@@ -102,10 +108,20 @@ const OSClienteModal = ({ isOpen, onClose, onClienteSelecionado, onOpenNovoClien
                cargo.toLowerCase().includes(searchTermLower);
     });
 
-    const handleSelect = (cliente) => {
-        // Adicionar identificador de tipo para clientes normais
+    const handleSelect = async (cliente) => {
+        const isInativo = cliente.status === false || cliente.status === 0;
+
+        if (isInativo) {
+            try {
+                await clienteService.update(cliente.id, { status: true });
+            } catch (err) {
+                console.error('Erro ao reativar cliente:', err);
+            }
+        }
+
         const clienteComTipo = {
             ...cliente,
+            status: true,
             tipo_pessoa: 'cliente',
             isFuncionario: false
         };
@@ -183,7 +199,27 @@ const OSClienteModal = ({ isOpen, onClose, onClienteSelecionado, onOpenNovoClien
                                 className="pl-8"
                             />
                         </div>
+
+                        <div className="flex items-center justify-between">
+                            <label htmlFor="mostrar-inativos" className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
+                                <Switch
+                                    id="mostrar-inativos"
+                                    checked={mostrarInativos}
+                                    onCheckedChange={setMostrarInativos}
+                                />
+                                Incluir clientes inativos
+                            </label>
+                        </div>
                         
+                        {mostrarInativos && (
+                            <div className="bg-amber-50 p-2.5 rounded-md border border-amber-200">
+                                <p className="text-xs text-amber-700">
+                                    <UserX size={14} className="inline mr-1" />
+                                    Clientes inativos serão <strong>reativados automaticamente</strong> ao serem selecionados.
+                                </p>
+                            </div>
+                        )}
+
                         {hasSearched && !isLoading && (
                             <p className="text-xs text-muted-foreground px-1">
                                 {totalClientes > 0
@@ -199,8 +235,10 @@ const OSClienteModal = ({ isOpen, onClose, onClienteSelecionado, onOpenNovoClien
                                         <Loader2 className="mx-auto h-6 w-6 animate-spin mb-2" />
                                         <p>Buscando clientes...</p>
                                     </div>
-                                ) : clientes.length > 0 ? clientes.map(cliente => (
-                                    <Card key={cliente.id} className="cursor-pointer hover:bg-accent transition-colors" onClick={() => handleSelect(cliente)}>
+                                ) : clientes.length > 0 ? clientes.map(cliente => {
+                                    const isInativo = cliente.status === false || cliente.status === 0;
+                                    return (
+                                    <Card key={cliente.id} className={`cursor-pointer hover:bg-accent transition-colors ${isInativo ? 'opacity-60 border-l-4 border-l-red-400' : ''}`} onClick={() => handleSelect(cliente)}>
                                         <CardContent className="p-3 flex items-center space-x-3">
                                             {cliente.foto_url ? (
                                                 <img 
@@ -209,17 +247,25 @@ const OSClienteModal = ({ isOpen, onClose, onClienteSelecionado, onOpenNovoClien
                                                     className="w-10 h-10 object-cover rounded-full" 
                                                 />
                                             ) : (
-                                                <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center">
-                                                    <UserCircle2 size={24} className="text-muted-foreground" />
+                                                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isInativo ? 'bg-red-100' : 'bg-muted'}`}>
+                                                    {isInativo
+                                                        ? <UserX size={24} className="text-red-400" />
+                                                        : <UserCircle2 size={24} className="text-muted-foreground" />
+                                                    }
                                                 </div>
                                             )}
-                                            <div>
-                                                <p className="font-semibold">{cliente.nome || cliente.nome_completo}</p>
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-2">
+                                                    <p className="font-semibold">{cliente.nome || cliente.nome_completo}</p>
+                                                    {isInativo && (
+                                                        <span className="text-[10px] font-medium bg-red-100 text-red-600 px-1.5 py-0.5 rounded">INATIVO</span>
+                                                    )}
+                                                </div>
                                                 <p className="text-sm text-muted-foreground">{cliente.telefone || cliente.telefone_principal || 'Sem telefone'}</p>
                                             </div>
                                         </CardContent>
-                                    </Card>
-                                )) : (
+                                    </Card>);
+                                }) : (
                                     <div className="text-center py-10 text-muted-foreground">
                                         <p>Nenhum cliente encontrado.</p>
                                         {searchTerm && <p className="text-xs">Tente um termo de busca diferente.</p>}
