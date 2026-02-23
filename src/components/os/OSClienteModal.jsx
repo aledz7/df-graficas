@@ -1,74 +1,82 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Search, UserCircle2, UserPlus, Users, UserCheck } from 'lucide-react';
+import { Search, UserCircle2, UserPlus, Users, UserCheck, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { clienteService, funcionarioService } from '@/services/api';
 
 const OSClienteModal = ({ isOpen, onClose, onClienteSelecionado, onOpenNovoCliente, initialSearchTerm = '' }) => {
     const [clientes, setClientes] = useState([]);
+    const [totalClientes, setTotalClientes] = useState(0);
     const [funcionarios, setFuncionarios] = useState([]);
     const [searchTerm, setSearchTerm] = useState(initialSearchTerm);
     const [searchFuncionarioTerm, setSearchFuncionarioTerm] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [loadingFuncionarios, setLoadingFuncionarios] = useState(false);
+    const [hasSearched, setHasSearched] = useState(false);
+    const debounceRef = useRef(null);
+    const abortRef = useRef(null);
 
-    // Atualizar searchTerm quando initialSearchTerm mudar
     useEffect(() => {
         if (isOpen && initialSearchTerm) {
             setSearchTerm(initialSearchTerm);
         }
     }, [isOpen, initialSearchTerm]);
 
-    useEffect(() => {
-        const loadData = async () => {
-            if (!isOpen) return;
-            
-            setIsLoading(true);
-            try {
-                const response = await clienteService.getAll();
-                
-                const clientesData = response.data?.data?.data || response.data?.data || response.data || [];
-                const clientesArray = Array.isArray(clientesData) ? clientesData : [];
-                
-                // Filtrar apenas clientes ativos (considerar ativo se não estiver explicitamente marcado como inativo)
-                const activeClientes = clientesArray.filter(c => 
-                    c.ativo !== false && 
-                    c.status !== false && 
-                    c.ativo !== 0 && 
-                    c.status !== 0
-                );
-                
-                setClientes(activeClientes);
-                setSearchTerm('');
-            } catch(error) {
-                console.error('Erro ao carregar clientes:', error);
-                setClientes([]);
-            } finally {
-                setIsLoading(false);
-            }
-        };
+    const searchClientes = useCallback(async (term) => {
+        if (abortRef.current) abortRef.current.abort();
+        const controller = new AbortController();
+        abortRef.current = controller;
 
+        setIsLoading(true);
+        try {
+            const result = await clienteService.search(term, { perPage: 50 });
+            if (controller.signal.aborted) return;
+            const list = Array.isArray(result.data) ? result.data : [];
+            setClientes(list);
+            setTotalClientes(result.meta?.total || list.length);
+            setHasSearched(true);
+        } catch (error) {
+            if (controller.signal.aborted) return;
+            console.error('Erro ao buscar clientes:', error);
+            setClientes([]);
+            setTotalClientes(0);
+        } finally {
+            if (!controller.signal.aborted) setIsLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (!isOpen) {
+            setClientes([]);
+            setHasSearched(false);
+            setSearchTerm('');
+            return;
+        }
+        searchClientes('');
+    }, [isOpen, searchClientes]);
+
+    useEffect(() => {
+        if (!isOpen) return;
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+        debounceRef.current = setTimeout(() => {
+            searchClientes(searchTerm);
+        }, 300);
+        return () => clearTimeout(debounceRef.current);
+    }, [searchTerm, isOpen, searchClientes]);
+
+    useEffect(() => {
         const loadFuncionarios = async () => {
             if (!isOpen) return;
-            
             setLoadingFuncionarios(true);
             try {
                 const response = await funcionarioService.getAll();
-                
-                // Normalizar a estrutura de dados (pode vir paginada ou não)
                 let funcionariosData = response.data?.data?.data || response.data?.data || response.data || response || [];
-                
-                // Garantir que é um array
-                if (!Array.isArray(funcionariosData)) {
-                    console.warn('Dados de funcionários não são um array:', funcionariosData);
-                    funcionariosData = [];
-                }
-                
+                if (!Array.isArray(funcionariosData)) funcionariosData = [];
                 const funcionariosAtivos = funcionariosData.filter(f => f.status === true || f.status === 1);
                 setFuncionarios(funcionariosAtivos);
             } catch (error) {
@@ -78,18 +86,8 @@ const OSClienteModal = ({ isOpen, onClose, onClienteSelecionado, onOpenNovoClien
                 setLoadingFuncionarios(false);
             }
         };
-        
-        loadData();
         loadFuncionarios();
     }, [isOpen]);
-
-    const filteredClientes = clientes.filter(c => 
-        (c.nome || c.nome_completo || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (c.nome_fantasia || c.apelido_fantasia || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (c.cpf_cnpj || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (c.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (c.telefone || c.telefone_principal || '').toLowerCase().includes(searchTerm.toLowerCase())
-    );
 
     const filteredFuncionarios = funcionarios.filter(f => {
         if (!f) return false;
@@ -98,7 +96,6 @@ const OSClienteModal = ({ isOpen, onClose, onClienteSelecionado, onOpenNovoClien
         const telefone = f.telefone || f.celular || f.whatsapp || '';
         const cargo = f.cargo || '';
         const searchTermLower = searchFuncionarioTerm.toLowerCase();
-        
         return nome.toLowerCase().includes(searchTermLower) ||
                cpf.includes(searchFuncionarioTerm) ||
                telefone.includes(searchFuncionarioTerm) ||
@@ -187,13 +184,22 @@ const OSClienteModal = ({ isOpen, onClose, onClienteSelecionado, onOpenNovoClien
                             />
                         </div>
                         
+                        {hasSearched && !isLoading && (
+                            <p className="text-xs text-muted-foreground px-1">
+                                {totalClientes > 0
+                                    ? `Exibindo ${clientes.length} de ${totalClientes} cliente${totalClientes !== 1 ? 's' : ''} encontrado${totalClientes !== 1 ? 's' : ''}.${totalClientes > clientes.length ? ' Refine sua busca para encontrar mais.' : ''}`
+                                    : ''}
+                            </p>
+                        )}
+
                         <div className="border rounded-md max-h-[400px] overflow-y-auto">
                             <div className="space-y-1 p-2">
                                 {isLoading ? (
                                     <div className="text-center py-10 text-muted-foreground">
-                                        <p>Carregando clientes...</p>
+                                        <Loader2 className="mx-auto h-6 w-6 animate-spin mb-2" />
+                                        <p>Buscando clientes...</p>
                                     </div>
-                                ) : filteredClientes.length > 0 ? filteredClientes.map(cliente => (
+                                ) : clientes.length > 0 ? clientes.map(cliente => (
                                     <Card key={cliente.id} className="cursor-pointer hover:bg-accent transition-colors" onClick={() => handleSelect(cliente)}>
                                         <CardContent className="p-3 flex items-center space-x-3">
                                             {cliente.foto_url ? (

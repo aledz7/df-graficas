@@ -192,11 +192,26 @@ export const authService = {
 export const clienteService = {
   
   getAll: async () => {
-    // Buscar exclusivamente da API com paginação maior para garantir que todos os clientes sejam retornados
     const response = await api.get('/api/clientes', { params: { per_page: 1000 } });
     return {
       data: response.data.data?.data || response.data.data || response.data || [],
       meta: response.data.data?.meta || response.data.meta || {}
+    };
+  },
+
+  search: async (term, { perPage = 50, page = 1, ativo = true } = {}) => {
+    const params = { per_page: perPage, page, sort_by: 'nome_completo', sort_order: 'asc' };
+    if (term) params.search = term;
+    if (ativo !== null) params.ativo = ativo ? 1 : 0;
+    const response = await api.get('/api/clientes', { params });
+    const paginated = response.data?.data;
+    return {
+      data: paginated?.data || paginated || [],
+      meta: {
+        current_page: paginated?.current_page || 1,
+        last_page: paginated?.last_page || 1,
+        total: paginated?.total || 0,
+      }
     };
   },
 

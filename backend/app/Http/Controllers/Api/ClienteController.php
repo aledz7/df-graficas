@@ -325,7 +325,10 @@ class ClienteController extends ResourceController
                 $q->where('nome', 'like', "%{$search}%")
                   ->orWhere('cpf_cnpj', 'like', "%{$search}%")
                   ->orWhere('email', 'like', "%{$search}%")
-                  ->orWhere('apelido_fantasia', 'like', "%{$search}%");
+                  ->orWhere('apelido_fantasia', 'like', "%{$search}%")
+                  ->orWhere('telefone_principal', 'like', "%{$search}%")
+                  ->orWhere('whatsapp', 'like', "%{$search}%")
+                  ->orWhere('nome_completo', 'like', "%{$search}%");
             });
         }
 
@@ -346,7 +349,7 @@ class ClienteController extends ResourceController
 
         // Filtrar por status (ativo/inativo)
         if ($request->has('ativo')) {
-            $query->where('ativo', $request->boolean('ativo'));
+            $query->where('status', $request->boolean('ativo'));
         }
 
         return $query;
