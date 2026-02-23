@@ -23,6 +23,47 @@ const ProdutoTabVariacoes = ({
   const [showBulkEdit, setShowBulkEdit] = useState(false);
   const [bulkPreco, setBulkPreco] = useState('');
   const [bulkEstoque, setBulkEstoque] = useState('');
+  const [novoTamanhoPersonalizado, setNovoTamanhoPersonalizado] = useState({});
+  const SIZE_MODE_DEFAULT = 'padrao';
+  const SIZE_MODE_CUSTOM = 'personalizado';
+  const sizeModeOptions = useMemo(() => ([
+    { value: SIZE_MODE_DEFAULT, label: 'Tabela de tamanhos' },
+    { value: SIZE_MODE_CUSTOM, label: 'Tamanhos personalizados' },
+  ]), []);
+
+  const getTamanhosPersonalizados = (variacao) => {
+    if (Array.isArray(variacao?.tamanhos_personalizados)) {
+      return variacao.tamanhos_personalizados;
+    }
+    return [];
+  };
+
+  const adicionarTamanhoPersonalizado = (index) => {
+    const valor = (novoTamanhoPersonalizado[index] || '').trim();
+    if (!valor) return;
+
+    const variacao = currentProduto.variacoes?.[index];
+    const tamanhosAtuais = getTamanhosPersonalizados(variacao);
+    const jaExiste = tamanhosAtuais.some((tamanho) => tamanho.toLowerCase() === valor.toLowerCase());
+    if (jaExiste) return;
+
+    const novosTamanhos = [...tamanhosAtuais, valor];
+    updateVariacao(index, 'tamanhos_personalizados', novosTamanhos);
+    updateVariacao(index, 'tamanho', novosTamanhos.join(', '));
+
+    setNovoTamanhoPersonalizado((prev) => ({
+      ...prev,
+      [index]: '',
+    }));
+  };
+
+  const removerTamanhoPersonalizado = (index, tamanhoRemover) => {
+    const variacao = currentProduto.variacoes?.[index];
+    const tamanhosAtuais = getTamanhosPersonalizados(variacao);
+    const novosTamanhos = tamanhosAtuais.filter((tamanho) => tamanho !== tamanhoRemover);
+    updateVariacao(index, 'tamanhos_personalizados', novosTamanhos);
+    updateVariacao(index, 'tamanho', novosTamanhos.join(', '));
+  };
   // Função para obter a URL completa da imagem
   const getImageUrl = (path) => {
     if (!path) return null;
@@ -270,14 +311,77 @@ const ProdutoTabVariacoes = ({
                                 </div>
                                 <div>
                                     <Label htmlFor={`var-tamanho-${index}`}>Tamanho</Label>
-                                    <Select value={variacao.tamanho} onValueChange={(value) => updateVariacao(index, 'tamanho', value)}>
-                                        <SelectTrigger id={`var-tamanho-${index}`}><SelectValue placeholder="Tamanho"/></SelectTrigger>
+                                    <Select
+                                        value={variacao.tamanho_tipo || SIZE_MODE_DEFAULT}
+                                        onValueChange={(value) => {
+                                            updateVariacao(index, 'tamanho_tipo', value);
+                                            if (value === SIZE_MODE_DEFAULT) {
+                                                updateVariacao(index, 'tamanhos_personalizados', []);
+                                                updateVariacao(index, 'tamanho', '');
+                                            } else {
+                                                const tamanhosPersonalizados = getTamanhosPersonalizados(variacao);
+                                                updateVariacao(index, 'tamanho', tamanhosPersonalizados.join(', '));
+                                            }
+                                        }}
+                                    >
+                                        <SelectTrigger id={`var-tamanho-${index}`}>
+                                            <SelectValue placeholder="Tipo de tamanho" />
+                                        </SelectTrigger>
                                         <SelectContent>
-                                            {productSizes.map(s => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
+                                            {sizeModeOptions.map((option) => (
+                                                <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                                            ))}
                                         </SelectContent>
                                     </Select>
                                 </div>
+                                {(variacao.tamanho_tipo || SIZE_MODE_DEFAULT) === SIZE_MODE_DEFAULT && (
+                                    <div>
+                                        <Label htmlFor={`var-tamanho-padrao-${index}`}>Tamanho da Tabela</Label>
+                                        <Select value={variacao.tamanho} onValueChange={(value) => updateVariacao(index, 'tamanho', value)}>
+                                            <SelectTrigger id={`var-tamanho-padrao-${index}`}><SelectValue placeholder="Selecione o tamanho" /></SelectTrigger>
+                                            <SelectContent>
+                                                {productSizes.map(s => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                )}
                             </div>
+                            {(variacao.tamanho_tipo || SIZE_MODE_DEFAULT) === SIZE_MODE_CUSTOM && (
+                                <div className="space-y-2">
+                                    <Label htmlFor={`var-tamanho-custom-input-${index}`}>Tamanhos Personalizados</Label>
+                                    <div className="flex gap-2">
+                                        <Input
+                                            id={`var-tamanho-custom-input-${index}`}
+                                            type="text"
+                                            value={novoTamanhoPersonalizado[index] || ''}
+                                            onChange={(e) => setNovoTamanhoPersonalizado((prev) => ({ ...prev, [index]: e.target.value }))}
+                                            placeholder="Ex.: 38, G1, 2XL, Sob medida"
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    e.preventDefault();
+                                                    adicionarTamanhoPersonalizado(index);
+                                                }
+                                            }}
+                                        />
+                                        <Button type="button" variant="outline" onClick={() => adicionarTamanhoPersonalizado(index)}>
+                                            Adicionar
+                                        </Button>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                        {getTamanhosPersonalizados(variacao).map((tamanhoCustom) => (
+                                            <Button
+                                                key={`${variacao.id}-${tamanhoCustom}`}
+                                                type="button"
+                                                variant="secondary"
+                                                className="h-7 px-2 text-xs"
+                                                onClick={() => removerTamanhoPersonalizado(index, tamanhoCustom)}
+                                            >
+                                                {tamanhoCustom} <X size={12} className="ml-1" />
+                                            </Button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
                                 <div className="lg:col-span-2">
                                     <Label htmlFor={`var-codigo-barras-${index}`}>Código de Barras</Label>

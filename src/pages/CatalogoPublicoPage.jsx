@@ -321,6 +321,23 @@ const CatalogoPublicoPage = () => {
         return varId;
     };
 
+    const getTamanhosPersonalizados = (variacao) => {
+        if (!Array.isArray(variacao?.tamanhos_personalizados)) return [];
+        return variacao.tamanhos_personalizados
+            .map((tamanho) => String(tamanho || '').trim())
+            .filter(Boolean);
+    };
+
+    const getDescricaoVariacao = (variacao) => {
+        const corNome = getNomeVariacao(variacao?.cor, 'cor');
+        const tamanhosCustom = getTamanhosPersonalizados(variacao);
+        const tamanhoNome = tamanhosCustom.length > 0
+            ? tamanhosCustom.join(', ')
+            : getNomeVariacao(variacao?.tamanho, 'tamanho');
+
+        return variacao?.nome || [corNome, tamanhoNome].filter((valor) => valor && valor !== 'N/A').join(' / ') || 'Variação';
+    };
+
     // Função para calcular estoque disponível
     const calcularEstoqueDisponivel = (produto, variacao = null) => {
         if (variacao) {
@@ -365,9 +382,7 @@ const CatalogoPublicoPage = () => {
             // Se a variação tem preço específico, usar ele. Senão, usar o preço do produto (que já considera promoção)
             precoFinal = parseFloat(variacao.preco_var || precoFinal || 0);
             estoqueDisponivel = variacao.estoque_var || 0;
-            const corNome = getNomeVariacao(variacao.cor, 'cor');
-            const tamanhoNome = getNomeVariacao(variacao.tamanho, 'tamanho');
-            nomeCompleto = `${produto.nome} - ${variacao.nome || `${corNome}/${tamanhoNome}`}`;
+            nomeCompleto = `${produto.nome} - ${getDescricaoVariacao(variacao)}`;
         }
         
         // Verificar estoque disponível
@@ -382,7 +397,10 @@ const CatalogoPublicoPage = () => {
         
         setCarrinho(prev => {
             // Criar ID único considerando variação
-            const itemId = variacao ? `${produto.id}-${variacao.id || variacao.cor}-${variacao.tamanho}` : produto.id;
+            const variacaoKey = variacao
+                ? (variacao.id || variacao.cor || variacao.tamanho || getTamanhosPersonalizados(variacao).join('-') || 'variacao')
+                : null;
+            const itemId = variacao ? `${produto.id}-${variacaoKey}` : produto.id;
             const itemExistente = prev.find(item => item.id === itemId);
             
             // Garantir que tenant_id seja sempre incluído
@@ -1001,7 +1019,10 @@ const CatalogoPublicoPage = () => {
                                             <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto pr-2">
                                                 {produtoSelecionado.variacoes.map((variacao, index) => {
                                                     const corNome = getNomeVariacao(variacao.cor, 'cor');
-                                                    const tamanhoNome = getNomeVariacao(variacao.tamanho, 'tamanho');
+                                                    const tamanhosPersonalizados = getTamanhosPersonalizados(variacao);
+                                                    const temTamanhosCustom = tamanhosPersonalizados.length > 0;
+                                                    const tamanhoNome = !temTamanhosCustom ? getNomeVariacao(variacao.tamanho, 'tamanho') : '';
+                                                    const nomeVariacao = variacao.nome || corNome || tamanhoNome || 'Variação';
                                                     const estoqueVar = variacao.estoque_var || 0;
                                                     const precoVar = parseFloat(
                                                         variacao.preco_var || 
@@ -1028,7 +1049,7 @@ const CatalogoPublicoPage = () => {
                                                                     {(variacao.imagem || variacao.imagem_url || variacao.imagem_principal) ? (
                                                                         <img 
                                                                             src={getImageUrl(variacao.imagem || variacao.imagem_url || variacao.imagem_principal)} 
-                                                                            alt={variacao.nome || `${corNome} / ${tamanhoNome}`}
+                                                                            alt={nomeVariacao}
                                                                             className="w-full h-full object-cover" 
                                                                             onError={(e) => { 
                                                                                 e.currentTarget.style.display = 'none';
@@ -1043,10 +1064,28 @@ const CatalogoPublicoPage = () => {
                                                                 </div>
                                                                 <div className="min-w-0 flex-1">
                                                                     <div className="font-medium text-foreground text-sm">
-                                                                        {variacao.nome || `${corNome} / ${tamanhoNome}`}
+                                                                        {nomeVariacao}
                                                                     </div>
                                                                     <div className="text-xs text-muted-foreground">
                                                                         Estoque: {estoqueVar} {isOutOfStock && '(Esgotado)'}
+                                                                    </div>
+                                                                    <div className="flex flex-wrap gap-1 mt-1">
+                                                                        {variacao.cor && (
+                                                                            <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                                                                                Cor: {corNome}
+                                                                            </Badge>
+                                                                        )}
+                                                                        {temTamanhosCustom ? (
+                                                                            tamanhosPersonalizados.map((tamanhoCustom) => (
+                                                                                <Badge key={`${index}-${tamanhoCustom}`} variant="secondary" className="text-[10px] px-1.5 py-0">
+                                                                                    {tamanhoCustom}
+                                                                                </Badge>
+                                                                            ))
+                                                                        ) : variacao.tamanho ? (
+                                                                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                                                                                {tamanhoNome}
+                                                                            </Badge>
+                                                                        ) : null}
                                                                     </div>
                                                                 </div>
                                                                 <div className="font-bold text-primary text-sm">
@@ -1180,12 +1219,13 @@ const CatalogoPublicoPage = () => {
                                                     if (variacaoSelecionada) {
                                                         precoFinal = parseFloat(variacaoSelecionada.preco_var || precoFinal || 0);
                                                         estoqueDisponivel = variacaoSelecionada.estoque_var || 0;
-                                                        const corNome = getNomeVariacao(variacaoSelecionada.cor, 'cor');
-                                                        const tamanhoNome = getNomeVariacao(variacaoSelecionada.tamanho, 'tamanho');
-                                                        nomeCompleto = `${produtoSelecionado.nome} - ${variacaoSelecionada.nome || `${corNome}/${tamanhoNome}`}`;
+                                                        nomeCompleto = `${produtoSelecionado.nome} - ${getDescricaoVariacao(variacaoSelecionada)}`;
                                                     }
                                                     
-                                                    const itemId = variacaoSelecionada ? `${produtoSelecionado.id}-${variacaoSelecionada.id || variacaoSelecionada.cor}-${variacaoSelecionada.tamanho}` : produtoSelecionado.id;
+                                                    const variacaoSelecionadaKey = variacaoSelecionada
+                                                        ? (variacaoSelecionada.id || variacaoSelecionada.cor || variacaoSelecionada.tamanho || getTamanhosPersonalizados(variacaoSelecionada).join('-') || 'variacao')
+                                                        : null;
+                                                    const itemId = variacaoSelecionada ? `${produtoSelecionado.id}-${variacaoSelecionadaKey}` : produtoSelecionado.id;
                                                     const itemExistente = novoCarrinho.find(item => item.id === itemId);
                                                     const quantidadeAtualNoCarrinho = itemExistente ? itemExistente.quantidade : 0;
                                                     const novaQuantidadeTotal = quantidadeAtualNoCarrinho + quantidadeSelecionada;

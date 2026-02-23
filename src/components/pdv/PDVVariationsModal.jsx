@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -62,6 +63,13 @@ const PDVVariationsModal = ({ isOpen, setIsOpen, produto, selectedVariacaoDetail
       setSelectedVariacoes([...selectedVariacoes, variacao]);
     }
   };
+
+  const getTamanhosPersonalizados = useCallback((variacao) => {
+    if (!Array.isArray(variacao?.tamanhos_personalizados)) return [];
+    return variacao.tamanhos_personalizados
+      .map((tamanho) => String(tamanho || '').trim())
+      .filter(Boolean);
+  }, []);
   
   // Filtrar variações baseado no termo de busca
   const filteredVariacoes = useMemo(() => {
@@ -78,16 +86,17 @@ const PDVVariationsModal = ({ isOpen, setIsOpen, produto, selectedVariacaoDetail
       const nomeVariacao = variacao.nome || '';
       const nomeCor = getNomeVariacao(variacao.cor, 'cor') || '';
       const nomeTamanho = getNomeVariacao(variacao.tamanho, 'tamanho') || '';
+      const tamanhosCustom = getTamanhosPersonalizados(variacao).join(' ');
       const codigoBarras = variacao.codigo_barras || '';
       const sku = variacao.sku || '';
       
       // Busca mais abrangente: nome, cor, tamanho, código de barras, SKU
-      const textoCompleto = `${nomeVariacao} ${nomeCor} ${nomeTamanho} ${codigoBarras} ${sku}`.toLowerCase();
+      const textoCompleto = `${nomeVariacao} ${nomeCor} ${nomeTamanho} ${tamanhosCustom} ${codigoBarras} ${sku}`.toLowerCase();
       const termoBusca = searchTerm.toLowerCase().trim();
       
       return textoCompleto.includes(termoBusca);
     });
-  }, [produto?.variacoes, searchTerm, getNomeVariacao]);
+  }, [produto?.variacoes, searchTerm, getNomeVariacao, getTamanhosPersonalizados]);
 
   if (!produto) return null;
 
@@ -127,6 +136,11 @@ const PDVVariationsModal = ({ isOpen, setIsOpen, produto, selectedVariacaoDetail
             const estoqueOriginal = parseFloat(variacao.estoque_var || 0);
             const quantidadeNoCarrinho = estoqueOriginal - estoqueDisponivel;
             const semEstoque = estoqueDisponivel === 0;
+            const tamanhosPersonalizados = getTamanhosPersonalizados(variacao);
+            const temTamanhoCustom = tamanhosPersonalizados.length > 0;
+            const nomeCor = getNomeVariacao(variacao.cor, 'cor');
+            const nomeTamanho = !temTamanhoCustom ? getNomeVariacao(variacao.tamanho, 'tamanho') : '';
+            const tituloVariacao = variacao.nome || nomeCor || nomeTamanho || 'Variação';
             
             return (
             <Card 
@@ -153,7 +167,7 @@ const PDVVariationsModal = ({ isOpen, setIsOpen, produto, selectedVariacaoDetail
                   <div className="flex-shrink-0 relative">
                       <img 
                           src={getImageUrl(variacao.imagem_url || produto.imagem_url_preview) || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0zMiAzNkMzNC4yMDkxIDM2IDM2IDM0LjIwOTEgMzYgMzJDMzYgMjkuNzkwOSAzNC4yMDkxIDI4IDMyIDI4QzI5Ljc5MDkgMjggMjggMjkuNzkwOSAyOCAzMkMyOCAzNC4yMDkxIDI5Ljc5MDkgMzYgMzIgMzZaIiBmaWxsPSIjOUI5QkEwIi8+CjxwYXRoIGQ9Ik0zMiA0MEMzNi40MTgzIDQwIDQwIDM2LjQxODMgNDAgMzJDNDAgMjcuNTgxNyAzNi40MTgzIDI0IDMyIDI0QzI3LjU4MTcgMjQgMjQgMjcuNTgxNyAyNCAzMkMyNCAzNi40MTgzIDI3LjU4MTcgMjQgMzIgMjRaIiBmaWxsPSIjOUI5QkEwIi8+Cjwvc3ZnPgo='} 
-                          alt={variacao.nome || `${getNomeVariacao(variacao.cor, 'cor')} / ${getNomeVariacao(variacao.cor, 'cor')} / ${getNomeVariacao(variacao.tamanho, 'tamanho')}`}
+                          alt={tituloVariacao}
                           className={`w-12 h-12 sm:w-16 sm:h-16 object-cover rounded-md border-2 transition-all ${
                             isSelected 
                               ? 'border-orange-500 shadow-md' 
@@ -167,7 +181,7 @@ const PDVVariationsModal = ({ isOpen, setIsOpen, produto, selectedVariacaoDetail
                      <p className={`font-medium text-sm sm:text-base break-words ${
                        isSelected ? 'text-orange-700 dark:text-orange-400' : ''
                      }`}>
-                       {variacao.nome || `${getNomeVariacao(variacao.cor, 'cor')} / ${getNomeVariacao(variacao.tamanho, 'tamanho')}`}
+                       {tituloVariacao}
                      </p>
                      <div className="text-xs text-muted-foreground space-y-0.5">
                        <p className={semEstoque ? 'text-red-600 dark:text-red-400 font-semibold' : ''}>
@@ -184,10 +198,22 @@ const PDVVariationsModal = ({ isOpen, setIsOpen, produto, selectedVariacaoDetail
                          )}
                        </p>
                        {variacao.cor && (
-                         <p>Cor: {getNomeVariacao(variacao.cor, 'cor')}</p>
+                         <p>Cor: {nomeCor}</p>
                        )}
-                       {variacao.tamanho && (
-                         <p>Tamanho: {getNomeVariacao(variacao.tamanho, 'tamanho')}</p>
+                       {temTamanhoCustom ? (
+                         <div className="flex flex-wrap items-center gap-1 pt-0.5">
+                           <span className="text-xs text-muted-foreground mr-1">Tamanhos:</span>
+                           {tamanhosPersonalizados.map((tamanho) => (
+                             <Badge key={`${variacaoId}-${tamanho}`} variant="secondary" className="text-[10px] px-1.5 py-0">
+                               {tamanho}
+                             </Badge>
+                           ))}
+                         </div>
+                       ) : variacao.tamanho ? (
+                         <p>Tamanho: {nomeTamanho}</p>
+                       ) : null}
+                       {variacao.tamanho_tipo === 'personalizado' && !temTamanhoCustom && (
+                         <p>Tamanhos personalizados não informados</p>
                        )}
                        {variacao.sku && (
                          <p className="truncate">SKU: {variacao.sku}</p>

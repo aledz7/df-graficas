@@ -205,6 +205,8 @@ const ProdutoForm = ({ isOpen, onClose, onSave, produtoEmEdicao, showSaveAndNewB
                         // Garantir que campos numéricos das variações sejam strings
                         estoque_var: String(variacao.estoque_var || '0'),
                         preco_var: String(variacao.preco_var || '0'),
+                        tamanho_tipo: variacao.tamanho_tipo || 'padrao',
+                        tamanhos_personalizados: Array.isArray(variacao.tamanhos_personalizados) ? variacao.tamanhos_personalizados : [],
                         // Configurar preview da imagem da variação se existir
                         imagem_url_preview: variacao.imagem_url ? getImageUrl(variacao.imagem_url) : null,
                         // Garantir código de barras único
@@ -521,6 +523,8 @@ const ProdutoForm = ({ isOpen, onClose, onSave, produtoEmEdicao, showSaveAndNewB
                 nome: nomeBase,
                 cor: '',
                 tamanho: '',
+                tamanho_tipo: 'padrao',
+                tamanhos_personalizados: [],
                 estoque_var: '0',
                 preco_var: '',
                 imagem_url: '',
@@ -643,6 +647,8 @@ const ProdutoForm = ({ isOpen, onClose, onSave, produtoEmEdicao, showSaveAndNewB
             id: uuidv4(), 
             cor: '', 
             tamanho: '', 
+            tamanho_tipo: 'padrao',
+            tamanhos_personalizados: [],
             estoque_var: '0', 
             preco_var: '', 
             imagem_url: '',
@@ -845,7 +851,11 @@ const ProdutoForm = ({ isOpen, onClose, onSave, produtoEmEdicao, showSaveAndNewB
                 ...v,
                 estoque_var: parseFloat(v.estoque_var) || 0,
                 preco_var: parseFloat(v.preco_var) || 0,
-                codigo_barras: v.codigo_barras || ''
+                codigo_barras: v.codigo_barras || '',
+                tamanho_tipo: v.tamanho_tipo || 'padrao',
+                tamanhos_personalizados: Array.isArray(v.tamanhos_personalizados)
+                    ? v.tamanhos_personalizados.map((tamanho) => String(tamanho || '').trim()).filter(Boolean)
+                    : []
             })),
             composicao: (rest.composicao || []).map(c => ({
                 ...c,

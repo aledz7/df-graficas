@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { motion } from 'framer-motion';
 import { Trash2, ImageIcon } from 'lucide-react';
@@ -57,6 +58,13 @@ const PDVCart = ({ carrinho, setCarrinho, productColors, productSizes, produtos 
       return tamanho ? tamanho.nome : varId;
     }
     return varId;
+  };
+
+  const getTamanhosPersonalizados = (variacao) => {
+    if (!Array.isArray(variacao?.tamanhos_personalizados)) return [];
+    return variacao.tamanhos_personalizados
+      .map((tamanho) => String(tamanho || '').trim())
+      .filter(Boolean);
   };
 
   const handleQuantidadeChange = (produtoId, variacaoId, valor) => {
@@ -351,7 +359,33 @@ const PDVCart = ({ carrinho, setCarrinho, productColors, productSizes, produtos 
               </div>
               <div className="flex-1">
                 <p className="text-sm font-medium">{item.nome}</p>
-                {item.variacao && <p className="text-xs text-gray-500 dark:text-gray-400">{item.variacao.nome || `${getNomeVariacao(item.variacao.cor, 'cor')} / ${getNomeVariacao(item.variacao.tamanho, 'tamanho')}`}</p>}
+                {item.variacao && (
+                  <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 space-y-1">
+                    <p>{item.variacao.nome || getNomeVariacao(item.variacao.cor, 'cor') || 'Variação'}</p>
+                    <div className="flex flex-wrap items-center gap-1">
+                      {item.variacao.cor && (
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                          Cor: {getNomeVariacao(item.variacao.cor, 'cor')}
+                        </Badge>
+                      )}
+                      {getTamanhosPersonalizados(item.variacao).length > 0 ? (
+                        getTamanhosPersonalizados(item.variacao).map((tamanho) => (
+                          <Badge
+                            key={`${item.id_produto}-${item.variacao?.id_variacao || item.variacao?.id}-${tamanho}`}
+                            variant="secondary"
+                            className="text-[10px] px-1.5 py-0"
+                          >
+                            {tamanho}
+                          </Badge>
+                        ))
+                      ) : item.variacao.tamanho ? (
+                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                          {getNomeVariacao(item.variacao.tamanho, 'tamanho')}
+                        </Badge>
+                      ) : null}
+                    </div>
+                  </div>
+                )}
                 <p className="text-xs">{formatCurrency(precoUnitarioItem)}</p>
               </div>
               <div className="flex items-center space-x-1">
