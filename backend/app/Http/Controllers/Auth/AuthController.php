@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\Tenant;
 use App\Models\Empresa;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
@@ -57,52 +58,62 @@ class AuthController extends Controller
         ]);
 
         // Cadastro é de uma EMPRESA NOVA: criar novo tenant e empresa com dados zerados
-        $tenant = new Tenant();
-        $tenant->nome = $validatedData['name'];
-        $tenant->razao_social = $validatedData['name'];
-        $tenant->email = $validatedData['email'];
-        $tenant->telefone = null;
-        $tenant->celular = null;
-        $tenant->ativo = true;
-        $tenant->tema = 'light';
-        $tenant->plano = 'gratuito';
-        $tenant->limite_usuarios = 1;
-        $tenant->limite_armazenamento_mb = 100;
-        $tenant->saveQuietly();
+        // Tudo dentro de uma transação para garantir atomicidade
+        [$tenant, $user, $token] = DB::transaction(function () use ($validatedData) {
+            $tenant = new Tenant();
+            $tenant->nome = $validatedData['name'];
+            $tenant->razao_social = $validatedData['name'];
+            $tenant->email = $validatedData['email'];
+            $tenant->telefone = null;
+            $tenant->celular = null;
+            $tenant->ativo = true;
+            $tenant->tema = 'light';
+            $tenant->plano = 'gratuito';
+            $tenant->limite_usuarios = 1;
+            $tenant->limite_armazenamento_mb = 100;
+            $tenant->saveQuietly();
 
-        $user = User::create([
-            'name' => $validatedData['name'],
-            'email' => $validatedData['email'],
-            'password' => Hash::make($validatedData['password']),
-            'tenant_id' => $tenant->id,
-            'is_admin' => false,
-            'ativo' => true,
-            'permissions' => self::getAllPermissions(),
-        ]);
+            $user = User::create([
+                'name' => $validatedData['name'],
+                'email' => $validatedData['email'],
+                'password' => Hash::make($validatedData['password']),
+                'tenant_id' => $tenant->id,
+                'is_admin' => false,
+                'ativo' => true,
+                'permissions' => self::getAllPermissions(),
+            ]);
 
-        // Criar registro na tabela empresas (dados zerados) para este tenant
-        Empresa::withoutTenant()->create([
-            'tenant_id' => $tenant->id,
-            'nome_fantasia' => $validatedData['name'],
-            'razao_social' => $validatedData['name'],
-            'cnpj' => null,
-            'inscricao_estadual' => null,
-            'inscricao_municipal' => null,
-            'email' => $validatedData['email'],
-            'telefone' => null,
-            'whatsapp' => null,
-            'endereco_completo' => null,
-            'instagram' => null,
-            'site' => null,
-            'logo_url' => null,
-            'nome_sistema' => 'Sistema Gráficas',
-            'mensagem_rodape' => 'Obrigado pela preferência!',
-            'senha_supervisor' => null,
-            'termos_servico' => 'Termos de serviço padrão da empresa...',
-            'politica_privacidade' => 'Política de privacidade padrão da empresa...',
-        ]);
+            // Criar empresa para este tenant somente se ainda não existir
+            // (pode já existir como dado pré-populado para o tenant)
+            Empresa::withoutTenant()->firstOrCreate(
+                ['tenant_id' => $tenant->id],
+                [
+                    'nome_fantasia' => $validatedData['name'],
+                    'razao_social' => $validatedData['name'],
+                    'cnpj' => null,
+                    'inscricao_estadual' => null,
+                    'inscricao_municipal' => null,
+                    'email' => $validatedData['email'],
+                    'telefone' => null,
+                    'whatsapp' => null,
+                    'endereco_completo' => null,
+                    'instagram' => null,
+                    'site' => null,
+                    'logo_url' => null,
+                    'nome_sistema' => 'Sistema Gráficas',
+                    'mensagem_rodape' => 'Obrigado pela preferência!',
+                    'senha_supervisor' => null,
+                    'termos_servico' => 'Termos de serviço padrão da empresa...',
+                    'politica_privacidade' => 'Política de privacidade padrão da empresa...',
+                ]
+            );
 
-        $token = $user->createToken('auth_token')->plainTextToken;
+            $token = $user->createToken('auth_token')->plainTextToken;
+
+            return [$tenant, $user, $token];
+        });
+
+        unset($tenant); // não mais necessário
 
         return response()->json([
             'access_token' => $token,

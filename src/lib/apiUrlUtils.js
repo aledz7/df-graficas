@@ -12,9 +12,11 @@ export const getApiBaseUrl = () => {
 
   const currentHost = window.location.hostname;
   
-  // Se estiver em desenvolvimento
+  // Se estiver em desenvolvimento, usar a URL completa da API
   if (currentHost === 'localhost' || currentHost === '127.0.0.1') {
-    return import.meta.env.VITE_API_URL || 'http://localhost:8001';
+    // Em desenvolvimento, usar a URL completa da API em vez do proxy
+    // Isso evita problemas com o proxy do Vite
+    return import.meta.env.VITE_API_URL || 'http://localhost:8000';
   }
   
   // Se estiver em produção, usar o domínio atual

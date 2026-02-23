@@ -102,7 +102,9 @@ const RankingVendedoresPage = lazy(() => import('@/pages/RankingVendedoresPage')
 const MetasGamificadasPage = lazy(() => import('@/pages/MetasGamificadasPage'));
 const AproveitamentoFolhaPage = lazy(() => import('@/pages/AproveitamentoFolhaPage'));
 const TreinamentoInternoPage = lazy(() => import('@/pages/TreinamentoInternoPage'));
+const PerguntasTreinamentoPage = lazy(() => import('@/pages/PerguntasTreinamentoPage'));
 const TreinamentoProgressoPage = lazy(() => import('@/pages/TreinamentoProgressoPage'));
+const CentralNotificacoesPage = lazy(() => import('@/pages/CentralNotificacoesPage'));
 const TreinamentoRelatorioSetorPage = lazy(() => import('@/pages/TreinamentoRelatorioSetorPage'));
 const TreinamentoAvisosPage = lazy(() => import('@/pages/TreinamentoAvisosPage'));
 const MetasVendedorPage = lazy(() => import('@/pages/MetasVendedorPage'));
@@ -137,6 +139,7 @@ const AppRoutes = ({ logoUrl, nomeEmpresa, vendedorAtual, theme, setTheme, setAp
       <Route path="/cadastros/cupons" element={<CuponsPage />} />
       <Route path="/cadastros/opcoes-frete" element={<OpcoesFretePage />} />
       <Route path="/cadastros/entregadores" element={<EntregadoresPage />} />
+      <Route path="/cadastros/perguntas-treinamento" element={<PerguntasTreinamentoPage />} />
 
       {/* Operacional */}
       <Route path="/operacional/ordens-servico" element={<OrdensServicoPage logoUrl={logoUrl} nomeEmpresa={nomeEmpresa} vendedorAtual={vendedorAtual} />} />
@@ -225,6 +228,7 @@ const AppRoutes = ({ logoUrl, nomeEmpresa, vendedorAtual, theme, setTheme, setAp
       <Route path="/ferramentas/treinamento-progresso" element={<TreinamentoProgressoPage />} />
       <Route path="/relatorios/treinamento-por-setor" element={<TreinamentoRelatorioSetorPage />} />
       <Route path="/ferramentas/treinamento-avisos" element={<TreinamentoAvisosPage />} />
+      <Route path="/ferramentas/central-notificacoes" element={<CentralNotificacoesPage />} />
       <Route path="/vendedor/minhas-metas" element={<MetasVendedorPage />} />
       <Route path="/relatorios/gerencial/clientes-diminuindo-compras" element={<ClientesDiminuindoComprasPage />} />
       <Route path="/relatorios/gerencial/perfil-vendedor" element={<PerfilVendedorPage />} />

@@ -99,6 +99,14 @@ Route::get('/login', function () {
     ], 401);
 })->name('login');
 
+// Rota GET para /register retorna erro apropriado
+Route::get('/register', function () {
+    return response()->json([
+        'success' => false,
+        'message' => 'O método GET não é suportado para esta rota. Use POST para registrar um novo usuário.'
+    ], 405);
+});
+
 // Rota pública para servir imagens do storage
 Route::get('/storage/{path}', function ($path) {
     $fullPath = storage_path('app/public/' . $path);

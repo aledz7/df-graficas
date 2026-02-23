@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { notificacaoService } from '@/services/notificacaoService';
+import { apiDataManager } from '@/lib/apiDataManager';
 import { useToast } from '@/components/ui/use-toast';
 
 export const useNotifications = () => {
@@ -12,6 +13,10 @@ export const useNotifications = () => {
 
   // Carregar notificações
   const carregarNotificacoes = useCallback(async () => {
+    // Não fazer chamada se não há token (usuário não autenticado)
+    if (!apiDataManager.getToken()) {
+      return [];
+    }
     setLoading(true);
     try {
       const notifs = await notificacaoService.getNotificacoes();
@@ -40,6 +45,10 @@ export const useNotifications = () => {
 
   // Verificar novas notificações
   const verificarNovasNotificacoes = useCallback(async () => {
+    // Não fazer chamada se não há token (usuário não autenticado)
+    if (!apiDataManager.getToken()) {
+      return;
+    }
     try {
       const notifs = await notificacaoService.getNotificacoes();
       const normalizado = Array.isArray(notifs)

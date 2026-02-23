@@ -1,6 +1,6 @@
 import path from 'node:path';
 import react from '@vitejs/plugin-react';
-import { createLogger, defineConfig } from 'vite';
+import { createLogger, defineConfig, loadEnv } from 'vite';
 
 const isDev = process.env.NODE_ENV !== 'production';
 let inlineEditPlugin, editModeDevPlugin;
@@ -189,41 +189,63 @@ logger.error = (msg, options) => {
 	loggerError(msg, options);
 }
 
-export default defineConfig({
-  customLogger: logger,
-  // Carrega as variáveis de ambiente do arquivo .env correspondente
-  envDir: '.',
-  define: {
-    'import.meta.env': JSON.stringify(process.env)
-  },
-  server: {
-    port: 5180,
-    strictPort: true,
-    open: true,
-    host: 'localhost',
-    cors: true,
-    headers: {
-      'Cross-Origin-Embedder-Policy': 'credentialless',
+export default defineConfig(({ mode }) => {
+  // Carregar variáveis de ambiente
+  const env = loadEnv(mode, process.cwd(), '');
+  
+  return {
+    customLogger: logger,
+    // Carrega as variáveis de ambiente do arquivo .env correspondente
+    envDir: '.',
+    define: {
+      'import.meta.env': JSON.stringify({
+        ...process.env,
+        ...env,
+        MODE: mode,
+        DEV: mode !== 'production',
+        PROD: mode === 'production',
+        SSR: false,
+      })
     },
-    allowedHosts: true,
-    hmr: {
-      port: 5181,
-      host: 'localhost'
-    },
-    proxy: {
-      '/api': {
-        target: process.env.VITE_API_URL || 'http://localhost:8001',
-        changeOrigin: true,
-        secure: false,
-        ws: true,
-        router: {
-          // Configuração para aceitar múltiplos domínios
-          'https://sistema-graficas.dfinformatica.net': 'https://sistema-graficas.dfinformatica.net/backend',
-          'https://www.sistema-graficas.dfinformatica.net': 'https://www.sistema-graficas.dfinformatica.net/backend',
+    server: {
+      port: 5180,
+      strictPort: true,
+      open: true,
+      host: 'localhost',
+      cors: true,
+      headers: {
+        'Cross-Origin-Embedder-Policy': 'credentialless',
+      },
+      allowedHosts: true,
+      hmr: {
+        port: 5181,
+        host: 'localhost'
+      },
+      proxy: {
+        '/api': {
+          target: env.VITE_API_URL || 'http://localhost:8000',
+          changeOrigin: true,
+          secure: false,
+          ws: true,
+          configure: (proxy, _options) => {
+            proxy.on('error', (err, _req, _res) => {
+              console.log('proxy error', err);
+            });
+            proxy.on('proxyReq', (proxyReq, req, _res) => {
+              console.log('Sending Request to the Target:', req.method, req.url);
+            });
+            proxy.on('proxyRes', (proxyRes, req, _res) => {
+              console.log('Received Response from the Target:', proxyRes.statusCode, req.url);
+            });
+          },
+          router: {
+            // Configuração para aceitar múltiplos domínios
+            'https://sistema-graficas.dfinformatica.net': 'https://sistema-graficas.dfinformatica.net/backend',
+            'https://www.sistema-graficas.dfinformatica.net': 'https://www.sistema-graficas.dfinformatica.net/backend',
+          }
         }
       }
-    }
-  },
+    },
 	plugins: [
 		...(isDev ? [inlineEditPlugin(), editModeDevPlugin()] : []),
 		react(),
@@ -253,4 +275,5 @@ export default defineConfig({
 			'lucide-react'
 		]
 	}
+  };
 });

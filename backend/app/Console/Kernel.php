@@ -22,6 +22,11 @@ class Kernel extends ConsoleKernel
         $schedule->command('funcionarios:fechar-mes-automatico')
                 ->dailyAt('23:59')
                 ->appendOutputTo(storage_path('logs/fechamento-mes-automatico.log'));
+
+        // Verificar OS com arte atrasada a cada hora
+        $schedule->command('os:verificar-atrasos')
+                ->hourly()
+                ->appendOutputTo(storage_path('logs/verificacao-atrasos-os.log'));
     }
 
     /**

@@ -72,6 +72,7 @@ const menuItems = [
       { path: '/cadastros/opcoes-frete', label: 'Opções de Frete', icon: Truck },
       { path: '/cadastros/entregadores', label: 'Entregadores', icon: Users },
       { path: '/cadastros/maquinas-cartao', label: 'Máquinas de Cartão', icon: Settings },
+      { path: '/cadastros/perguntas-treinamento', label: 'Perguntas de Treinamento', icon: GraduationCap },
     ]
   },
   {
