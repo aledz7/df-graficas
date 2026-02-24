@@ -1818,6 +1818,37 @@ export const treinamentoService = {
   salvarRegraAlerta: (data) => api.post('/api/treinamento/avisos/regras', data),
 };
 
+// Serviços para Cursos/Treinamentos Completos
+export const cursoService = {
+  getAll: (params = {}) => api.get('/api/cursos', { params }),
+  getById: (id) => api.get(`/api/cursos/${id}`),
+  create: (data) => api.post('/api/cursos', data),
+  update: (id, data) => api.put(`/api/cursos/${id}`, data),
+  delete: (id) => api.delete(`/api/cursos/${id}`),
+  uploadCapa: (file) => {
+    const formData = new FormData();
+    formData.append('capa', file);
+    return api.post('/api/cursos/upload-capa', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  uploadArquivo: (file) => {
+    const formData = new FormData();
+    formData.append('arquivo', file);
+    return api.post('/api/cursos/upload-arquivo', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  uploadVideo: (file) => {
+    const formData = new FormData();
+    formData.append('video', file);
+    return api.post('/api/cursos/upload-video', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  listarParaContinuacao: () => api.get('/api/cursos/para-continuacao'),
+};
+
 // Serviços para Relatório de Produção
 export const relatorioProducaoService = {
   getRelatorio: async (params = {}) => {

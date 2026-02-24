@@ -549,6 +549,15 @@ Route::middleware(['api.auth'])->group(function () {
     });
     Route::apiResource('treinamento', TreinamentoController::class);
     
+    // Cursos/Treinamentos Completos
+    Route::prefix('cursos')->group(function () {
+        Route::post('upload-capa', [\App\Http\Controllers\Api\CursoController::class, 'uploadCapa']);
+        Route::post('upload-arquivo', [\App\Http\Controllers\Api\CursoController::class, 'uploadArquivo']);
+        Route::post('upload-video', [\App\Http\Controllers\Api\CursoController::class, 'uploadVideo']);
+        Route::get('para-continuacao', [\App\Http\Controllers\Api\CursoController::class, 'listarParaContinuacao']);
+    });
+    Route::apiResource('cursos', \App\Http\Controllers\Api\CursoController::class);
+    
     // Cálculos Salvos (nova tabela específica)
     Route::apiResource('calculos-salvos', CalculoSavadoController::class);
     Route::prefix('calculos-salvos')->group(function () {

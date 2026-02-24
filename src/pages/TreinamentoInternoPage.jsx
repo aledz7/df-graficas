@@ -18,8 +18,10 @@ import {
   ChevronDown,
   ChevronUp,
   Filter,
-  BarChart3
+  BarChart3,
+  GraduationCap
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { treinamentoService } from '@/services/api';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -50,6 +52,7 @@ import {
 } from '@/components/ui/alert-dialog';
 
 const TreinamentoInternoPage = () => {
+  const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
   const [perguntas, setPerguntas] = useState([]);
@@ -280,13 +283,55 @@ const TreinamentoInternoPage = () => {
             Perguntas e respostas para treinar novos colaboradores
           </p>
         </div>
-        {user?.is_admin && (
-          <Button onClick={() => abrirDialog()}>
-            <Plus className="h-4 w-4 mr-2" />
-            Nova Pergunta
-          </Button>
-        )}
+        <div className="flex gap-2">
+          {user?.is_admin && (
+            <>
+              <Button 
+                onClick={() => navigate('/ferramentas/novo-treinamento')}
+                className="bg-green-500 hover:bg-green-600"
+              >
+                <GraduationCap className="h-4 w-4 mr-2" />
+                Novo Treinamento
+              </Button>
+              <Button onClick={() => abrirDialog()}>
+                <Plus className="h-4 w-4 mr-2" />
+                Nova Pergunta
+              </Button>
+            </>
+          )}
+        </div>
       </div>
+
+      {/* Card de Novo Treinamento */}
+      {user?.is_admin && (
+        <Card className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-green-200 dark:border-green-800">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="bg-green-500 rounded-full p-3">
+                  <GraduationCap className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                    Cadastrar Novo Treinamento Completo
+                  </h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                    Crie treinamentos completos com vídeos, arquivos, módulos e muito mais
+                  </p>
+                </div>
+              </div>
+              <Button 
+                onClick={() => navigate('/ferramentas/novo-treinamento')}
+                className="bg-green-500 hover:bg-green-600 text-white"
+                size="lg"
+              >
+                <GraduationCap className="h-5 w-5 mr-2" />
+                Criar Novo Treinamento
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Estatísticas (apenas admin) */}
       {user?.is_admin && estatisticas && (
