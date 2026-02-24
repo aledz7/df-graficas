@@ -246,30 +246,46 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen }) => {
     return item;
   });
 
-  const filteredMenuItems = dynamicMenuItems.filter(item => {
-    // Donos têm acesso a tudo
-    if (isOwner) return true;
-    
-    if (item.subItems) {
-      // Para itens com subitens, verifica se pelo menos um subitem tem permissão
-      const visibleSubItems = item.subItems.filter(subItem => {
-        const requiredPermissions = routePermissions[subItem.path];
-        // Sem restrição de permissão ou tem alguma das permissões necessárias
-        const hasAccess = !requiredPermissions || hasAnyPermission(requiredPermissions);
-        return hasAccess;
-      });
-      
-      // Se há subitens visíveis, retorna o item com apenas os subitens permitidos
-      if (visibleSubItems.length > 0) {
-        item.subItems = visibleSubItems;
-        return true;
-      }
-      return false;
+  const filteredMenuItems = dynamicMenuItems.map(item => {
+    // Donos têm acesso a tudo - retorna item completo
+    if (isOwner) {
+      return { ...item };
     }
     
-    // Para itens simples, verifica a permissão
+    // Para itens com subitens
+    if (item.subItems) {
+      // Filtra apenas os subitens que o usuário tem permissão
+      const visibleSubItems = item.subItems.filter(subItem => {
+        const requiredPermissions = routePermissions[subItem.path];
+        // Sem restrição de permissão = aparece para todos
+        if (!requiredPermissions) return true;
+        // Com restrição = verifica se tem permissão
+        return hasAnyPermission(requiredPermissions);
+      });
+      
+      // Se não há subitens visíveis, retorna null para ser filtrado
+      if (visibleSubItems.length === 0) {
+        return null;
+      }
+      
+      // Retorna o item com apenas os subitens visíveis (cria nova cópia)
+      return {
+        ...item,
+        subItems: [...visibleSubItems]
+      };
+    }
+    
+    // Para itens simples (sem subitens)
     const requiredPermissions = routePermissions[item.path];
-    return !requiredPermissions || hasAnyPermission(requiredPermissions);
+    // Sem restrição de permissão = aparece para todos
+    if (!requiredPermissions) {
+      return { ...item };
+    }
+    // Com restrição = verifica se tem permissão
+    return hasAnyPermission(requiredPermissions) ? { ...item } : null;
+  }).filter(item => {
+    // Remove itens null (que não têm permissão)
+    return item !== null;
   });
 
   return (
@@ -298,15 +314,19 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen }) => {
         <ScrollArea className="flex-1">
           <nav className="p-4 space-y-2 flex flex-col h-full">
             <Accordion type="multiple" className="w-full flex-1">
-              {filteredMenuItems.map(item => (
-                <NavItem 
-                  key={item.path || item.label} 
-                  item={item} 
-                  closeSidebar={closeSidebar}
-                  notificationCount={item.label === 'Ordem de Serviço' ? osCount : undefined}
-                  productionCount={item.label === 'Ordem de Serviço' ? productionCount : undefined}
-                />
-              ))}
+              {filteredMenuItems.map(item => {
+                // Garantir que o item tenha uma chave única
+                const itemKey = item.path || item.label || `item-${Math.random()}`;
+                return (
+                  <NavItem 
+                    key={itemKey} 
+                    item={item} 
+                    closeSidebar={closeSidebar}
+                    notificationCount={item.label === 'Ordem de Serviço' ? osCount : undefined}
+                    productionCount={item.label === 'Ordem de Serviço' ? productionCount : undefined}
+                  />
+                );
+              })}
             </Accordion>
             <div className="pt-4 border-t space-y-2">
               <Button 

@@ -1,16 +1,33 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import ThemeToggle from '@/components/ThemeToggle';
 import AgendaAlerts from '@/components/dashboard/AgendaAlerts';
-import NotificationSystem from '@/components/NotificationSystem';
-import { Upload, Menu, User, LogOut, Settings, Bell, Bug, MessageSquare } from 'lucide-react';
+import NotificationIcon from './NotificationIcon';
+import { 
+  Upload, 
+  Menu, 
+  User, 
+  LogOut, 
+  Settings, 
+  Bell, 
+  Bug, 
+  MessageSquare, 
+  Package, 
+  GraduationCap, 
+  CheckCircle,
+  Lightbulb,
+  ChevronDown
+} from 'lucide-react';
 import '@/components/chat/ChatIcon.css';
+import { useHeaderNotifications } from '@/hooks/useHeaderNotifications';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { cn } from '@/lib/utils';
 
 const WHATSAPP_ERRO_URL = 'https://wa.me/556192109773?text=' + encodeURIComponent('Olá! Encontrei um erro no sistema e gostaria de reportar:\n\n');
-import { useAuth } from '@/contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
 
 const VendedorSelector = ({ vendedorAtual, setVendedorAtual, vendedores }) => {
   if (!vendedores || !Array.isArray(vendedores) || vendedores.length === 0) return null;
@@ -52,56 +69,195 @@ const AppHeader = ({
   notificacoesNaoLidas = 0,
   onAbrirNotificacoes,
   chatUnreadCount = 0,
-  onAbrirChat
+  onAbrirChat,
+  nomeEmpresa = 'Gráfica Imagine!'
 }) => {
+  // Garantir que o nome da empresa sempre tenha o ícone de lâmpada
+  const nomeEmpresaCompleto = nomeEmpresa.includes('💡') || nomeEmpresa.includes('!') 
+    ? nomeEmpresa 
+    : `${nomeEmpresa}💡`;
   const { logout, user } = useAuth();
   const navigate = useNavigate();
+  const { counters } = useHeaderNotifications();
+  
+  // Estados para dropdowns dos ícones
+  const [itensProntosOpen, setItensProntosOpen] = useState(false);
+  const [treinamentoOpen, setTreinamentoOpen] = useState(false);
+  const [itensEntreguesOpen, setItensEntreguesOpen] = useState(false);
+
+  // Funções para abrir dropdowns
+  const handleItensProntosClick = () => {
+    setItensProntosOpen(!itensProntosOpen);
+    // TODO: Navegar para página de itens prontos ou abrir modal
+    navigate('/operacional/ordens-servico?filtro=prontos');
+  };
+
+  const handleTreinamentoClick = () => {
+    setTreinamentoOpen(!treinamentoOpen);
+    // Navegar para página de treinamento interno
+    navigate('/ferramentas/treinamento-interno');
+  };
+
+  const handleItensEntreguesClick = () => {
+    setItensEntreguesOpen(!itensEntreguesOpen);
+    // TODO: Navegar para página de itens entregues ou abrir modal
+    navigate('/operacional/ordens-servico?filtro=entregues');
+  };
 
   return (
     <header
       className="flex items-center justify-between p-4 border-b sticky top-0 z-30 bg-background/80 backdrop-blur-md"
     >
+      {/* Lado Esquerdo: Nome da Empresa */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setIsSidebarOpen(true)}>
           <Menu />
         </Button>
+        <div className="flex items-center gap-2">
+          <h1 className="text-lg font-semibold text-foreground flex items-center gap-2">
+            {nomeEmpresaCompleto.replace('💡', '').trim()}
+            <Lightbulb className="h-5 w-5 text-yellow-500 fill-yellow-500" />
+          </h1>
+        </div>
         <AgendaAlerts clientes={clientes} />
       </div>
-      <div className="flex items-center space-x-3">
+
+      {/* Lado Direito: Ícones de Notificação + Usuário */}
+      <div className="flex items-center space-x-2">
         <ThemeToggle theme={theme} setTheme={setTheme} />
         
-        {/* Botão de Chat */}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onAbrirChat}
-          className="relative chat-icon-button"
-          title="Chat Interno"
-          id="chat-icon-button"
-        >
-          <MessageSquare className="h-5 w-5" />
-          {chatUnreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center chat-badge">
-              {chatUnreadCount > 99 ? '99+' : chatUnreadCount}
-            </span>
-          )}
-        </Button>
-
-        {/* Botão de Notificações */}
-        <Button
-          variant="ghost"
-          size="icon"
+        {/* 1️⃣ NOTIFICAÇÕES GERAIS */}
+        <NotificationIcon
+          icon={Bell}
+          count={notificacoesNaoLidas}
           onClick={onAbrirNotificacoes}
-          className="relative"
-          title="Notificações"
-        >
-          <Bell className="h-5 w-5" />
-          {notificacoesNaoLidas > 0 && (
-            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-              {notificacoesNaoLidas > 99 ? '99+' : notificacoesNaoLidas}
-            </span>
-          )}
-        </Button>
+          title="Notificações Gerais"
+          badgeColor="bg-red-500"
+        />
+
+        {/* 2️⃣ CHAT */}
+        <NotificationIcon
+          icon={MessageSquare}
+          count={chatUnreadCount}
+          onClick={onAbrirChat}
+          title="Chat Interno"
+          badgeColor="bg-green-500"
+          className="chat-icon-button"
+        />
+
+        {/* 3️⃣ ITENS PRONTOS */}
+        <Popover open={itensProntosOpen} onOpenChange={setItensProntosOpen}>
+          <PopoverTrigger asChild>
+            <div>
+              <NotificationIcon
+                icon={Package}
+                count={counters.itensProntos}
+                onClick={handleItensProntosClick}
+                title="Itens Prontos"
+                badgeColor="bg-blue-500"
+              />
+            </div>
+          </PopoverTrigger>
+          <PopoverContent className="w-80" align="end">
+            <div className="space-y-2">
+              <h4 className="font-semibold text-sm">Itens Prontos</h4>
+              <p className="text-xs text-muted-foreground">
+                {counters.itensProntos > 0 
+                  ? `${counters.itensProntos} item(ns) pronto(s) para próxima etapa`
+                  : 'Nenhum item pronto no momento'}
+              </p>
+              {counters.itensProntos > 0 && (
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="w-full mt-2"
+                  onClick={() => {
+                    setItensProntosOpen(false);
+                    navigate('/operacional/ordens-servico?filtro=prontos');
+                  }}
+                >
+                  Ver Itens Prontos
+                </Button>
+              )}
+            </div>
+          </PopoverContent>
+        </Popover>
+
+        {/* 4️⃣ TREINAMENTO */}
+        <Popover open={treinamentoOpen} onOpenChange={setTreinamentoOpen}>
+          <PopoverTrigger asChild>
+            <div>
+              <NotificationIcon
+                icon={GraduationCap}
+                count={counters.treinamento}
+                onClick={handleTreinamentoClick}
+                title="Treinamento"
+                badgeColor="bg-purple-500"
+              />
+            </div>
+          </PopoverTrigger>
+          <PopoverContent className="w-80" align="end">
+            <div className="space-y-2">
+              <h4 className="font-semibold text-sm">Treinamento</h4>
+              <p className="text-xs text-muted-foreground">
+                {counters.treinamento > 0 
+                  ? `${counters.treinamento} treinamento(s) disponível(is) ou obrigatório(s)`
+                  : 'Nenhum treinamento pendente'}
+              </p>
+              {counters.treinamento > 0 && (
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="w-full mt-2"
+                  onClick={() => {
+                    setTreinamentoOpen(false);
+                    navigate('/ferramentas/treinamento-interno');
+                  }}
+                >
+                  Ver Treinamentos
+                </Button>
+              )}
+            </div>
+          </PopoverContent>
+        </Popover>
+
+        {/* 5️⃣ ITENS ENTREGUES */}
+        <Popover open={itensEntreguesOpen} onOpenChange={setItensEntreguesOpen}>
+          <PopoverTrigger asChild>
+            <div>
+              <NotificationIcon
+                icon={CheckCircle}
+                count={counters.itensEntregues}
+                onClick={handleItensEntreguesClick}
+                title="Itens Entregues"
+                badgeColor="bg-green-600"
+              />
+            </div>
+          </PopoverTrigger>
+          <PopoverContent className="w-80" align="end">
+            <div className="space-y-2">
+              <h4 className="font-semibold text-sm">Itens Entregues</h4>
+              <p className="text-xs text-muted-foreground">
+                {counters.itensEntregues > 0 
+                  ? `${counters.itensEntregues} item(ns) entregue(s) nas últimas 24h`
+                  : 'Nenhuma entrega nas últimas 24 horas'}
+              </p>
+              {counters.itensEntregues > 0 && (
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="w-full mt-2"
+                  onClick={() => {
+                    setItensEntreguesOpen(false);
+                    navigate('/operacional/ordens-servico?filtro=entregues');
+                  }}
+                >
+                  Ver Histórico
+                </Button>
+              )}
+            </div>
+          </PopoverContent>
+        </Popover>
 
         {/* Botão Informar Erro - abre WhatsApp */}
         <Button
@@ -115,36 +271,55 @@ const AppHeader = ({
             <span className="sr-only">Informar Erro</span>
           </a>
         </Button>
-        
-        {/* Botão de Logout - Sempre Visível */}
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={logout}
-          className="flex items-center space-x-2 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300 hover:text-red-700"
-          title="Sair do sistema"
-        >
-          <LogOut className="h-4 w-4" />
-          <span className="text-sm font-medium">Sair</span>
-        </Button>
-        
-        {/* Menu do Usuário - Opcional */}
+
+        {/* Menu do Usuário com Foto/Avatar */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-9 w-9 p-0">
-              <User className="h-4 w-4" />
-              <span className="sr-only">Menu do usuário</span>
+            <Button 
+              variant="ghost" 
+              className="h-9 px-2 flex items-center gap-2 hover:bg-accent"
+            >
+              {user?.avatar_url || user?.foto ? (
+                <img 
+                  src={user.avatar_url || user.foto} 
+                  alt={user?.name || 'Usuário'}
+                  className="h-8 w-8 rounded-full object-cover"
+                />
+              ) : (
+                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                  <User className="h-4 w-4 text-primary" />
+                </div>
+              )}
+              <span className="text-sm font-medium hidden sm:inline-block">
+                {user?.name || vendedorAtual?.nome || 'Usuário'}
+              </span>
+              <ChevronDown className="h-4 w-4 text-muted-foreground hidden sm:inline-block" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-56" align="end" forceMount>
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none">
-                  {user?.name || vendedorAtual?.nome || 'Usuário'}
-                </p>
-                <p className="text-xs leading-none text-muted-foreground">
-                  {user?.email || vendedorAtual?.email || 'exemplo@email.com'}
-                </p>
+                <div className="flex items-center gap-2">
+                  {user?.avatar_url || user?.foto ? (
+                    <img 
+                      src={user.avatar_url || user.foto} 
+                      alt={user?.name || 'Usuário'}
+                      className="h-10 w-10 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                      <User className="h-5 w-5 text-primary" />
+                    </div>
+                  )}
+                  <div className="flex flex-col">
+                    <p className="text-sm font-medium leading-none">
+                      {user?.name || vendedorAtual?.nome || 'Usuário'}
+                    </p>
+                    <p className="text-xs leading-none text-muted-foreground mt-1">
+                      {user?.email || vendedorAtual?.email || 'exemplo@email.com'}
+                    </p>
+                  </div>
+                </div>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />

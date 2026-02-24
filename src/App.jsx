@@ -629,6 +629,7 @@ function AppContent() {
                          onAbrirNotificacoes={abrirNotificacoes}
                          chatUnreadCount={chatUnreadCount}
                          onAbrirChat={() => setChatAberto(true)}
+                         nomeEmpresa={nomeEmpresa}
                       />
                       <main className="flex-1 overflow-x-hidden overflow-y-auto">
                         <Suspense fallback={<LoadingFallback />}>
