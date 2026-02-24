@@ -24,7 +24,9 @@ import { notificacaoService } from '@/services/notificacaoService';
 import { useNotifications } from '@/hooks/useNotifications';
 import NotificacoesPanel from '@/components/NotificacoesPanel';
 import NotificationToast from '@/components/NotificationToast';
+import ChatContainer from '@/components/chat/ChatContainer';
 import { empresaService } from '@/services/api';
+import { useChat } from '@/hooks/useChat';
 
 // Lazy load components
 const AppRoutes = lazy(() => import('@/components/layout/AppRoutes'));
@@ -76,6 +78,10 @@ function AppContent() {
   const [loading, setLoading] = useState(true);
   const [temaCarregado, setTemaCarregado] = useState(false);
   const [notificacoesAbertas, setNotificacoesAbertas] = useState(false);
+  const [chatAberto, setChatAberto] = useState(false);
+  
+  // Hook do chat
+  const { unreadCount: chatUnreadCount } = useChat();
   
   // Hook de notificações em tempo real
   const {
@@ -491,6 +497,8 @@ function AppContent() {
                        produtosComEstoqueBaixo={produtosComEstoqueBaixo}
                        notificacoesNaoLidas={notificacoesNaoLidas}
                        onAbrirNotificacoes={abrirNotificacoes}
+                       chatUnreadCount={chatUnreadCount}
+                       onAbrirChat={() => setChatAberto(true)}
                     />
             <main className="flex-1 overflow-x-hidden overflow-y-auto" key={location.pathname}>
               <Suspense fallback={<LoadingFallback />}>
@@ -524,6 +532,12 @@ function AppContent() {
               type={toastNotification.type}
             />
           )}
+
+          {/* Chat Interno */}
+          <ChatContainer 
+            open={chatAberto} 
+            onClose={() => setChatAberto(false)} 
+          />
         </div>
       </OSCountProvider>
     </ProtectedRoute>
@@ -613,6 +627,8 @@ function AppContent() {
                          produtosComEstoqueBaixo={produtosComEstoqueBaixo}
                          notificacoesNaoLidas={notificacoesNaoLidas}
                          onAbrirNotificacoes={abrirNotificacoes}
+                         chatUnreadCount={chatUnreadCount}
+                         onAbrirChat={() => setChatAberto(true)}
                       />
                       <main className="flex-1 overflow-x-hidden overflow-y-auto">
                         <Suspense fallback={<LoadingFallback />}>
@@ -655,6 +671,12 @@ function AppContent() {
                         type={toastNotification.type}
                       />
                     )}
+
+                    {/* Chat Interno */}
+                    <ChatContainer 
+                      open={chatAberto} 
+                      onClose={() => setChatAberto(false)} 
+                    />
                   </div>
                 </OSCountProvider>
               </ProtectedRoute>

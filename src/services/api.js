@@ -1982,3 +1982,26 @@ export const kanbanService = {
   getOSDetails: (id) => api.get(`/api/kanban/os/${id}`),
   updateItemProgress: (data) => api.post('/api/kanban/os/item-progress', data),
 };
+
+// Serviços para Chat Interno
+export const chatService = {
+  getThreads: () => api.get('/api/chat/threads'),
+  getOrCreateDirectThread: (data) => api.post('/api/chat/threads/direct', data),
+  createGroup: (data) => api.post('/api/chat/threads/group', data),
+  getMessages: (threadId, params = {}) => api.get(`/api/chat/threads/${threadId}/messages`, { params }),
+  sendMessage: (data) => api.post('/api/chat/messages', data),
+  uploadAttachment: (threadId, file) => {
+    const formData = new FormData();
+    formData.append('thread_id', threadId);
+    formData.append('file', file);
+    return api.post('/api/chat/messages/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  getUnreadCount: () => api.get('/api/chat/unread-count'),
+  search: (query, threadId = null) => api.get('/api/chat/search', {
+    params: { query, thread_id: threadId },
+  }),
+  updateTypingStatus: (data) => api.post('/api/chat/typing', data),
+  getTypingUsers: (threadId) => api.get(`/api/chat/threads/${threadId}/typing`),
+};

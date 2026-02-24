@@ -50,20 +50,20 @@ export default function KanbanColumn({
 
   return (
     <div className="flex-shrink-0 w-80">
-      <Card className="h-full flex flex-col">
+      <Card className="h-full flex flex-col shadow-lg border-0 overflow-hidden">
         <CardHeader
-          className="pb-3"
+          className="pb-3 bg-gradient-to-r"
           style={{
-            backgroundColor: column.cor || '#6366f1',
+            background: `linear-gradient(135deg, ${column.cor || '#6366f1'} 0%, ${column.cor || '#4f46e5'} 100%)`,
             color: 'white',
           }}
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <CardTitle className="text-white font-semibold text-sm">
+              <CardTitle className="text-white font-bold text-base">
                 {column.nome}
               </CardTitle>
-              <Badge variant="secondary" className="bg-white/20 text-white border-white/30">
+              <Badge variant="secondary" className="bg-white/30 text-white border-white/40 font-semibold">
                 {osList.length}
               </Badge>
             </div>
@@ -95,15 +95,21 @@ export default function KanbanColumn({
           </div>
         </CardHeader>
         <CardContent
-          className="flex-1 overflow-y-auto p-4 min-h-[400px]"
+          className="flex-1 overflow-y-auto p-4 min-h-[400px] bg-gray-50"
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
         >
-          <div className="space-y-2">
-            {osList.map((os) => (
-              <OSCard key={os.id} os={os} onClick={() => onOSClick(os)} />
-            ))}
+          <div className="space-y-3">
+            {osList.length === 0 ? (
+              <div className="text-center py-8 text-gray-400">
+                <p className="text-sm">Nenhuma OS nesta coluna</p>
+              </div>
+            ) : (
+              osList.map((os) => (
+                <OSCard key={os.id} os={os} onClick={() => onOSClick(os)} />
+              ))
+            )}
           </div>
         </CardContent>
       </Card>
@@ -112,11 +118,11 @@ export default function KanbanColumn({
       {isLastColumn && (
         <Button
           variant="outline"
-          className="w-full mt-4 h-12 border-dashed"
+          className="w-full mt-4 h-14 border-2 border-dashed border-gray-300 hover:border-blue-500 hover:bg-blue-50 transition-all duration-200 rounded-lg"
           onClick={onAddColumn}
         >
-          <Plus className="h-4 w-4 mr-2" />
-          Adicionar Coluna
+          <Plus className="h-5 w-5 mr-2" />
+          <span className="font-medium">Adicionar Coluna</span>
         </Button>
       )}
     </div>

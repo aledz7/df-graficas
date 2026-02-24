@@ -5,7 +5,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import ThemeToggle from '@/components/ThemeToggle';
 import AgendaAlerts from '@/components/dashboard/AgendaAlerts';
 import NotificationSystem from '@/components/NotificationSystem';
-import { Upload, Menu, User, LogOut, Settings, Bell, Bug } from 'lucide-react';
+import { Upload, Menu, User, LogOut, Settings, Bell, Bug, MessageSquare } from 'lucide-react';
+import '@/components/chat/ChatIcon.css';
 
 const WHATSAPP_ERRO_URL = 'https://wa.me/556192109773?text=' + encodeURIComponent('Olá! Encontrei um erro no sistema e gostaria de reportar:\n\n');
 import { useAuth } from '@/contexts/AuthContext';
@@ -49,7 +50,9 @@ const AppHeader = ({
   theme,
   setTheme,
   notificacoesNaoLidas = 0,
-  onAbrirNotificacoes
+  onAbrirNotificacoes,
+  chatUnreadCount = 0,
+  onAbrirChat
 }) => {
   const { logout, user } = useAuth();
   const navigate = useNavigate();
@@ -67,6 +70,23 @@ const AppHeader = ({
       <div className="flex items-center space-x-3">
         <ThemeToggle theme={theme} setTheme={setTheme} />
         
+        {/* Botão de Chat */}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onAbrirChat}
+          className="relative chat-icon-button"
+          title="Chat Interno"
+          id="chat-icon-button"
+        >
+          <MessageSquare className="h-5 w-5" />
+          {chatUnreadCount > 0 && (
+            <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center chat-badge">
+              {chatUnreadCount > 99 ? '99+' : chatUnreadCount}
+            </span>
+          )}
+        </Button>
+
         {/* Botão de Notificações */}
         <Button
           variant="ghost"

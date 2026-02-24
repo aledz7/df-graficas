@@ -221,17 +221,23 @@ export default function KanbanPage() {
   }
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="p-6 border-b">
-        <h1 className="text-2xl font-bold">Painel Kanban</h1>
-        <p className="text-sm text-gray-600 mt-1">
-          Organize suas OS de forma visual e profissional
-        </p>
+    <div className="h-full flex flex-col bg-gradient-to-br from-gray-50 to-gray-100">
+      <div className="p-6 border-b bg-white shadow-sm">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+              Painel Kanban
+            </h1>
+            <p className="text-sm text-gray-600 mt-1">
+              Organize suas OS de forma visual e profissional
+            </p>
+          </div>
+        </div>
       </div>
 
       <ScrollArea className="flex-1">
         <div className="p-6">
-          <div className="flex gap-4 overflow-x-auto pb-4">
+          <div className="flex gap-6 overflow-x-auto pb-6">
             {columns.map((column, index) => (
               <KanbanColumn
                 key={column.id}

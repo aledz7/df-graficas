@@ -73,6 +73,7 @@ use App\Http\Controllers\Api\PosVendaController;
 use App\Http\Controllers\Api\RelatorioProducaoController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\KanbanController;
+use App\Http\Controllers\Api\ChatController;
 
 /*
 |--------------------------------------------------------------------------
@@ -655,6 +656,20 @@ Route::middleware(['api.auth'])->group(function () {
         Route::post('os/move', [KanbanController::class, 'moveOS']);
         Route::get('os/{id}', [KanbanController::class, 'getOSDetails']);
         Route::post('os/item-progress', [KanbanController::class, 'updateItemProgress']);
+    });
+
+    // Chat Interno
+    Route::prefix('chat')->group(function () {
+        Route::get('threads', [ChatController::class, 'getThreads']);
+        Route::post('threads/direct', [ChatController::class, 'getOrCreateDirectThread']);
+        Route::post('threads/group', [ChatController::class, 'createGroup']);
+        Route::get('threads/{id}/messages', [ChatController::class, 'getMessages']);
+        Route::post('messages', [ChatController::class, 'sendMessage']);
+        Route::post('messages/upload', [ChatController::class, 'uploadAttachment']);
+        Route::get('unread-count', [ChatController::class, 'getUnreadCount']);
+        Route::get('search', [ChatController::class, 'search']);
+        Route::post('typing', [ChatController::class, 'updateTypingStatus']);
+        Route::get('threads/{id}/typing', [ChatController::class, 'getTypingUsers']);
     });
 
     // Notas Fiscais (NFe / NFSe)
