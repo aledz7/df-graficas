@@ -41,6 +41,41 @@ export default function ChatContainer({ open, onClose }) {
     }
   }, [open, user]);
 
+  // Listener para abrir thread específica quando receber evento
+  useEffect(() => {
+    const handleOpenChat = async (event) => {
+      const { threadId } = event.detail || {};
+      if (threadId) {
+        // Abrir o chat se não estiver aberto
+        if (!open) {
+          // Disparar evento para abrir o chat (será tratado no App.jsx)
+          return;
+        }
+
+        // Encontrar a thread e ativá-la
+        let thread = threads.find(t => t.id === threadId);
+        
+        if (!thread) {
+          // Se não encontrou, recarregar threads e tentar novamente
+          await loadThreads();
+          const updatedThreadsResponse = await chatService.getThreads();
+          if (updatedThreadsResponse.data.success) {
+            const updatedThreads = updatedThreadsResponse.data.data || [];
+            thread = updatedThreads.find(t => t.id === threadId);
+          }
+        }
+
+        if (thread) {
+          setActiveThread(thread);
+          await loadMessages(thread.id);
+        }
+      }
+    };
+
+    window.addEventListener('openChat', handleOpenChat);
+    return () => window.removeEventListener('openChat', handleOpenChat);
+  }, [open, threads, setActiveThread, loadMessages, loadThreads]);
+
   // Carregar mensagens quando thread ativa mudar
   useEffect(() => {
     if (activeThread) {

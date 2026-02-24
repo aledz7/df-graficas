@@ -2,11 +2,10 @@ import React, { useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { X, Reply, ExternalLink } from 'lucide-react';
+import { X, Reply, MessageSquare } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { useNavigate } from 'react-router-dom';
 
 export default function ChatNotificationToast({ 
   notification, 
@@ -18,10 +17,10 @@ export default function ChatNotificationToast({
   const thread = notification.thread;
 
   useEffect(() => {
-    // Auto-fechar após 5 segundos
+    // Auto-fechar após 6 segundos (entre 5-8 segundos)
     const timer = setTimeout(() => {
       onClose();
-    }, 5000);
+    }, 6000);
 
     return () => clearTimeout(timer);
   }, [onClose]);
@@ -52,29 +51,32 @@ export default function ChatNotificationToast({
     )}>
       <CardContent className="p-4">
         {/* Header */}
-        <div className="flex items-start justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <Avatar className="h-8 w-8">
-              <AvatarImage src={message?.user?.foto_url} />
-              <AvatarFallback>
-                {message?.user?.name?.charAt(0).toUpperCase() || 'U'}
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex items-center gap-2 flex-1">
+            <Avatar className="h-10 w-10">
+              <AvatarImage src={message?.user?.foto_url || message?.user?.avatar_url} />
+              <AvatarFallback className="bg-primary/10 text-primary">
+                {message?.user?.name?.charAt(0).toUpperCase() || getThreadName()?.charAt(0).toUpperCase() || 'U'}
               </AvatarFallback>
             </Avatar>
-            <div>
-              <p className="font-semibold text-sm">{getThreadName()}</p>
-              {message?.user && (
-                <p className="text-xs text-gray-500">{message.user.name}</p>
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-sm text-gray-900 truncate">{getThreadName()}</p>
+              {message?.user && thread?.tipo !== 'grupo' && (
+                <p className="text-xs text-gray-500 truncate">{message.user.name}</p>
               )}
             </div>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onClose}
-            className="h-6 w-6 p-0"
-          >
-            <X className="h-3 w-3" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-500">Agora</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onClose}
+              className="h-6 w-6 p-0 hover:bg-gray-100"
+            >
+              <X className="h-4 w-4 text-gray-600" />
+            </Button>
+          </div>
         </div>
 
         {/* Mensagem */}
@@ -89,39 +91,31 @@ export default function ChatNotificationToast({
           )}
         </div>
 
-        {/* Timestamp */}
-        <p className="text-xs text-gray-500 mb-3">
-          {formatDistanceToNow(new Date(message?.created_at || Date.now()), {
-            addSuffix: true,
-            locale: ptBR
-          })}
-        </p>
-
         {/* Actions */}
         <div className="flex items-center gap-2">
           <Button
-            variant="outline"
+            variant="default"
+            size="sm"
+            onClick={() => {
+              if (onReply) {
+                onReply(thread);
+              }
+              onClose();
+            }}
+            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium"
+          >
+            <Reply className="h-4 w-4 mr-1.5" />
+            Responder
+          </Button>
+          <Button
+            variant="default"
             size="sm"
             onClick={handleOpenChat}
-            className="flex-1 text-xs"
+            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium"
           >
-            <ExternalLink className="h-3 w-3 mr-1" />
-            Abrir Chat
+            <MessageSquare className="h-4 w-4 mr-1.5" />
+            Abrir conversa
           </Button>
-          {onReply && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                onReply(thread);
-                onClose();
-              }}
-              className="text-xs"
-            >
-              <Reply className="h-3 w-3 mr-1" />
-              Responder
-            </Button>
-          )}
         </div>
       </CardContent>
     </Card>

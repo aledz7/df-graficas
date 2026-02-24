@@ -25,6 +25,7 @@ import { useNotifications } from '@/hooks/useNotifications';
 import NotificacoesPanel from '@/components/NotificacoesPanel';
 import NotificationToast from '@/components/NotificationToast';
 import ChatContainer from '@/components/chat/ChatContainer';
+import ChatNotificationManager from '@/components/chat/ChatNotificationManager';
 import { empresaService } from '@/services/api';
 import { useChat } from '@/hooks/useChat';
 
@@ -426,6 +427,26 @@ function AppContent() {
     }
   }, [isAuthenticated, user, vendedorAtual]);
 
+  // Listener para abrir chat quando clicar na notificação
+  useEffect(() => {
+    const handleOpenChat = (event) => {
+      const { threadId } = event.detail || {};
+      if (threadId) {
+        setChatAberto(true);
+        // Aguardar um pouco para o ChatContainer montar antes de tentar abrir a thread
+        setTimeout(() => {
+          // O evento será tratado novamente pelo ChatContainer quando estiver aberto
+          window.dispatchEvent(new CustomEvent('openChat', {
+            detail: { threadId }
+          }));
+        }, 100);
+      }
+    };
+
+    window.addEventListener('openChat', handleOpenChat);
+    return () => window.removeEventListener('openChat', handleOpenChat);
+  }, []);
+
   const handleLogoUpload = async (event) => {
     const file = event.target.files[0];
     if (file) {
@@ -678,6 +699,9 @@ function AppContent() {
                       open={chatAberto} 
                       onClose={() => setChatAberto(false)} 
                     />
+
+                    {/* Gerenciador de Notificações de Chat */}
+                    <ChatNotificationManager chatOpen={chatAberto} />
                   </div>
                 </OSCountProvider>
               </ProtectedRoute>

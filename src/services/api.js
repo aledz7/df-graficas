@@ -1999,6 +1999,7 @@ export const chatService = {
     });
   },
   getUnreadCount: () => api.get('/api/chat/unread-count'),
+  getRecentUnreadMessages: () => api.get('/api/chat/recent-unread'),
   search: (query, threadId = null) => api.get('/api/chat/search', {
     params: { query, thread_id: threadId },
   }),

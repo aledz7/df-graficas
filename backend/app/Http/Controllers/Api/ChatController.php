@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 use App\Models\ChatThread;
 use App\Models\ChatThreadMember;
 use App\Models\ChatMessage;
@@ -221,13 +222,27 @@ class ChatController extends Controller
             })->findOrFail($threadId);
 
             $perPage = $request->input('per_page', 50);
-            $messages = ChatMessage::where('thread_id', $threadId)
-                ->with(['user', 'replyTo.user', 'attachments', 'osCard.ordemServico', 'reads'])
-                ->orderBy('created_at', 'asc')
-                ->paginate($perPage);
+            $sort = $request->input('sort', 'asc'); // 'asc' ou 'desc'
+            
+            $query = ChatMessage::where('thread_id', $threadId)
+                ->with(['user', 'replyTo.user', 'attachments', 'osCard.ordemServico', 'reads']);
 
-            // Marcar mensagens como lidas
-            $this->markThreadAsRead($threadId, $userId);
+            // Filtrar apenas não lidas se solicitado
+            if ($request->boolean('unread_only')) {
+                $query->whereDoesntHave('reads', function($q) use ($userId) {
+                    $q->where('user_id', $userId);
+                });
+            }
+
+            // Ordenar
+            $query->orderBy('created_at', $sort);
+
+            $messages = $query->paginate($perPage);
+
+            // Marcar mensagens como lidas apenas se não for apenas busca de não lidas
+            if (!$request->boolean('unread_only')) {
+                $this->markThreadAsRead($threadId, $userId);
+            }
 
             return response()->json([
                 'success' => true,
@@ -461,6 +476,100 @@ class ChatController extends Controller
             return response()->json([
                 'success' => false,
                 'error' => 'Erro ao obter contagem',
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Obter mensagens não lidas recentes (para notificações)
+     * Retorna últimas mensagens não lidas de cada thread
+     */
+    public function getRecentUnreadMessages(Request $request)
+    {
+        try {
+            $user = Auth::user();
+            $userId = $user->id;
+            $tenantId = $user->tenant_id;
+
+            // Limite de tempo: últimas 30 segundos (para evitar notificar mensagens antigas)
+            $since = Carbon::now()->subSeconds(30);
+
+            // Buscar threads onde o usuário é membro
+            $threadIds = ChatThread::where('tenant_id', $tenantId)
+                ->whereHas('members', function($q) use ($userId) {
+                    $q->where('user_id', $userId);
+                })
+                ->pluck('id');
+
+            if ($threadIds->isEmpty()) {
+                return response()->json([
+                    'success' => true,
+                    'data' => [],
+                ]);
+            }
+
+            // Buscar mensagens não lidas recentes de todas as threads de uma vez (mais eficiente)
+            $unreadMessages = ChatMessage::whereIn('thread_id', $threadIds)
+                ->where('user_id', '!=', $userId) // Não é mensagem do próprio usuário
+                ->where('created_at', '>=', $since) // Mensagem recente
+                ->whereDoesntHave('reads', function($q) use ($userId) {
+                    $q->where('user_id', $userId);
+                })
+                ->with(['user', 'osCard.ordemServico', 'thread'])
+                ->orderBy('created_at', 'desc')
+                ->get()
+                ->groupBy('thread_id')
+                ->map(function($messages) {
+                    // Pegar apenas a mensagem mais recente de cada thread
+                    return $messages->first();
+                })
+                ->values();
+
+            $recentMessages = [];
+
+            foreach ($unreadMessages as $unreadMessage) {
+                $thread = $unreadMessage->thread;
+                
+                $recentMessages[] = [
+                    'thread_id' => $thread->id,
+                    'thread' => [
+                        'id' => $thread->id,
+                        'tipo' => $thread->tipo,
+                        'nome' => $thread->nome,
+                        'ordem_servico_id' => $thread->ordem_servico_id,
+                    ],
+                    'message' => [
+                        'id' => $unreadMessage->id,
+                        'texto' => $unreadMessage->texto,
+                        'tipo' => $unreadMessage->tipo,
+                        'is_urgente' => $unreadMessage->is_urgente ?? false,
+                        'is_importante' => $unreadMessage->is_importante ?? false,
+                        'created_at' => $unreadMessage->created_at->toISOString(),
+                        'user' => [
+                            'id' => $unreadMessage->user->id,
+                            'name' => $unreadMessage->user->name,
+                            'foto_url' => $unreadMessage->user->foto_url ?? null,
+                        ],
+                        'osCard' => $unreadMessage->osCard ? [
+                            'ordem_servico_id' => $unreadMessage->osCard->ordem_servico_id,
+                        ] : null,
+                    ],
+                ];
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => $recentMessages,
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Erro ao obter mensagens recentes: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'error' => 'Erro ao obter mensagens recentes',
                 'message' => $e->getMessage(),
             ], 500);
         }

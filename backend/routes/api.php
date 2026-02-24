@@ -667,6 +667,7 @@ Route::middleware(['api.auth'])->group(function () {
         Route::post('messages', [ChatController::class, 'sendMessage']);
         Route::post('messages/upload', [ChatController::class, 'uploadAttachment']);
         Route::get('unread-count', [ChatController::class, 'getUnreadCount']);
+        Route::get('recent-unread', [ChatController::class, 'getRecentUnreadMessages']);
         Route::get('search', [ChatController::class, 'search']);
         Route::post('typing', [ChatController::class, 'updateTypingStatus']);
         Route::get('threads/{id}/typing', [ChatController::class, 'getTypingUsers']);
