@@ -1847,6 +1847,10 @@ export const cursoService = {
     });
   },
   listarParaContinuacao: () => api.get('/api/cursos/para-continuacao'),
+  meusTreinamentos: (filtro = 'todos') => api.get('/api/cursos/meus-treinamentos', { params: { filtro } }),
+  iniciarTreinamento: (id) => api.post(`/api/cursos/${id}/iniciar`),
+  atualizarProgresso: (id, data) => api.put(`/api/cursos/${id}/progresso`, data),
+  concluirTreinamento: (id, data = {}) => api.post(`/api/cursos/${id}/concluir`, data),
 };
 
 // Serviços para Relatório de Produção

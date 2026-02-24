@@ -555,6 +555,10 @@ Route::middleware(['api.auth'])->group(function () {
         Route::post('upload-arquivo', [\App\Http\Controllers\Api\CursoController::class, 'uploadArquivo']);
         Route::post('upload-video', [\App\Http\Controllers\Api\CursoController::class, 'uploadVideo']);
         Route::get('para-continuacao', [\App\Http\Controllers\Api\CursoController::class, 'listarParaContinuacao']);
+        Route::get('meus-treinamentos', [\App\Http\Controllers\Api\CursoController::class, 'meusTreinamentos']);
+        Route::post('{id}/iniciar', [\App\Http\Controllers\Api\CursoController::class, 'iniciarTreinamento']);
+        Route::put('{id}/progresso', [\App\Http\Controllers\Api\CursoController::class, 'atualizarProgresso']);
+        Route::post('{id}/concluir', [\App\Http\Controllers\Api\CursoController::class, 'concluirTreinamento']);
     });
     Route::apiResource('cursos', \App\Http\Controllers\Api\CursoController::class);
     

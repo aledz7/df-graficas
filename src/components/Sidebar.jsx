@@ -87,7 +87,8 @@ const menuItems = [
       { path: '/ferramentas/feed-atividades', label: 'Feed de Atividades', icon: Activity },
       { path: '/ferramentas/calendario-inteligente', label: 'Calendário Inteligente', icon: CalendarDays },
       { path: '/ferramentas/pos-venda', label: 'Pós-Venda', icon: MessageSquare },
-      { path: '/ferramentas/treinamento-interno', label: 'Treinamento Interno', icon: GraduationCap },
+      { path: '/ferramentas/treinamento-interno', label: 'Treinamento Interno', icon: GraduationCap, adminOnly: true },
+      { path: '/ferramentas/meus-treinamentos', label: 'Meus Treinamentos', icon: GraduationCap },
       { path: '/ferramentas/treinamento-progresso', label: 'Meu Progresso', icon: TrendingUp },
       { path: '/ferramentas/treinamento-avisos', label: 'Avisos de Treinamento', icon: Bell },
       { path: '/operacional/gerador-etiquetas', label: 'Gerador de Etiquetas', icon: Barcode },
@@ -247,6 +248,23 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen }) => {
   });
 
   const filteredMenuItems = dynamicMenuItems.map(item => {
+    // Filtrar subitens por adminOnly
+    if (item.subItems) {
+      item.subItems = item.subItems.filter(subItem => {
+        if (subItem.adminOnly !== undefined) {
+          return subItem.adminOnly ? user?.is_admin : true;
+        }
+        return true;
+      });
+    }
+    return item;
+  }).filter(item => {
+    // Filtrar itens principais por adminOnly
+    if (item.adminOnly !== undefined) {
+      return item.adminOnly ? user?.is_admin : true;
+    }
+    return true;
+  }).map(item => {
     // Donos têm acesso a tudo - retorna item completo
     if (isOwner) {
       return { ...item };

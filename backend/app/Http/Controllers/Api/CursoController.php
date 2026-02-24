@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Curso;
+use App\Models\CursoProgresso;
 use App\Models\User;
 use App\Models\Notificacao;
 use Illuminate\Http\Request;
@@ -32,9 +33,30 @@ class CursoController extends Controller
                 $query->publicados();
             }
 
-            // Filtrar por setor
-            if ($request->has('setor') && $request->setor !== 'todos') {
-                $query->porSetor($request->setor);
+            // Se não for admin, filtrar apenas cursos disponíveis para o usuário
+            if (!$user->is_admin) {
+                // Filtrar por público-alvo
+                $query->where(function($q) use ($user) {
+                    $q->where('publico_alvo', 'todos')
+                      ->orWhere(function($q2) use ($user) {
+                          // Área específica - verificar se o setor do usuário está na lista
+                          $q2->where('publico_alvo', 'area_especifica')
+                             ->whereJsonContains('setores_publico', $user->cargo ?? $user->setor ?? 'comercial');
+                      })
+                      ->orWhere(function($q3) use ($user) {
+                          // Usuários específicos
+                          $q3->where('publico_alvo', 'usuarios_especificos')
+                             ->whereJsonContains('usuarios_publico', $user->id);
+                      });
+                });
+                
+                // Apenas cursos disponíveis (liberados)
+                $query->disponiveis();
+            } else {
+                // Admin pode filtrar por setor
+                if ($request->has('setor') && $request->setor !== 'todos') {
+                    $query->porSetor($request->setor);
+                }
             }
 
             // Filtrar por nível
@@ -435,6 +457,247 @@ class CursoController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Erro ao listar cursos',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Listar meus treinamentos (colaborador)
+     */
+    public function meusTreinamentos(Request $request): JsonResponse
+    {
+        try {
+            $user = $request->user();
+            $tenantId = $user->tenant_id;
+            $filtro = $request->input('filtro', 'todos'); // todos, obrigatorios, em_andamento, concluidos
+
+            $query = Curso::where('tenant_id', $tenantId)
+                ->publicados()
+                ->disponiveis();
+
+            // Filtrar por público-alvo
+            $query->where(function($q) use ($user) {
+                $q->where('publico_alvo', 'todos')
+                  ->orWhere(function($q2) use ($user) {
+                      $q2->where('publico_alvo', 'area_especifica')
+                         ->whereJsonContains('setores_publico', $user->cargo ?? $user->setor ?? 'comercial');
+                  })
+                  ->orWhere(function($q3) use ($user) {
+                      $q3->where('publico_alvo', 'usuarios_especificos')
+                         ->whereJsonContains('usuarios_publico', $user->id);
+                  });
+            });
+
+            $cursos = $query->orderBy('created_at', 'desc')->get();
+
+            // Buscar progressos do usuário
+            $progressos = CursoProgresso::where('tenant_id', $tenantId)
+                ->where('usuario_id', $user->id)
+                ->whereIn('curso_id', $cursos->pluck('id'))
+                ->get()
+                ->keyBy('curso_id');
+
+            // Adicionar informações de progresso aos cursos
+            $cursosComProgresso = $cursos->map(function($curso) use ($progressos, $filtro) {
+                $progresso = $progressos->get($curso->id);
+                
+                $curso->progresso = $progresso ? [
+                    'iniciado' => $progresso->iniciado,
+                    'concluido' => $progresso->concluido,
+                    'percentual' => $progresso->percentual_concluido,
+                    'data_inicio' => $progresso->data_inicio,
+                    'data_conclusao' => $progresso->data_conclusao,
+                ] : [
+                    'iniciado' => false,
+                    'concluido' => false,
+                    'percentual' => 0,
+                    'data_inicio' => null,
+                    'data_conclusao' => null,
+                ];
+
+                // Determinar status
+                if ($progresso && $progresso->concluido) {
+                    $curso->status_usuario = 'concluido';
+                } elseif ($progresso && $progresso->iniciado) {
+                    $curso->status_usuario = 'em_andamento';
+                } else {
+                    $curso->status_usuario = 'pendente';
+                }
+
+                return $curso;
+            });
+
+            // Aplicar filtro
+            if ($filtro === 'obrigatorios') {
+                $cursosComProgresso = $cursosComProgresso->where('obrigatorio', true);
+            } elseif ($filtro === 'em_andamento') {
+                $cursosComProgresso = $cursosComProgresso->where('status_usuario', 'em_andamento');
+            } elseif ($filtro === 'concluidos') {
+                $cursosComProgresso = $cursosComProgresso->where('status_usuario', 'concluido');
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => $cursosComProgresso->values(),
+                'estatisticas' => [
+                    'total' => $cursos->count(),
+                    'obrigatorios' => $cursos->where('obrigatorio', true)->count(),
+                    'em_andamento' => $cursosComProgresso->where('status_usuario', 'em_andamento')->count(),
+                    'concluidos' => $cursosComProgresso->where('status_usuario', 'concluido')->count(),
+                    'pendentes' => $cursosComProgresso->where('status_usuario', 'pendente')->count(),
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Erro ao listar treinamentos',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Iniciar treinamento
+     */
+    public function iniciarTreinamento(Request $request, $id): JsonResponse
+    {
+        try {
+            $user = $request->user();
+            $tenantId = $user->tenant_id;
+
+            $curso = Curso::where('tenant_id', $tenantId)
+                ->publicados()
+                ->disponiveis()
+                ->findOrFail($id);
+
+            $progresso = CursoProgresso::firstOrCreate(
+                [
+                    'tenant_id' => $tenantId,
+                    'usuario_id' => $user->id,
+                    'curso_id' => $id,
+                ],
+                [
+                    'iniciado' => false,
+                    'concluido' => false,
+                ]
+            );
+
+            if (!$progresso->iniciado) {
+                $progresso->marcarComoIniciado();
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Treinamento iniciado',
+                'data' => $progresso->fresh()
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Erro ao iniciar treinamento',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Atualizar progresso do treinamento
+     */
+    public function atualizarProgresso(Request $request, $id): JsonResponse
+    {
+        try {
+            $user = $request->user();
+            $tenantId = $user->tenant_id;
+
+            $validator = Validator::make($request->all(), [
+                'percentual' => 'required|integer|min:0|max:100',
+                'tempo_segundos' => 'nullable|integer|min:0',
+                'modulo_id' => 'nullable|integer',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Erro de validação',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $progresso = CursoProgresso::where('tenant_id', $tenantId)
+                ->where('usuario_id', $user->id)
+                ->where('curso_id', $id)
+                ->firstOrFail();
+
+            $progresso->atualizarPercentual($request->percentual);
+            
+            if ($request->has('tempo_segundos')) {
+                $progresso->update(['tempo_total_segundos' => $request->tempo_segundos]);
+            }
+
+            if ($request->has('modulo_id')) {
+                $modulos = $progresso->modulos_concluidos ?? [];
+                if (!in_array($request->modulo_id, $modulos)) {
+                    $modulos[] = $request->modulo_id;
+                    $progresso->update(['modulos_concluidos' => $modulos]);
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => $progresso->fresh()
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Erro ao atualizar progresso',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Concluir treinamento
+     */
+    public function concluirTreinamento(Request $request, $id): JsonResponse
+    {
+        try {
+            $user = $request->user();
+            $tenantId = $user->tenant_id;
+
+            $validator = Validator::make($request->all(), [
+                'tempo_total' => 'nullable|integer|min:0',
+                'confirmacao_leitura' => 'nullable|boolean',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Erro de validação',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $progresso = CursoProgresso::where('tenant_id', $tenantId)
+                ->where('usuario_id', $user->id)
+                ->where('curso_id', $id)
+                ->firstOrFail();
+
+            if ($request->has('confirmacao_leitura') && $request->confirmacao_leitura) {
+                $progresso->confirmarLeitura();
+            }
+
+            $progresso->marcarComoConcluido($request->input('tempo_total'));
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Treinamento concluído com sucesso!',
+                'data' => $progresso->fresh()
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Erro ao concluir treinamento',
                 'error' => $e->getMessage()
             ], 500);
         }
