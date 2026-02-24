@@ -72,6 +72,7 @@ use App\Http\Controllers\Api\TermometroController;
 use App\Http\Controllers\Api\PosVendaController;
 use App\Http\Controllers\Api\RelatorioProducaoController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\KanbanController;
 
 /*
 |--------------------------------------------------------------------------
@@ -641,6 +642,19 @@ Route::middleware(['api.auth'])->group(function () {
         Route::post('configuracao', [DashboardController::class, 'salvarConfiguracao']);
         Route::get('widget/{widgetCodigo}', [DashboardController::class, 'getDadosWidget']);
         Route::post('widgets', [DashboardController::class, 'getDadosWidgets']);
+    });
+
+    // Kanban
+    Route::prefix('kanban')->group(function () {
+        Route::get('columns', [KanbanController::class, 'getColumns']);
+        Route::post('columns', [KanbanController::class, 'createColumn']);
+        Route::put('columns/{id}', [KanbanController::class, 'updateColumn']);
+        Route::delete('columns/{id}', [KanbanController::class, 'deleteColumn']);
+        Route::post('columns/reorder', [KanbanController::class, 'reorderColumns']);
+        Route::get('os', [KanbanController::class, 'getOS']);
+        Route::post('os/move', [KanbanController::class, 'moveOS']);
+        Route::get('os/{id}', [KanbanController::class, 'getOSDetails']);
+        Route::post('os/item-progress', [KanbanController::class, 'updateItemProgress']);
     });
 
     // Notas Fiscais (NFe / NFSe)

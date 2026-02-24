@@ -6,6 +6,7 @@ const DashboardPage = lazy(() => import('@/pages/DashboardPage'));
 const ProdutosPage = lazy(() => import('@/pages/ProdutosPage'));
 const ClientesPage = lazy(() => import('@/pages/ClientesPage'));
 const OrdensServicoPage = lazy(() => import('@/pages/OrdensServicoPage'));
+const KanbanPage = lazy(() => import('@/pages/KanbanPage'));
 const PDVPage = lazy(() => import('@/pages/PDVPage'));
 const FluxoCaixaPage = lazy(() => import('@/pages/FluxoCaixaPage'));
 const ContasReceberPage = lazy(() => import('@/pages/ContasReceberPage'));
@@ -144,6 +145,7 @@ const AppRoutes = ({ logoUrl, nomeEmpresa, vendedorAtual, theme, setTheme, setAp
       {/* Operacional */}
       <Route path="/operacional/ordens-servico" element={<OrdensServicoPage logoUrl={logoUrl} nomeEmpresa={nomeEmpresa} vendedorAtual={vendedorAtual} />} />
       <Route path="/operacional/ordens-servico/:id" element={<OrdensServicoPage logoUrl={logoUrl} nomeEmpresa={nomeEmpresa} vendedorAtual={vendedorAtual} />} />
+      <Route path="/operacional/kanban" element={<KanbanPage />} />
       <Route path="/operacional/os-historico" element={<OSHistoricoPage vendedorAtual={vendedorAtual} />} />
       <Route path="/operacional/os-em-producao" element={<OSEmProducaoPage />} />
       <Route path="/operacional/os-entregar" element={<OSAseremEntreguesPage />} />

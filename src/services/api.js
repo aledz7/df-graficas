@@ -1969,3 +1969,16 @@ export const romaneioService = {
   confirmarEntrega: (id, data) => api.post(`/api/romaneios/${id}/confirmar-entrega`, data),
   delete: (id) => api.delete(`/api/romaneios/${id}`),
 };
+
+// Serviços para Kanban
+export const kanbanService = {
+  getColumns: () => api.get('/api/kanban/columns'),
+  createColumn: (data) => api.post('/api/kanban/columns', data),
+  updateColumn: (id, data) => api.put(`/api/kanban/columns/${id}`, data),
+  deleteColumn: (id) => api.delete(`/api/kanban/columns/${id}`),
+  reorderColumns: (data) => api.post('/api/kanban/columns/reorder', data),
+  getOS: () => api.get('/api/kanban/os'),
+  moveOS: (data) => api.post('/api/kanban/os/move', data),
+  getOSDetails: (id) => api.get(`/api/kanban/os/${id}`),
+  updateItemProgress: (data) => api.post('/api/kanban/os/item-progress', data),
+};

@@ -5,7 +5,7 @@ import { useNomeSistema } from '@/hooks/useNomeSistema.jsx';
 import {
   LayoutDashboard, ShoppingCart, Package, Users, Truck, Banknote, FileText,
   Settings, BarChart3, SprayCan, Calculator,
-  Palette, Boxes, BookOpen, Wrench, HardHat, FileClock, CheckCircle2, History, SlidersHorizontal, Trash2, Barcode, Store, Activity, CalendarDays, FileSpreadsheet, Box, LogIn, LogOut, PackagePlus, ListChecks, Printer, DollarSign, ShieldAlert, Ruler, Star, TrendingUp, CreditCard, Ticket, Gift, Receipt,   Trophy, Target, Maximize2, GraduationCap, Bell, TrendingDown, Thermometer, MessageSquare
+  Palette, Boxes, BookOpen, Wrench, HardHat, FileClock, CheckCircle2, History, SlidersHorizontal, Trash2, Barcode, Store, Activity, CalendarDays, FileSpreadsheet, Box, LogIn, LogOut, PackagePlus, ListChecks, Printer, DollarSign, ShieldAlert, Ruler, Star, TrendingUp, CreditCard, Ticket, Gift, Receipt,   Trophy, Target, Maximize2, GraduationCap, Bell, TrendingDown, Thermometer, MessageSquare, LayoutGrid
 } from 'lucide-react';
 import IndiqueGanheModal from '@/components/IndiqueGanheModal';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -33,6 +33,7 @@ const menuItems = [
   {
     label: 'O.S / Pedidos', icon: FileText,
     subItems: [
+      { path: '/operacional/kanban', label: 'Painel Kanban', icon: LayoutGrid },
       { path: '/operacional/ordens-servico', label: 'Nova OS / Pedido', icon: FileText },
       { path: '/operacional/os-historico', label: 'Histórico de OS', icon: History },
       { path: '/operacional/os-em-producao', label: 'Em Produção', icon: HardHat },
