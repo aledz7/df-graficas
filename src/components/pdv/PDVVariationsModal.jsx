@@ -10,6 +10,22 @@ import { getImageUrl } from '@/lib/imageUtils';
 const PDVVariationsModal = ({ isOpen, setIsOpen, produto, selectedVariacaoDetails, setSelectedVariacaoDetails, addProdutoAoCarrinho, getNomeVariacao, carrinho = [] }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedVariacoes, setSelectedVariacoes] = useState([]);
+
+  const isSelecaoVariacaoObrigatoria = useMemo(() => {
+    if (!produto?.variacoes_ativa || !Array.isArray(produto?.variacoes) || produto.variacoes.length === 0) {
+      return false;
+    }
+
+    if (produto.variacao_obrigatoria === null || typeof produto.variacao_obrigatoria === 'undefined') {
+      return true;
+    }
+
+    if (typeof produto.variacao_obrigatoria === 'boolean') {
+      return produto.variacao_obrigatoria;
+    }
+
+    return ['1', 'true'].includes(String(produto.variacao_obrigatoria).toLowerCase());
+  }, [produto]);
   
   // Limpar seleções quando o modal abrir
   useEffect(() => {
@@ -107,6 +123,9 @@ const PDVVariationsModal = ({ isOpen, setIsOpen, produto, selectedVariacaoDetail
           <DialogTitle className="text-lg sm:text-xl">Selecione as Variações</DialogTitle>
           <DialogDescription className="text-sm break-words">
             {produto.nome}
+            {!isSelecaoVariacaoObrigatoria && (
+              <span className="ml-2 text-muted-foreground">(seleção opcional)</span>
+            )}
             {selectedVariacoes.length > 0 && (
               <span className="ml-2 text-orange-600 font-semibold">
                 • {selectedVariacoes.length} selecionada{selectedVariacoes.length > 1 ? 's' : ''}
@@ -255,6 +274,19 @@ const PDVVariationsModal = ({ isOpen, setIsOpen, produto, selectedVariacaoDetail
           >
             Cancelar
           </Button>
+          {!isSelecaoVariacaoObrigatoria && (
+            <Button
+              variant="secondary"
+              onClick={() => {
+                addProdutoAoCarrinho(produto, 1, null);
+                setIsOpen(false);
+                setSelectedVariacoes([]);
+              }}
+              className="w-full sm:w-auto"
+            >
+              Adicionar sem variação
+            </Button>
+          )}
           <Button 
               onClick={() => {
                 if (selectedVariacoes.length > 0) {

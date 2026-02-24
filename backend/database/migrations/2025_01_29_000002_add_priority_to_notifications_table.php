@@ -11,9 +11,17 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (!Schema::hasTable('notifications')) {
+            return;
+        }
+
         Schema::table('notifications', function (Blueprint $table) {
-            $table->enum('priority', ['BAIXA', 'MEDIA', 'ALTA', 'CRITICA'])->default('MEDIA')->after('type');
-            $table->timestamp('read_at')->nullable()->after('read');
+            if (!Schema::hasColumn('notifications', 'priority')) {
+                $table->enum('priority', ['BAIXA', 'MEDIA', 'ALTA', 'CRITICA'])->default('MEDIA')->after('type');
+            }
+            if (!Schema::hasColumn('notifications', 'read_at')) {
+                $table->timestamp('read_at')->nullable()->after('read');
+            }
         });
     }
 
@@ -22,8 +30,17 @@ return new class extends Migration
      */
     public function down(): void
     {
+        if (!Schema::hasTable('notifications')) {
+            return;
+        }
+
         Schema::table('notifications', function (Blueprint $table) {
-            $table->dropColumn(['priority', 'read_at']);
+            if (Schema::hasColumn('notifications', 'read_at')) {
+                $table->dropColumn('read_at');
+            }
+            if (Schema::hasColumn('notifications', 'priority')) {
+                $table->dropColumn('priority');
+            }
         });
     }
 };

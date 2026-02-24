@@ -328,6 +328,28 @@ const CatalogoPublicoPage = () => {
             .filter(Boolean);
     };
 
+    const getNomeExibicaoVariacao = (variacao) => {
+        const nomeCadastrado = [
+            variacao?.nome,
+            variacao?.nome_variacao,
+            variacao?.nomeVariacao,
+            variacao?.descricao_variacao,
+            variacao?.descricaoVariacao
+        ]
+            .map((valor) => String(valor || '').trim())
+            .find(Boolean);
+
+        if (nomeCadastrado) return nomeCadastrado;
+
+        const corNome = getNomeVariacao(variacao?.cor, 'cor');
+        const tamanhosCustom = getTamanhosPersonalizados(variacao);
+        const tamanhoNome = tamanhosCustom.length > 0
+            ? tamanhosCustom.join(', ')
+            : getNomeVariacao(variacao?.tamanho, 'tamanho');
+
+        return [corNome, tamanhoNome].filter((valor) => valor && valor !== 'N/A').join(' / ') || 'Variação';
+    };
+
     const getDescricaoVariacao = (variacao) => {
         const corNome = getNomeVariacao(variacao?.cor, 'cor');
         const tamanhosCustom = getTamanhosPersonalizados(variacao);
@@ -335,7 +357,7 @@ const CatalogoPublicoPage = () => {
             ? tamanhosCustom.join(', ')
             : getNomeVariacao(variacao?.tamanho, 'tamanho');
 
-        return variacao?.nome || [corNome, tamanhoNome].filter((valor) => valor && valor !== 'N/A').join(' / ') || 'Variação';
+        return getNomeExibicaoVariacao(variacao) || [corNome, tamanhoNome].filter((valor) => valor && valor !== 'N/A').join(' / ') || 'Variação';
     };
 
     // Função para calcular estoque disponível
@@ -344,6 +366,22 @@ const CatalogoPublicoPage = () => {
             return variacao.estoque_var || 0;
         }
         return produto.estoque_atual || produto.estoque || 0;
+    };
+
+    const isSelecaoVariacaoObrigatoria = (produto) => {
+        if (!produto?.variacoes_ativa || !Array.isArray(produto?.variacoes) || produto.variacoes.length === 0) {
+            return false;
+        }
+
+        if (produto.variacao_obrigatoria === null || typeof produto.variacao_obrigatoria === 'undefined') {
+            return true;
+        }
+
+        if (typeof produto.variacao_obrigatoria === 'boolean') {
+            return produto.variacao_obrigatoria;
+        }
+
+        return ['1', 'true'].includes(String(produto.variacao_obrigatoria).toLowerCase());
     };
 
     // Funções do carrinho
@@ -444,7 +482,7 @@ const CatalogoPublicoPage = () => {
     const adicionarDoModal = () => {
         if (produtoSelecionado) {
             // Se tem variações ativas e nenhuma variação foi selecionada, mostrar erro
-            if (produtoSelecionado.variacoes_ativa && Array.isArray(produtoSelecionado.variacoes) && produtoSelecionado.variacoes.length > 0 && !variacaoSelecionada) {
+            if (isSelecaoVariacaoObrigatoria(produtoSelecionado) && !variacaoSelecionada) {
                 toast({
                     title: 'Selecione uma variação',
                     description: 'Este produto possui variações. Selecione uma opção antes de adicionar ao carrinho.',
@@ -724,10 +762,10 @@ const CatalogoPublicoPage = () => {
                                                                     e.stopPropagation();
                                                                     
                                                                     // Se o produto tem variações ativas, abrir modal para selecionar
-                                                                    if (produto.variacoes_ativa && Array.isArray(produto.variacoes) && produto.variacoes.length > 0) {
+                                                                    if (isSelecaoVariacaoObrigatoria(produto)) {
                                                                         toast({
                                                                             title: 'Produto com variações',
-                                                                            description: 'Este produto possui variações. Por favor, selecione uma opção.',
+                                                                            description: 'Este produto exige a seleção de uma variação antes da compra.',
                                                                             variant: 'default'
                                                                         });
                                                                         // Abrir o modal do produto para o usuário escolher a variação
@@ -1022,7 +1060,7 @@ const CatalogoPublicoPage = () => {
                                                     const tamanhosPersonalizados = getTamanhosPersonalizados(variacao);
                                                     const temTamanhosCustom = tamanhosPersonalizados.length > 0;
                                                     const tamanhoNome = !temTamanhosCustom ? getNomeVariacao(variacao.tamanho, 'tamanho') : '';
-                                                    const nomeVariacao = variacao.nome || corNome || tamanhoNome || 'Variação';
+                                                    const nomeVariacao = getNomeExibicaoVariacao(variacao);
                                                     const estoqueVar = variacao.estoque_var || 0;
                                                     const precoVar = parseFloat(
                                                         variacao.preco_var || 
@@ -1201,7 +1239,7 @@ const CatalogoPublicoPage = () => {
                                         <Button 
                                             onClick={() => {
                                                 if (produtoSelecionado) {
-                                                    if (produtoSelecionado.variacoes_ativa && Array.isArray(produtoSelecionado.variacoes) && produtoSelecionado.variacoes.length > 0 && !variacaoSelecionada) {
+                                                    if (isSelecaoVariacaoObrigatoria(produtoSelecionado) && !variacaoSelecionada) {
                                                         toast({
                                                             title: 'Selecione uma variação',
                                                             description: 'Este produto possui variações. Selecione uma opção antes de adicionar ao carrinho.',
