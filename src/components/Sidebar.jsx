@@ -33,7 +33,6 @@ const menuItems = [
   {
     label: 'O.S / Pedidos', icon: FileText,
     subItems: [
-      { path: '/operacional/kanban', label: 'Painel Kanban', icon: LayoutGrid },
       { path: '/operacional/ordens-servico', label: 'Nova OS / Pedido', icon: FileText },
       { path: '/operacional/os-historico', label: 'Histórico de OS', icon: History },
       { path: '/operacional/os-em-producao', label: 'Em Produção', icon: HardHat },
@@ -41,6 +40,7 @@ const menuItems = [
       { path: '/operacional/os-entregues', label: 'Pedidos Entregues', icon: CheckCircle2 },
       { path: '/operacional/envelopamento', label: 'Envelopamento', icon: SprayCan },
       { path: '/operacional/orcamentos-envelopamento', label: 'Hist. Envelopamento', icon: History },
+      { path: '/operacional/kanban', label: 'Painel Kanban', icon: LayoutGrid },
     ]
   },
   {
