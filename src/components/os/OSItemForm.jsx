@@ -1006,6 +1006,9 @@ const OSItemForm = ({
         valorChapa: 0,
         pecasPorChapa: 0,
         chapasNecessarias: 0,
+        custoMaterialBase: 0,
+        custoMaterialUtilizado: 0,
+        custoAcabamentos: 0,
         custoTotal: 0,
         custoUnitario: 0,
         aproveitamentoPercentual: 0,
@@ -1043,6 +1046,9 @@ const OSItemForm = ({
         valorChapa,
         pecasPorChapa: 0,
         chapasNecessarias: 0,
+        custoMaterialBase: 0,
+        custoMaterialUtilizado: 0,
+        custoAcabamentos: 0,
         custoTotal: 0,
         custoUnitario: 0,
         aproveitamentoPercentual: 0,
@@ -1129,10 +1135,15 @@ const OSItemForm = ({
     // m² utilizados = área total das peças solicitadas (não o mínimo!)
     const metrosUtilizados = areaTotalSolicitada;
     
-    // Custo total do material = área da chapa × valor por m² × número de chapas necessárias
+    // Custo de material comprado = área da chapa × valor por m² × número de chapas necessárias
     // Exemplo: 0,500 m² × 200 R$/m² × 1 chapa = 100 R$
     const custoMaterialBase = areaChapaMetros > 0 && chapasNecessarias > 0 && valorChapa > 0
       ? areaChapaMetros * valorChapa * chapasNecessarias
+      : 0;
+    // Custo de material efetivamente utilizado = m² utilizados × valor por m²
+    // Exemplo: 0,090 m² × 28 R$/m² = 2,52 R$
+    const custoMaterialUtilizado = metrosUtilizados > 0 && valorChapa > 0
+      ? metrosUtilizados * valorChapa
       : 0;
     
     // Calcular custo dos acabamentos usando a área total das peças (metrosUtilizados)
@@ -1231,6 +1242,9 @@ const OSItemForm = ({
       valorChapa,
       pecasPorChapa,
       chapasNecessarias,
+      custoMaterialBase,
+      custoMaterialUtilizado,
+      custoAcabamentos,
       custoTotal,
       custoUnitario,
       aproveitamentoPercentual,
@@ -1267,6 +1281,9 @@ const OSItemForm = ({
   const {
     pecasPorChapa,
     chapasNecessarias,
+    custoMaterialBase,
+    custoMaterialUtilizado,
+    custoAcabamentos,
     custoTotal,
     custoUnitario,
     aproveitamentoPercentual,
@@ -1742,12 +1759,26 @@ const OSItemForm = ({
     }
 
     const candidatosValor = [];
+    const tipoPrecificacaoConsumo = (produtoBaseInfo.tipo_precificacao || '').toString().toLowerCase();
+    const larguraReferenciaCmConsumo = safeParseFloat(currentServico?.consumo_largura_chapa || produtoBaseInfo.medida_chapa_largura_cm, 0);
+
+    // Priorizar custo real de fornecedor para o consumo
+    const precoCusto = safeParseFloat(produtoBaseInfo.preco_custo ?? produtoBaseInfo.precoCusto, 0);
+    let precoCustoNormalizado = precoCusto;
+    if (precoCusto > 0 && tipoPrecificacaoConsumo === 'metro_linear' && larguraReferenciaCmConsumo > 0) {
+      // Converte custo por metro linear para custo por m² (R$/m²)
+      precoCustoNormalizado = precoCusto / (larguraReferenciaCmConsumo / 100);
+    }
+    if (precoCustoNormalizado > 0) candidatosValor.push(precoCustoNormalizado);
 
     const valorChapaDireto = safeParseFloat(produtoBaseInfo.valor_chapa, 0);
     if (valorChapaDireto > 0) candidatosValor.push(valorChapaDireto);
 
     const precoChapa = safeParseFloat(produtoBaseInfo.preco_chapa, 0);
     if (precoChapa > 0) candidatosValor.push(precoChapa);
+
+    const precoM2 = safeParseFloat(produtoBaseInfo.preco_m2 ?? produtoBaseInfo.precoM2, 0);
+    if (precoM2 > 0) candidatosValor.push(precoM2);
 
     const precoMetroLinearConsumo = safeParseFloat(produtoBaseInfo.preco_metro_linear, 0);
     if (precoMetroLinearConsumo > 0) candidatosValor.push(precoMetroLinearConsumo);
@@ -1758,18 +1789,6 @@ const OSItemForm = ({
     const precoUnitario = safeParseFloat(produtoBaseInfo.preco_unitario ?? produtoBaseInfo.precoUnitario, 0);
     if (precoUnitario > 0) candidatosValor.push(precoUnitario);
 
-    if (areaChapaMetros && areaChapaMetros > 0) {
-      const precoM2 = safeParseFloat(produtoBaseInfo.preco_m2 ?? produtoBaseInfo.precoM2, 0);
-      if (precoM2 > 0) {
-        candidatosValor.push(precoM2 * areaChapaMetros);
-      }
-
-      const precoCusto = safeParseFloat(produtoBaseInfo.preco_custo ?? produtoBaseInfo.precoCusto, 0);
-      if (precoCusto > 0) {
-        candidatosValor.push(precoCusto * areaChapaMetros);
-      }
-    }
-
     const valorEncontrado = candidatosValor.find(valor => valor > 0);
 
     if (valorEncontrado !== undefined) {
@@ -1778,7 +1797,7 @@ const OSItemForm = ({
         onItemChange('consumo_valor_unitario_chapa', valorFormatado);
       }
     }
-  }, [temServico, produtoBaseInfo, consumoValorChapaValue, areaChapaMetros, onItemChange]);
+  }, [temServico, produtoBaseInfo, consumoValorChapaValue, areaChapaMetros, currentServico?.consumo_largura_chapa, onItemChange]);
 
   useEffect(() => {
     if (!currentServico) return;
@@ -2021,16 +2040,24 @@ const OSItemForm = ({
         onItemChange('consumo_altura_chapa', alturaChapa);
       }
       
-      // Preencher o valor por m² do produto - verificar todos os campos possíveis
-      // Prioridade: preco_m2 > valor_chapa > preco_metro_linear > preco_venda
-      // IMPORTANTE: Buscar o valor da coluna preco_m2 do banco de dados
+      // Preencher o valor de custo por m² (para consumo de material)
+      // Prioridade: preco_custo > preco_m2 > valor_chapa > preco_metro_linear > preco_venda
       const precoM2Raw = produtoCompleto.preco_m2;
+      const precoCustoRaw = produtoCompleto.preco_custo ?? produtoCompleto.precoCusto;
       const valorChapaRaw = produtoCompleto.valor_chapa;
       const precoMetroLinearRaw = produtoCompleto.preco_metro_linear;
       const precoVendaRaw = produtoCompleto.preco_venda;
+      const tipoPrecificacaoRaw = (produtoCompleto.tipo_precificacao || '').toString().toLowerCase();
+      const larguraReferenciaCm = safeParseFloat(currentServico?.consumo_largura_chapa || produtoCompleto.medida_chapa_largura_cm, 0);
       
       // Converter valores para número, considerando null/undefined/vazio como inválido
       // IMPORTANTE: Não usar valores que sejam 0, apenas valores maiores que 0
+      const precoCusto = (precoCustoRaw !== null && precoCustoRaw !== undefined && precoCustoRaw !== '' && parseFloat(precoCustoRaw) > 0)
+        ? safeParseFloat(precoCustoRaw, 0)
+        : null;
+      const precoCustoNormalizado = (precoCusto !== null && tipoPrecificacaoRaw === 'metro_linear' && larguraReferenciaCm > 0)
+        ? (precoCusto / (larguraReferenciaCm / 100))
+        : precoCusto;
       const precoM2 = (precoM2Raw !== null && precoM2Raw !== undefined && precoM2Raw !== '' && parseFloat(precoM2Raw) > 0) 
         ? safeParseFloat(precoM2Raw, 0) 
         : null;
@@ -2044,11 +2071,14 @@ const OSItemForm = ({
         ? safeParseFloat(precoVendaRaw, 0) 
         : null;
       
-      // Determinar qual valor usar (prioridade: preco_m2 > valor_chapa > preco_metro_linear > preco_venda)
+      // Determinar qual valor usar (prioridade: preco_custo > preco_m2 > valor_chapa > preco_metro_linear > preco_venda)
       // IMPORTANTE: Usar apenas valores maiores que 0
       let valorParaPreencher = null;
       let origemValor = '';
-      if (precoM2 !== null && precoM2 > 0) {
+      if (precoCustoNormalizado !== null && precoCustoNormalizado > 0) {
+        valorParaPreencher = precoCustoNormalizado;
+        origemValor = tipoPrecificacaoRaw === 'metro_linear' ? 'preco_custo_metro_linear_normalizado_m2' : 'preco_custo';
+      } else if (precoM2 !== null && precoM2 > 0) {
         valorParaPreencher = precoM2;
         origemValor = 'preco_m2';
       } else if (valorChapa !== null && valorChapa > 0) {
@@ -2071,6 +2101,11 @@ const OSItemForm = ({
         console.log('✅ [OSItemForm] Valor por m² preenchido do produto:', {
           produto: nomeMaterial,
           produto_id: produtoCompleto.id,
+          preco_custo_raw: precoCustoRaw,
+          preco_custo_parsed: precoCusto,
+          preco_custo_normalizado_m2: precoCustoNormalizado,
+          tipo_precificacao: tipoPrecificacaoRaw,
+          largura_referencia_cm: larguraReferenciaCm,
           preco_m2_raw: precoM2Raw,
           preco_m2_parsed: precoM2,
           valor_chapa_raw: valorChapaRaw,
@@ -2424,14 +2459,23 @@ const OSItemForm = ({
   const valorUnitarioM2Display = currentServico.valor_unitario_m2 ? formatToDisplay(currentServico.valor_unitario_m2, 2) : '';
   const pecasPorChapaDisplay = Number.isFinite(pecasPorChapa) ? pecasPorChapa.toLocaleString('pt-BR') : '0';
   const chapasNecessariasDisplay = Number.isFinite(chapasNecessarias) ? chapasNecessarias.toLocaleString('pt-BR') : '0';
+  const custoMaterialBaseDisplay = Number.isFinite(custoMaterialBase)
+    ? custoMaterialBase.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+    : 'R$ 0,00';
+  const custoMaterialUtilizadoDisplay = Number.isFinite(custoMaterialUtilizado)
+    ? custoMaterialUtilizado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+    : 'R$ 0,00';
+  const custoAcabamentosDisplay = Number.isFinite(custoAcabamentos)
+    ? custoAcabamentos.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+    : 'R$ 0,00';
   const custoTotalDisplay = Number.isFinite(custoTotal) ? custoTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ 0,00';
   const custoUnitarioDisplay = Number.isFinite(custoUnitario) ? custoUnitario.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ 0,00';
   const quantidadeBaseLucro = parseInt(
     sanitizeIntegerInput(currentServico?.consumo_quantidade_solicitada || currentServico?.quantidade || ''),
     10
   ) || 0;
-  const lucroTotalMaterial = Number.isFinite(subtotalCalculadoLocal) && Number.isFinite(custoTotal)
-    ? subtotalCalculadoLocal - custoTotal
+  const lucroTotalMaterial = Number.isFinite(subtotalCalculadoLocal) && Number.isFinite(custoMaterialUtilizado)
+    ? subtotalCalculadoLocal - custoMaterialUtilizado
     : 0;
   const lucroUnitarioMaterial = quantidadeBaseLucro > 0 ? (lucroTotalMaterial / quantidadeBaseLucro) : 0;
   const lucroMaterialPositivo = lucroTotalMaterial >= 0;
@@ -2747,7 +2791,7 @@ const OSItemForm = ({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-8 gap-4">
               <div className="rounded-md bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-3">
                 <p className="text-xs text-blue-700 dark:text-blue-200">Peças por chapa</p>
                 <p className="text-lg font-semibold text-blue-900 dark:text-blue-50">{pecasPorChapaDisplay}</p>
@@ -2757,20 +2801,30 @@ const OSItemForm = ({
                 <p className="text-lg font-semibold text-blue-900 dark:text-blue-50">{chapasNecessariasDisplay}</p>
               </div>
               <div className="rounded-md bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-3">
-                <p className="text-xs text-blue-700 dark:text-blue-200">Custo total do material</p>
-                <p className="text-lg font-semibold text-blue-900 dark:text-blue-50">{custoTotalDisplay}</p>
+                <p className="text-xs text-blue-700 dark:text-blue-200">Gasto com material (chapa)</p>
+                <p className="text-lg font-semibold text-blue-900 dark:text-blue-50">{custoMaterialBaseDisplay}</p>
+                <p className="text-[11px] text-blue-700/70 dark:text-blue-200/70 mt-1">Acabamentos: {custoAcabamentosDisplay}</p>
+              </div>
+              <div className="rounded-md bg-cyan-50 dark:bg-cyan-900/20 border border-cyan-200 dark:border-cyan-800 p-3">
+                <p className="text-xs text-cyan-700 dark:text-cyan-200">Custo do material utilizado</p>
+                <p className="text-lg font-semibold text-cyan-900 dark:text-cyan-50">{custoMaterialUtilizadoDisplay}</p>
+                <p className="text-[11px] text-cyan-700/70 dark:text-cyan-200/70 mt-1">{formatMetrosQuadradosDisplay(metrosQuadradosUtilizados)} m² utilizados</p>
               </div>
               <div className="rounded-md bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-3">
-                <p className="text-xs text-blue-700 dark:text-blue-200">Custo unitário por peça</p>
-                <p className="text-lg font-semibold text-blue-900 dark:text-blue-50">{custoUnitarioDisplay}</p>
-                <p className="text-[11px] text-blue-700/70 dark:text-blue-200/70 mt-1">Aproveitamento: {aproveitamentoDisplay}</p>
+                <p className="text-xs text-blue-700 dark:text-blue-200">Custo total (material + acab.)</p>
+                <p className="text-lg font-semibold text-blue-900 dark:text-blue-50">{custoTotalDisplay}</p>
+                <p className="text-[11px] text-blue-700/70 dark:text-blue-200/70 mt-1">Custo unitário: {custoUnitarioDisplay}/peça</p>
+              </div>
+              <div className="rounded-md bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-3">
+                <p className="text-xs text-blue-700 dark:text-blue-200">Aproveitamento</p>
+                <p className="text-lg font-semibold text-blue-900 dark:text-blue-50">{aproveitamentoDisplay}</p>
               </div>
               <div className="rounded-md bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 p-3">
                 <p className="text-xs text-indigo-700 dark:text-indigo-200">Venda deste item</p>
                 <p className="text-lg font-semibold text-indigo-900 dark:text-indigo-50">{valorVendaItemDisplay}</p>
               </div>
               <div className={`rounded-md border p-3 ${lucroMaterialPositivo ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800' : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'}`}>
-                <p className={`text-xs ${lucroMaterialPositivo ? 'text-emerald-700 dark:text-emerald-200' : 'text-red-700 dark:text-red-200'}`}>Lucro estimado por material</p>
+                <p className={`text-xs ${lucroMaterialPositivo ? 'text-emerald-700 dark:text-emerald-200' : 'text-red-700 dark:text-red-200'}`}>Lucro sobre material utilizado</p>
                 <p className={`text-lg font-semibold ${lucroMaterialPositivo ? 'text-emerald-900 dark:text-emerald-50' : 'text-red-900 dark:text-red-50'}`}>{lucroTotalMaterialDisplay}</p>
                 <p className={`text-[11px] mt-1 ${lucroMaterialPositivo ? 'text-emerald-700/70 dark:text-emerald-200/70' : 'text-red-700/70 dark:text-red-200/70'}`}>~ {lucroUnitarioMaterialDisplay}/peça</p>
               </div>
