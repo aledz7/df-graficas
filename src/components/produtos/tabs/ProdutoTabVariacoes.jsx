@@ -132,6 +132,29 @@ const ProdutoTabVariacoes = ({
 
             {currentProduto.variacoes_ativa && (
                 <div className="space-y-3 pt-3 border-t max-h-80 overflow-y-auto">
+                    <div className="flex items-center space-x-2 rounded-md border p-3 bg-muted/20">
+                        <Checkbox
+                            id="variacao_obrigatoria"
+                            name="variacao_obrigatoria"
+                            checked={currentProduto.variacao_obrigatoria !== false}
+                            onCheckedChange={(checked) =>
+                                handleInputChange({
+                                    target: {
+                                        name: 'variacao_obrigatoria',
+                                        checked: Boolean(checked),
+                                        type: 'checkbox'
+                                    }
+                                })
+                            }
+                        />
+                        <div className="space-y-0.5">
+                            <Label htmlFor="variacao_obrigatoria">Seleção de variação obrigatória</Label>
+                            <p className="text-xs text-muted-foreground">
+                                Quando marcado, o vendedor/cliente precisa escolher uma variação antes de adicionar ao carrinho.
+                            </p>
+                        </div>
+                    </div>
+
                     {/* Upload em massa para criar variações a partir de imagens */}
                     <div className="p-3 border rounded-md bg-muted/30">
                         <Label className="text-sm mb-2 block">Adicionar várias variações por imagens</Label>
@@ -301,7 +324,7 @@ const ProdutoTabVariacoes = ({
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                                 <div>
-                                    <Label htmlFor={`var-cor-${index}`}>Cor</Label>
+                                    <Label htmlFor={`var-cor-${index}`}>Cor (opcional)</Label>
                                     <Select value={variacao.cor} onValueChange={(value) => updateVariacao(index, 'cor', value)}>
                                         <SelectTrigger id={`var-cor-${index}`}><SelectValue placeholder="Cor"/></SelectTrigger>
                                         <SelectContent>
@@ -310,7 +333,7 @@ const ProdutoTabVariacoes = ({
                                     </Select>
                                 </div>
                                 <div>
-                                    <Label htmlFor={`var-tamanho-${index}`}>Tamanho</Label>
+                                    <Label htmlFor={`var-tamanho-${index}`}>Tamanho (opcional)</Label>
                                     <Select
                                         value={variacao.tamanho_tipo || SIZE_MODE_DEFAULT}
                                         onValueChange={(value) => {
@@ -418,7 +441,7 @@ const ProdutoTabVariacoes = ({
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
                                 <div>
-                                    <Label htmlFor={`var-estoque_var-${index}`}>Estoque</Label>
+                                    <Label htmlFor={`var-estoque_var-${index}`}>Estoque (opcional)</Label>
                                     <Input id={`var-estoque_var-${index}`} type="number" value={variacao.estoque_var} onChange={(e) => updateVariacao(index, 'estoque_var', e.target.value)} placeholder="0"/>
                                 </div>
                                 <div>

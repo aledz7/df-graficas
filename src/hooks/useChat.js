@@ -3,7 +3,10 @@ import { chatService } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 
-export function useChat() {
+const DEFAULT_CHAT_POLL_INTERVAL_MS = 10000;
+
+export function useChat(options = {}) {
+  const { enabled = true, mode = 'full', pollIntervalMs = DEFAULT_CHAT_POLL_INTERVAL_MS } = options;
   const [threads, setThreads] = useState([]);
   const [activeThread, setActiveThread] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -14,6 +17,7 @@ export function useChat() {
   const { toast } = useToast();
   const pollingIntervalRef = useRef(null);
   const typingTimeoutRef = useRef(null);
+  const isPollingRef = useRef(false);
 
   // Carregar threads
   const loadThreads = useCallback(async () => {
@@ -184,22 +188,40 @@ export function useChat() {
 
   // Polling para atualizações em tempo real
   useEffect(() => {
-    if (!user) return;
+    if (!user || !enabled) return;
+
+    const shouldRunFullPolling = mode === 'full';
 
     // Carregar dados iniciais
-    loadThreads();
     loadUnreadCount();
+    if (shouldRunFullPolling) {
+      loadThreads();
+    }
+
+    const runPolling = async () => {
+      if (isPollingRef.current) return;
+
+      isPollingRef.current = true;
+      try {
+        await loadUnreadCount();
+
+        if (shouldRunFullPolling) {
+          await loadThreads();
+
+          if (activeThread) {
+            await Promise.all([
+              loadMessages(activeThread.id),
+              loadTypingUsers(activeThread.id)
+            ]);
+          }
+        }
+      } finally {
+        isPollingRef.current = false;
+      }
+    };
 
     // Configurar polling
-    pollingIntervalRef.current = setInterval(() => {
-      loadThreads();
-      loadUnreadCount();
-      
-      if (activeThread) {
-        loadMessages(activeThread.id);
-        loadTypingUsers(activeThread.id);
-      }
-    }, 3000); // Atualizar a cada 3 segundos
+    pollingIntervalRef.current = setInterval(runPolling, pollIntervalMs);
 
     return () => {
       if (pollingIntervalRef.current) {
@@ -209,7 +231,17 @@ export function useChat() {
         clearTimeout(typingTimeoutRef.current);
       }
     };
-  }, [user, activeThread, loadThreads, loadUnreadCount, loadMessages, loadTypingUsers]);
+  }, [
+    user,
+    enabled,
+    mode,
+    pollIntervalMs,
+    activeThread,
+    loadThreads,
+    loadUnreadCount,
+    loadMessages,
+    loadTypingUsers
+  ]);
 
   return {
     threads,

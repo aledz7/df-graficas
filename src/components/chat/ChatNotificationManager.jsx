@@ -1,17 +1,15 @@
 import React from 'react';
 import ChatNotificationToast from './ChatNotificationToast';
 import { useChatNotifications } from '@/hooks/useChatNotifications';
-import { useChat } from '@/hooks/useChat';
 
 /**
  * Componente global para gerenciar notificações de chat
  * Renderiza toasts no topo direito da tela
  */
 export default function ChatNotificationManager({ chatOpen = false }) {
-  const { activeThread } = useChat();
   const { notifications, removeNotification } = useChatNotifications(
     chatOpen,
-    activeThread?.id
+    null
   );
 
   const handleOpenChat = (thread) => {

@@ -91,12 +91,19 @@ const OSItensTable = ({ itens, onRemoveItem, onEditItem, onDuplicateItem, isOSFi
       const consumoCustoTotal = safeParseFloat(itemComId.consumo_custo_total, 0);
       const consumoCustoUnitario = safeParseFloat(itemComId.consumo_custo_unitario, 0);
       const consumoAproveitamento = safeParseFloat(itemComId.consumo_aproveitamento_percentual, 0);
+      const consumoQuantidadeSolicitada = Math.max(0, parseInt(String(itemComId.consumo_quantidade_solicitada || ''), 10) || 0);
+      const quantidadeItem = Math.max(0, parseInt(String(itemComId.quantidade || ''), 10) || 0);
+      const quantidadeBaseLucro = consumoQuantidadeSolicitada > 0 ? consumoQuantidadeSolicitada : (quantidadeItem > 0 ? quantidadeItem : 1);
+      const lucroMaterialTotal = subtotalExibir - consumoCustoTotal;
+      const lucroMaterialUnitario = quantidadeBaseLucro > 0 ? (lucroMaterialTotal / quantidadeBaseLucro) : 0;
 
       const consumoPecasPorChapaDisplay = consumoPecasPorChapa > 0 ? consumoPecasPorChapa.toLocaleString('pt-BR') : null;
       const consumoChapasNecessariasDisplay = consumoChapasNecessarias > 0 ? consumoChapasNecessarias.toLocaleString('pt-BR') : null;
       const consumoCustoTotalDisplay = consumoCustoTotal > 0 ? consumoCustoTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : null;
       const consumoCustoUnitarioDisplay = consumoCustoUnitario > 0 ? consumoCustoUnitario.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : null;
       const consumoAproveitamentoDisplay = consumoAproveitamento > 0 ? `${consumoAproveitamento.toFixed(2)}%` : null;
+      const lucroMaterialTotalDisplay = consumoCustoTotal > 0 ? lucroMaterialTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : null;
+      const lucroMaterialUnitarioDisplay = consumoCustoTotal > 0 ? lucroMaterialUnitario.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : null;
       
       return {
         ...itemComId,
@@ -119,6 +126,9 @@ const OSItensTable = ({ itens, onRemoveItem, onEditItem, onDuplicateItem, isOSFi
         consumoCustoTotalDisplay,
         consumoCustoUnitarioDisplay,
         consumoAproveitamentoDisplay,
+        lucroMaterialTotal,
+        lucroMaterialTotalDisplay,
+        lucroMaterialUnitarioDisplay,
       };
     });
   }, [itens, produtosCadastrados]);
@@ -210,6 +220,12 @@ const OSItensTable = ({ itens, onRemoveItem, onEditItem, onDuplicateItem, isOSFi
                             <p>
                               Custo material: {item.consumoCustoTotalDisplay}
                               {item.consumoCustoUnitarioDisplay ? ` (${item.consumoCustoUnitarioDisplay}/peça)` : ''}
+                            </p>
+                          )}
+                          {item.lucroMaterialTotalDisplay && (
+                            <p className={item.lucroMaterialTotal >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300'}>
+                              Lucro material: {item.lucroMaterialTotalDisplay}
+                              {item.lucroMaterialUnitarioDisplay ? ` (${item.lucroMaterialUnitarioDisplay}/peça)` : ''}
                             </p>
                           )}
                         </div>

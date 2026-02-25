@@ -17,6 +17,7 @@ const TIPOS_PRECIFICACAO = [
 
 const ProdutoTabPrecoEstoque = ({ currentProduto, handleInputChange }) => {
   const isUnidadeMetroQuadrado = (currentProduto.unidadeMedida || currentProduto.unidade_medida) === 'm2';
+  const deveControlarEstoque = !currentProduto.isComposto;
   const [medidasChapa, setMedidasChapa] = React.useState({
     largura: '',
     altura: '',
@@ -658,7 +659,7 @@ const ProdutoTabPrecoEstoque = ({ currentProduto, handleInputChange }) => {
          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
                 <Label htmlFor="estoque">
-                  Estoque Atual {isUnidadeMetroQuadrado ? '(m²)' : ''} <span className="text-red-500">*</span>
+                  Estoque Atual {isUnidadeMetroQuadrado ? '(m²)' : ''}{deveControlarEstoque && <span className="text-red-500"> *</span>}
                 </Label>
                 <Input
                   id="estoque"
@@ -668,6 +669,7 @@ const ProdutoTabPrecoEstoque = ({ currentProduto, handleInputChange }) => {
                   value={currentProduto.estoque}
                   onChange={handleInputChange}
                   placeholder="0"
+                  required={deveControlarEstoque}
                   readOnly={isUnidadeMetroQuadrado}
                   className={isUnidadeMetroQuadrado ? "bg-gray-100 cursor-not-allowed" : ""}
                 />
@@ -675,6 +677,8 @@ const ProdutoTabPrecoEstoque = ({ currentProduto, handleInputChange }) => {
                   <p className="text-xs text-gray-500 mt-1">
                     Calculado automaticamente: (Largura × Altura) × Quantidade de Chapas = {currentProduto.estoque || '0'} m²
                   </p>
+                ) : !deveControlarEstoque ? (
+                  <p className="text-xs text-gray-500 mt-1">Controle de estoque desativado para item composto.</p>
                 ) : (
                   <p className="text-xs text-gray-500 mt-1">Informe a quantidade em estoque.</p>
                 )}
@@ -709,7 +713,17 @@ const ProdutoTabPrecoEstoque = ({ currentProduto, handleInputChange }) => {
         {/* Alerta específico para variações com estoque baixo */}
         {currentProduto.variacoes_ativa && currentProduto.variacoes && currentProduto.variacoes.length > 0 && (() => {
             const variacoesComEstoqueBaixo = currentProduto.variacoes.filter(variacao => {
-                const estoqueVariacao = parseFloat(variacao.estoque_var || 0);
+                const estoqueBruto = variacao.estoque_var;
+                const estoqueFoiInformado = estoqueBruto !== '' && estoqueBruto !== null && estoqueBruto !== undefined;
+                if (!estoqueFoiInformado) {
+                    return false;
+                }
+
+                const estoqueVariacao = parseFloat(estoqueBruto);
+                if (isNaN(estoqueVariacao)) {
+                    return false;
+                }
+
                 const estoqueMinimo = parseFloat(currentProduto.estoque_minimo || 0);
                 return estoqueVariacao <= estoqueMinimo;
             });
@@ -718,15 +732,13 @@ const ProdutoTabPrecoEstoque = ({ currentProduto, handleInputChange }) => {
                 return (
                     <div className="space-y-2">
                         {variacoesComEstoqueBaixo.map((variacao, index) => {
-                            // Buscar o nome da cor se disponível
-                            const nomeCor = variacao.cor_nome || variacao.cor || 'Sem cor definida';
                             const nomeVariacao = variacao.nome || `Variação ${index + 1}`;
                             
                             return (
                                 <div key={index} className="flex items-center text-sm text-orange-600 bg-orange-100 dark:bg-orange-900/30 p-2 rounded-md">
                                     <AlertTriangle size={16} className="mr-2"/>
                                     <span>
-                                        <strong>Variação "{nomeVariacao}" ({nomeCor})</strong> está com estoque baixo 
+                                        <strong>Variação "{nomeVariacao}"</strong> está com estoque baixo 
                                         ({variacao.estoque_var || 0} unidades)
                                     </span>
                                 </div>

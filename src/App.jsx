@@ -82,7 +82,11 @@ function AppContent() {
   const [chatAberto, setChatAberto] = useState(false);
   
   // Hook do chat
-  const { unreadCount: chatUnreadCount } = useChat();
+  const { unreadCount: chatUnreadCount } = useChat({
+    enabled: !chatAberto,
+    mode: 'unread-only',
+    pollIntervalMs: 10000
+  });
   
   // Hook de notificações em tempo real
   const {

@@ -6,10 +6,8 @@ import ChatNotificationToast from './ChatNotificationToast';
 import NewChatModal from './NewChatModal';
 import { useChat } from '@/hooks/useChat';
 import { useAuth } from '@/contexts/AuthContext';
-import { chatService } from '@/services/api';
 import { useToast } from '@/components/ui/use-toast';
 import { cn } from '@/lib/utils';
-import { applyChatEffects, playNotificationSound } from './ChatEffects';
 import '@/components/chat/ChatIcon.css';
 
 export default function ChatContainer({ open, onClose }) {
@@ -18,7 +16,6 @@ export default function ChatContainer({ open, onClose }) {
     activeThread,
     setActiveThread,
     messages,
-    unreadCount,
     typingUsers,
     loadMessages,
     loadThreads,
@@ -26,7 +23,7 @@ export default function ChatContainer({ open, onClose }) {
     uploadFile,
     getOrCreateDirectThread,
     updateTypingStatus,
-  } = useChat();
+  } = useChat({ enabled: open, mode: 'full', pollIntervalMs: 10000 });
 
   const { user } = useAuth();
   const { toast } = useToast();
@@ -82,37 +79,6 @@ export default function ChatContainer({ open, onClose }) {
       loadMessages(activeThread.id);
     }
   }, [activeThread, loadMessages]);
-
-  // Polling para novas notificações e efeitos visuais
-  useEffect(() => {
-    if (!user) return;
-
-    let previousUnreadCount = 0;
-
-    const interval = setInterval(async () => {
-      try {
-        const response = await chatService.getUnreadCount();
-        if (response.data.success) {
-          const currentCount = response.data.data.count || 0;
-          
-          // Se aumentou a contagem, aplicar efeitos
-          if (currentCount > previousUnreadCount && previousUnreadCount > 0) {
-            const chatIcon = document.getElementById('chat-icon-button');
-            if (chatIcon) {
-              applyChatEffects(chatIcon, false);
-              playNotificationSound();
-            }
-          }
-          
-          previousUnreadCount = currentCount;
-        }
-      } catch (error) {
-        console.error('Erro ao buscar notificações:', error);
-      }
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, [user]);
 
   const handleSelectThread = (thread) => {
     setActiveThread(thread);

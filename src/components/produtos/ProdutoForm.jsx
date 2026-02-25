@@ -40,6 +40,7 @@ const defaultProduto = {
     estoque: '0',
     estoque_minimo: '1',
     variacoes_ativa: false,
+    variacao_obrigatoria: true,
     variacoes: [],
     isComposto: false,
     composicao: [],
@@ -189,6 +190,15 @@ const ProdutoForm = ({ isOpen, onClose, onSave, produtoEmEdicao, showSaveAndNewB
                 percentual_comissao: String(produtoEmEdicao.percentual_comissao || '0'),
                 estoque: String(produtoEmEdicao.estoque || '0'),
                 estoque_minimo: String(produtoEmEdicao.estoque_minimo || '1'),
+                variacao_obrigatoria:
+                    typeof produtoEmEdicao.variacao_obrigatoria === 'boolean'
+                        ? produtoEmEdicao.variacao_obrigatoria
+                        : typeof produtoEmEdicao.variacao_obrigatoria === 'undefined' ||
+                          produtoEmEdicao.variacao_obrigatoria === null
+                            ? true
+                        : produtoEmEdicao.variacao_obrigatoria === 1 ||
+                          produtoEmEdicao.variacao_obrigatoria === '1' ||
+                          produtoEmEdicao.variacao_obrigatoria === 'true',
                 // Garantir que arrays existam e configurar variações com imagens
                 galeria_urls: produtoEmEdicao.galeria_urls || [],
                 variacoes: (produtoEmEdicao.variacoes || []).map((variacao, index) => {
@@ -525,7 +535,7 @@ const ProdutoForm = ({ isOpen, onClose, onSave, produtoEmEdicao, showSaveAndNewB
                 tamanho: '',
                 tamanho_tipo: 'padrao',
                 tamanhos_personalizados: [],
-                estoque_var: '0',
+                estoque_var: '',
                 preco_var: '',
                 imagem_url: '',
                 imagem_url_preview: preview,
@@ -649,7 +659,7 @@ const ProdutoForm = ({ isOpen, onClose, onSave, produtoEmEdicao, showSaveAndNewB
             tamanho: '', 
             tamanho_tipo: 'padrao',
             tamanhos_personalizados: [],
-            estoque_var: '0', 
+            estoque_var: '', 
             preco_var: '', 
             imagem_url: '',
             codigo_barras: codigoBarrasVariacao
@@ -843,6 +853,7 @@ const ProdutoForm = ({ isOpen, onClose, onSave, produtoEmEdicao, showSaveAndNewB
             percentual_comissao: parseFloat(rest.percentual_comissao) || 0,
             estoque: parseFloat(rest.estoque) || 0,
             estoque_minimo: parseFloat(rest.estoque_minimo) || 0,  // Aceita valores fracionados
+            variacao_obrigatoria: Boolean(rest.variacao_obrigatoria),
             // Campos de medida de chapa - garantir que sejam enviados
             medida_chapa_largura_cm: parseFloatOrNull(rest.medida_chapa_largura_cm),
             medida_chapa_altura_cm: parseFloatOrNull(rest.medida_chapa_altura_cm),
