@@ -16,6 +16,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 export const initialAcabamentoState = {
   id: '',
   nome_acabamento: '',
+  valor: '',
+  valor_minimo: '0.00',
+  prazo_adicional: 0,
   valor_m2: '', 
   valor_un: '', 
   tipo_aplicacao: 'area_total', 

@@ -14,6 +14,9 @@ class Acabamento extends Model
     protected $fillable = [
         'tenant_id',
         'nome_acabamento',
+        'valor',
+        'valor_minimo',
+        'prazo_adicional',
         'valor_m2',
         'valor_un',
         'tipo_aplicacao',
@@ -29,6 +32,9 @@ class Acabamento extends Model
     ];
     
     protected $casts = [
+        'valor' => 'decimal:2',
+        'valor_minimo' => 'decimal:2',
+        'prazo_adicional' => 'integer',
         'valor_m2' => 'decimal:2',
         'valor_un' => 'decimal:2',
         'produto_vinculado_custo' => 'decimal:2',

@@ -36,9 +36,12 @@ class AcabamentoController extends Controller
         try {
             $validator = Validator::make($request->all(), [
                 'nome_acabamento' => 'required|string|max:255',
+                'valor' => 'nullable|numeric|min:0',
+                'valor_minimo' => 'required|numeric|min:0',
+                'prazo_adicional' => 'nullable|integer|min:0',
                 'valor_m2' => 'nullable|numeric',
                 'valor_un' => 'nullable|numeric',
-                'tipo_aplicacao' => 'required|in:area_total,perimetro,unidade',
+                'tipo_aplicacao' => 'required|in:fixo,variável,area_total,perimetro,unidade,metro_linear',
                 'ativo' => 'boolean',
                 'produto_vinculado_id' => 'nullable|numeric',
                 'produto_vinculado_nome' => 'nullable|string|max:255',
@@ -115,9 +118,12 @@ class AcabamentoController extends Controller
             
             $validator = Validator::make($request->all(), [
                 'nome_acabamento' => 'sometimes|required|string|max:255',
+                'valor' => 'nullable|numeric|min:0',
+                'valor_minimo' => 'sometimes|required|numeric|min:0',
+                'prazo_adicional' => 'nullable|integer|min:0',
                 'valor_m2' => 'nullable|numeric',
                 'valor_un' => 'nullable|numeric',
-                'tipo_aplicacao' => 'sometimes|required|in:area_total,perimetro,unidade',
+                'tipo_aplicacao' => 'sometimes|required|in:fixo,variável,area_total,perimetro,unidade,metro_linear',
                 'ativo' => 'boolean',
                 'produto_vinculado_id' => 'nullable|numeric',
                 'produto_vinculado_nome' => 'nullable|string|max:255',

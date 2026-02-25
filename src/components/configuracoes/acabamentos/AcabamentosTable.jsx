@@ -66,14 +66,35 @@ const AcabamentosTable = ({ acabamentos, onEdit, onDelete, onToggleActive }) => 
 
                 {/* Valor de Venda */}
                 <div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Valor de Venda</p>
-                  <p className="text-xl font-bold text-green-600 dark:text-green-400">
-                    R$ {parseFloat(acab.tipo_aplicacao === 'unidade' ? acab.valor_un : acab.valor_m2).toFixed(2)}
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Valor</p>
+                  <p className="text-lg font-bold text-green-600 dark:text-green-400">
+                    R$ {parseFloat(acab.valor || (acab.tipo_aplicacao === 'unidade' ? acab.valor_un : acab.valor_m2) || 0).toFixed(2)}
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {acab.tipo_aplicacao === 'unidade' ? 'por unidade' : 'por m²'}
+                    {acab.tipo_aplicacao === 'fixo' ? 'Fixo' : 
+                     acab.tipo_aplicacao === 'variável' ? 'Variável' :
+                     acab.tipo_aplicacao === 'unidade' ? 'por unidade' : 
+                     acab.tipo_aplicacao === 'metro_linear' ? 'por m linear' : 'por m²'}
                   </p>
                 </div>
+
+                {/* Valor Mínimo */}
+                <div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Valor Mínimo</p>
+                  <p className="text-sm font-semibold text-blue-600 dark:text-blue-400">
+                    R$ {parseFloat(acab.valor_minimo || 0).toFixed(2)}
+                  </p>
+                </div>
+
+                {/* Prazo Adicional */}
+                {acab.prazo_adicional > 0 && (
+                  <div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Prazo Adicional</p>
+                    <p className="text-sm font-semibold text-orange-600 dark:text-orange-400">
+                      +{acab.prazo_adicional} {acab.prazo_adicional === 1 ? 'dia' : 'dias'}
+                    </p>
+                  </div>
+                )}
 
                 {/* Ações */}
                 <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
@@ -134,9 +155,10 @@ const AcabamentosTable = ({ acabamentos, onEdit, onDelete, onToggleActive }) => 
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Nome</TableHead>
-              <TableHead>Produto Vinculado</TableHead>
-              <TableHead className="text-right">Valor Venda</TableHead>
+              <TableHead>Nome/Tipo de Acabamento</TableHead>
+              <TableHead className="text-right">Valor</TableHead>
+              <TableHead className="text-right">Valor mínimo</TableHead>
+              <TableHead className="text-center">Prazo Adicional</TableHead>
               <TableHead className="text-center">Status</TableHead>
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
@@ -145,12 +167,36 @@ const AcabamentosTable = ({ acabamentos, onEdit, onDelete, onToggleActive }) => 
             {acabamentos.length > 0 ? (
               acabamentos.map(acab => (
                 <TableRow key={acab.id} className={`hover:bg-gray-50 dark:hover:bg-gray-700/50 ${!acab.ativo ? 'opacity-60' : ''}`}>
-                  <TableCell className="font-medium">{acab.nome_acabamento}</TableCell>
-                  <TableCell className="text-xs">
-                      {acab.produto_vinculado_nome || <span className="text-muted-foreground">Nenhum</span>}
-                      {acab.produto_vinculado_nome && <span className="block text-muted-foreground">Custo: R$ {parseFloat(acab.produto_vinculado_custo || 0).toFixed(2)}</span>}
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: acab.cor_fundo || '#ffffff' }}></div>
+                      <div>
+                        <div>{acab.nome_acabamento}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {acab.tipo_aplicacao === 'fixo' ? 'Fixo' : 
+                           acab.tipo_aplicacao === 'variável' ? 'Variável' :
+                           acab.tipo_aplicacao === 'area_total' ? 'Por m²' :
+                           acab.tipo_aplicacao === 'metro_linear' ? 'Por m linear' :
+                           acab.tipo_aplicacao === 'unidade' ? 'Unidade' : acab.tipo_aplicacao}
+                        </div>
+                      </div>
+                    </div>
                   </TableCell>
-                  <TableCell className="text-right">R$ {parseFloat(acab.tipo_aplicacao === 'unidade' ? acab.valor_un : acab.valor_m2).toFixed(2)}</TableCell>
+                  <TableCell className="text-right">
+                    <div className="font-semibold">R$ {parseFloat(acab.valor || (acab.tipo_aplicacao === 'unidade' ? acab.valor_un : acab.valor_m2) || 0).toFixed(2)}</div>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="text-sm text-blue-600 dark:text-blue-400">R$ {parseFloat(acab.valor_minimo || 0).toFixed(2)}</div>
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {acab.prazo_adicional > 0 ? (
+                      <span className="text-sm font-medium text-orange-600 dark:text-orange-400">
+                        +{acab.prazo_adicional} {acab.prazo_adicional === 1 ? 'dia' : 'dias'}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">-</span>
+                    )}
+                  </TableCell>
                   <TableCell className="text-center">
                      <Switch
                         checked={acab.ativo}
@@ -188,7 +234,7 @@ const AcabamentosTable = ({ acabamentos, onEdit, onDelete, onToggleActive }) => 
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={5} className="text-center h-24 text-muted-foreground">
+                <TableCell colSpan={6} className="text-center h-24 text-muted-foreground">
                   Nenhum acabamento encontrado.
                 </TableCell>
               </TableRow>

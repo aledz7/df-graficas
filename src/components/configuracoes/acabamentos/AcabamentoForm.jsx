@@ -13,9 +13,12 @@ const AcabamentoForm = ({ currentAcabamento, setCurrentAcabamento, isEditing, on
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    if (name === 'valor_m2' || name === 'valor_un' || name === 'quantidade_produto_por_unidade_acabamento') {
+    if (name === 'valor' || name === 'valor_minimo' || name === 'valor_m2' || name === 'valor_un' || name === 'quantidade_produto_por_unidade_acabamento') {
       const sanitizedValue = value.replace(/[^0-9,.]/g, '').replace(',', '.');
       setCurrentAcabamento(prev => ({ ...prev, [name]: sanitizedValue }));
+    } else if (name === 'prazo_adicional') {
+      const sanitizedValue = value.replace(/[^0-9]/g, '');
+      setCurrentAcabamento(prev => ({ ...prev, [name]: sanitizedValue ? parseInt(sanitizedValue) : 0 }));
     } else {
       setCurrentAcabamento(prev => ({ ...prev, [name]: value }));
     }
@@ -45,12 +48,47 @@ const AcabamentoForm = ({ currentAcabamento, setCurrentAcabamento, isEditing, on
       return;
     }
     
-    const valorVenda = currentAcabamento.tipo_aplicacao === 'area_total' || currentAcabamento.tipo_aplicacao === 'metro_linear' 
-      ? parseFloat(currentAcabamento.valor_m2) 
-      : parseFloat(currentAcabamento.valor_un);
+    // Validar valor mínimo (obrigatório)
+    const valorMinimo = parseFloat(currentAcabamento.valor_minimo || 0);
+    if (isNaN(valorMinimo) || valorMinimo < 0) {
+      toast({ title: "Erro", description: "O valor mínimo é obrigatório e deve ser um número positivo ou zero.", variant: "destructive" });
+      return;
+    }
 
-    if (isNaN(valorVenda) || valorVenda <= 0) {
-      toast({ title: "Erro", description: "O valor de venda (m² ou unidade) deve ser um número positivo.", variant: "destructive" });
+    // Validar valor base conforme tipo de cálculo
+    let valorVenda = 0;
+    if (currentAcabamento.tipo_aplicacao === 'fixo') {
+      // Para fixo, usar o campo valor
+      valorVenda = parseFloat(currentAcabamento.valor || 0);
+      if (isNaN(valorVenda) || valorVenda <= 0) {
+        toast({ title: "Erro", description: "O valor é obrigatório para acabamentos fixos.", variant: "destructive" });
+        return;
+      }
+    } else if (currentAcabamento.tipo_aplicacao === 'variável') {
+      // Para variável, usar o campo valor
+      valorVenda = parseFloat(currentAcabamento.valor || 0);
+      if (isNaN(valorVenda) || valorVenda <= 0) {
+        toast({ title: "Erro", description: "O valor é obrigatório para acabamentos variáveis.", variant: "destructive" });
+        return;
+      }
+    } else if (currentAcabamento.tipo_aplicacao === 'area_total' || currentAcabamento.tipo_aplicacao === 'metro_linear') {
+      valorVenda = parseFloat(currentAcabamento.valor_m2 || currentAcabamento.valor || 0);
+      if (isNaN(valorVenda) || valorVenda <= 0) {
+        toast({ title: "Erro", description: "O valor de venda (m² ou metro linear) deve ser um número positivo.", variant: "destructive" });
+        return;
+      }
+    } else if (currentAcabamento.tipo_aplicacao === 'unidade') {
+      valorVenda = parseFloat(currentAcabamento.valor_un || currentAcabamento.valor || 0);
+      if (isNaN(valorVenda) || valorVenda <= 0) {
+        toast({ title: "Erro", description: "O valor de venda por unidade deve ser um número positivo.", variant: "destructive" });
+        return;
+      }
+    }
+
+    // Validar prazo adicional
+    const prazoAdicional = parseInt(currentAcabamento.prazo_adicional || 0);
+    if (isNaN(prazoAdicional) || prazoAdicional < 0) {
+      toast({ title: "Erro", description: "O prazo adicional deve ser um número inteiro positivo ou zero.", variant: "destructive" });
       return;
     }
 
@@ -62,8 +100,11 @@ const AcabamentoForm = ({ currentAcabamento, setCurrentAcabamento, isEditing, on
 
     const acabamentoParaSalvar = {
       ...currentAcabamento,
-      valor_m2: currentAcabamento.tipo_aplicacao === 'area_total' || currentAcabamento.tipo_aplicacao === 'metro_linear' ? valorVenda.toFixed(2) : '0.00',
-      valor_un: currentAcabamento.tipo_aplicacao === 'unidade' ? valorVenda.toFixed(2) : '0.00',
+      valor: valorVenda.toFixed(2),
+      valor_minimo: valorMinimo.toFixed(2),
+      prazo_adicional: prazoAdicional,
+      valor_m2: currentAcabamento.tipo_aplicacao === 'area_total' || currentAcabamento.tipo_aplicacao === 'metro_linear' ? valorVenda.toFixed(2) : (currentAcabamento.valor_m2 || '0.00'),
+      valor_un: currentAcabamento.tipo_aplicacao === 'unidade' ? valorVenda.toFixed(2) : (currentAcabamento.valor_un || '0.00'),
       quantidade_produto_por_unidade_acabamento: qtdProdPorUnidAcab.toString(),
     };
     onSubmit(acabamentoParaSalvar);
@@ -78,53 +119,147 @@ const AcabamentoForm = ({ currentAcabamento, setCurrentAcabamento, isEditing, on
         <CardContent className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <Label htmlFor="nome_acabamento">Nome do Acabamento <span className="text-red-500">*</span></Label>
+              <Label htmlFor="nome_acabamento">Acabamento <span className="text-red-500">*</span></Label>
               <Input
                 id="nome_acabamento"
                 name="nome_acabamento"
                 value={currentAcabamento.nome_acabamento}
                 onChange={handleInputChange}
-                placeholder="Ex: Laminação Fosca"
+                placeholder="Ex: Dobra, Aplicação de Adesivo, Verniz Localizado"
                 required
               />
             </div>
-            <div>
-              <Label htmlFor="tipo_aplicacao">Tipo de Aplicação <span className="text-red-500">*</span></Label>
-              <select
-                id="tipo_aplicacao"
-                name="tipo_aplicacao"
-                value={currentAcabamento.tipo_aplicacao}
-                onChange={handleInputChange}
-                className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                required
-              >
-                <option value="area_total">Área Total (m²)</option>
-                <option value="unidade">Unidade</option>
-                <option value="metro_linear">Metro Linear</option>
-              </select>
+            <div></div>
+          </div>
+
+          {/* Seção de Tipo de Cálculo com Radio Buttons */}
+          <div className="space-y-4">
+            <Label className="text-base font-semibold">Tipo de cálculo</Label>
+            <div className="space-y-3">
+              <div className="flex items-center space-x-2">
+                <input
+                  type="radio"
+                  id="tipo_fixo"
+                  name="tipo_aplicacao_radio"
+                  value="fixo"
+                  checked={currentAcabamento.tipo_aplicacao === 'fixo'}
+                  onChange={(e) => setCurrentAcabamento(prev => ({ ...prev, tipo_aplicacao: 'fixo' }))}
+                  className="h-4 w-4"
+                />
+                <Label htmlFor="tipo_fixo" className="text-sm font-normal cursor-pointer">
+                  Fixo – independente da quantidade selecionada
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="radio"
+                  id="tipo_variavel"
+                  name="tipo_aplicacao_radio"
+                  value="variável"
+                  checked={currentAcabamento.tipo_aplicacao === 'variável'}
+                  onChange={(e) => setCurrentAcabamento(prev => ({ ...prev, tipo_aplicacao: 'variável' }))}
+                  className="h-4 w-4"
+                />
+                <Label htmlFor="tipo_variavel" className="text-sm font-normal cursor-pointer">
+                  Variável – proporcional à quantidade selecionada
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="radio"
+                  id="tipo_m2"
+                  name="tipo_aplicacao_radio"
+                  value="area_total"
+                  checked={currentAcabamento.tipo_aplicacao === 'area_total'}
+                  onChange={(e) => setCurrentAcabamento(prev => ({ ...prev, tipo_aplicacao: 'area_total' }))}
+                  className="h-4 w-4"
+                />
+                <Label htmlFor="tipo_m2" className="text-sm font-normal cursor-pointer">
+                  Por metro quadrado (m²)
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="radio"
+                  id="tipo_metro_linear"
+                  name="tipo_aplicacao_radio"
+                  value="metro_linear"
+                  checked={currentAcabamento.tipo_aplicacao === 'metro_linear'}
+                  onChange={(e) => setCurrentAcabamento(prev => ({ ...prev, tipo_aplicacao: 'metro_linear' }))}
+                  className="h-4 w-4"
+                />
+                <Label htmlFor="tipo_metro_linear" className="text-sm font-normal cursor-pointer">
+                  Por metro linear de bordas – soma de todos os lados
+                </Label>
+              </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
-              <Label htmlFor="valor_venda">
-                Valor de Venda (R$) {currentAcabamento.tipo_aplicacao === 'unidade' ? 'por Unidade' : (currentAcabamento.tipo_aplicacao === 'metro_linear' ? 'por Metro Linear' : 'por m²')} <span className="text-red-500">*</span>
+              <Label htmlFor="valor">
+                Valor (R$) <span className="text-red-500">*</span>
               </Label>
               <div className="relative">
                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  id="valor_venda"
-                  name={currentAcabamento.tipo_aplicacao === 'unidade' ? 'valor_un' : 'valor_m2'}
+                  id="valor"
+                  name="valor"
                   type="text"
                   inputMode="decimal"
-                  value={currentAcabamento.tipo_aplicacao === 'unidade' ? currentAcabamento.valor_un : currentAcabamento.valor_m2}
+                  value={currentAcabamento.valor || (currentAcabamento.tipo_aplicacao === 'unidade' ? currentAcabamento.valor_un : currentAcabamento.valor_m2) || ''}
                   onChange={handleInputChange}
                   placeholder="10.50"
                   required
                   className="pl-8"
                 />
               </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Valor base utilizado no cálculo conforme o tipo selecionado
+              </p>
             </div>
+            <div>
+              <Label htmlFor="valor_minimo">
+                Valor Mínimo (R$) <span className="text-red-500">*</span>
+              </Label>
+              <div className="relative">
+                 <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="valor_minimo"
+                  name="valor_minimo"
+                  type="text"
+                  inputMode="decimal"
+                  value={currentAcabamento.valor_minimo || '0.00'}
+                  onChange={handleInputChange}
+                  placeholder="0.00"
+                  required
+                  className="pl-8"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Valor mínimo cobrado, independente da regra de cálculo
+              </p>
+            </div>
+            <div>
+              <Label htmlFor="prazo_adicional">
+                Prazo Adicional (dias)
+              </Label>
+              <Input
+                id="prazo_adicional"
+                name="prazo_adicional"
+                type="number"
+                min="0"
+                value={currentAcabamento.prazo_adicional || 0}
+                onChange={handleInputChange}
+                placeholder="0"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Dias adicionais ao prazo da OS quando este acabamento for incluído
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <Label htmlFor="observacoes">Observações</Label>
               <Input
@@ -135,6 +270,7 @@ const AcabamentoForm = ({ currentAcabamento, setCurrentAcabamento, isEditing, on
                 placeholder="Ex: Aplicado a cada 50cm"
               />
             </div>
+            <div></div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

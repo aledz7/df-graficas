@@ -255,23 +255,37 @@ const calcularCustoAcabamentosSelecionados = (item, acabamentosConfig, areaTotal
 
     // SEMPRE usar valor de venda do acabamento, nunca custo do produto vinculado
     // O "Custo total do material" deve usar o valor de venda para consistência
-    if (acabamentoDef.tipo_aplicacao === 'area_total') {
+    let valorCalculado = 0;
+    
+    if (acabamentoDef.tipo_aplicacao === 'fixo') {
+      // Fixo: independente da quantidade, usar apenas o valor
+      valorCalculado = valorM2 > 0 ? valorM2 : (valorUn > 0 ? valorUn : safeParseFloat(acabamentoDef.valor, 0));
+    } else if (acabamentoDef.tipo_aplicacao === 'variável') {
+      // Variável: proporcional à quantidade
+      const valorBase = valorM2 > 0 ? valorM2 : (valorUn > 0 ? valorUn : safeParseFloat(acabamentoDef.valor, 0));
+      valorCalculado = valorBase * multiplicadorQuantidade;
+    } else if (acabamentoDef.tipo_aplicacao === 'area_total') {
       if (valorM2 > 0 && area > 0) {
         // Se areaTotalPecas foi fornecida, ela já inclui a quantidade, não multiplicar novamente
-        const custoArea = (areaTotalPecas !== null) ? (area * valorM2) : (area * multiplicadorQuantidade * valorM2);
-        custoTotal += isNaN(custoArea) ? 0 : custoArea;
+        valorCalculado = (areaTotalPecas !== null) ? (area * valorM2) : (area * multiplicadorQuantidade * valorM2);
       }
     } else if (acabamentoDef.tipo_aplicacao === 'perimetro' || acabamentoDef.tipo_aplicacao === 'metro_linear') {
       if (perimetro > 0 && valorM2 > 0) {
-        const custoLinear = perimetro * multiplicadorQuantidade * valorM2;
-        custoTotal += isNaN(custoLinear) ? 0 : custoLinear;
+        valorCalculado = perimetro * multiplicadorQuantidade * valorM2;
       }
     } else if (acabamentoDef.tipo_aplicacao === 'unidade') {
       if (valorUn > 0) {
-        const custoPorUnidade = multiplicadorQuantidade * valorUn;
-        custoTotal += isNaN(custoPorUnidade) ? 0 : custoPorUnidade;
+        valorCalculado = multiplicadorQuantidade * valorUn;
       }
     }
+    
+    // Aplicar regra de valor mínimo: o valor final nunca pode ser menor que o valor mínimo
+    const valorMinimo = safeParseFloat(acabamentoDef.valor_minimo || 0, 0);
+    if (valorMinimo > 0 && valorCalculado < valorMinimo) {
+      valorCalculado = valorMinimo;
+    }
+    
+    custoTotal += isNaN(valorCalculado) ? 0 : valorCalculado;
   });
 
   const custoFinal = isNaN(custoTotal) ? 0 : parseFloat(custoTotal.toFixed(2));
@@ -958,20 +972,49 @@ const OSItemForm = ({
                 let valorAcabamento = 0;
                 let quantidadeAcabamento = 0;
 
-                if (acabamentoDef.tipo_aplicacao === 'area_total') {
+                // Obter valores base
+                const valorM2Raw = acabamentoDef.valor_m2 || acabamentoDef.valor || '0';
+                const valorM2 = safeParseFloat(valorM2Raw, 0);
+                const valorUnRaw = acabamentoDef.valor_un || acabamentoDef.valor || '0';
+                const valorUn = safeParseFloat(valorUnRaw, 0);
+                const valorBase = safeParseFloat(acabamentoDef.valor || 0, 0);
+                
+                if (acabamentoDef.tipo_aplicacao === 'fixo') {
+                    // Fixo: independente da quantidade
+                    valorAcabamento = valorM2 > 0 ? valorM2 : (valorUn > 0 ? valorUn : valorBase);
+                    quantidadeAcabamento = 1; // Não multiplica por quantidade
+                } else if (acabamentoDef.tipo_aplicacao === 'variável') {
+                    // Variável: proporcional à quantidade
+                    const valorBaseCalc = valorM2 > 0 ? valorM2 : (valorUn > 0 ? valorUn : valorBase);
+                    valorAcabamento = valorBaseCalc;
+                    quantidadeAcabamento = multiplicadorQuantidade; // Multiplica pela quantidade
+                } else if (acabamentoDef.tipo_aplicacao === 'area_total') {
                     // SEMPRE usar valor_m2 do config (acabamentoDef), nunca do selecionado
-                    // O valor do config sempre tem prioridade pois pode ter sido atualizado
-                    const valorM2Raw = acabamentoDef.valor_m2 || acabamentoDef.valor || '0';
-                    valorAcabamento = safeParseFloat(valorM2Raw, 0);
+                    valorAcabamento = valorM2;
                     quantidadeAcabamento = areaAcabamento; 
                 } else if (acabamentoDef.tipo_aplicacao === 'perimetro' || acabamentoDef.tipo_aplicacao === 'metro_linear') {
-                    valorAcabamento = safeParseFloat(acabamentoDef.valor_m2 || acabamentoDef.valor_un || acabamentoDef.valor || acabSelecionado.valor_m2 || 0, 0);
+                    valorAcabamento = valorM2 > 0 ? valorM2 : (valorUn > 0 ? valorUn : valorBase);
                     quantidadeAcabamento = perimetroAcabamento;
                 } else if (acabamentoDef.tipo_aplicacao === 'unidade') {
-                    valorAcabamento = safeParseFloat(acabamentoDef.valor_un || acabamentoDef.valor || acabSelecionado.valor_un || 0, 0);
+                    valorAcabamento = valorUn > 0 ? valorUn : valorBase;
                     quantidadeAcabamento = 1;
                 }
-                const calcAcab = quantidadeAcabamento * multiplicadorQuantidade * valorAcabamento;
+                
+                let calcAcab = 0;
+                if (acabamentoDef.tipo_aplicacao === 'fixo') {
+                    calcAcab = valorAcabamento; // Fixo não multiplica
+                } else if (acabamentoDef.tipo_aplicacao === 'variável') {
+                    calcAcab = valorAcabamento * quantidadeAcabamento; // Variável multiplica pela quantidade
+                } else {
+                    calcAcab = quantidadeAcabamento * multiplicadorQuantidade * valorAcabamento;
+                }
+                
+                // Aplicar regra de valor mínimo
+                const valorMinimo = safeParseFloat(acabamentoDef.valor_minimo || 0, 0);
+                if (valorMinimo > 0 && calcAcab < valorMinimo) {
+                    calcAcab = valorMinimo;
+                }
+                
                 subtotalApenasAcabamentos += isNaN(calcAcab) ? 0 : calcAcab;
             }
         });
