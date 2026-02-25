@@ -123,7 +123,7 @@ const ProdutoTabDadosGerais = ({ currentProduto, handleInputChange }) => {
                 }}
               />
               <Label htmlFor="is_digital" className="text-sm font-medium leading-none cursor-pointer">
-                ☑ Produto Digital (sem controle de estoque)
+                Produto Digital (sem controle de estoque)
               </Label>
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-400 ml-6">
