@@ -101,6 +101,7 @@ const NovoTreinamentoPage = () => {
     permitir_comentarios: false,
     permitir_download: false,
     ativar_certificado: false,
+    possui_prova_final: false,
     dividir_em_modulos: false,
     permitir_anexos_adicionais: false,
   });
@@ -309,18 +310,33 @@ const NovoTreinamentoPage = () => {
   const handlePublicar = async () => {
     if (!validarFormulario()) return;
 
+    // Validar se tem prova final mas não foi configurada
+    if (formData.possui_prova_final) {
+      toast({
+        title: 'Atenção',
+        description: 'Após salvar, configure a prova final na página de treinamentos.',
+        variant: 'default',
+      });
+    }
+
     setLoading(true);
     try {
       const data = {
         ...formData,
         status: 'publicado',
       };
-      await cursoService.create(data);
+      const response = await cursoService.create(data);
       toast({
         title: 'Sucesso',
         description: 'Treinamento publicado com sucesso!',
       });
-      navigate('/ferramentas/treinamento-interno');
+      
+      // Se tem prova final, redirecionar para a página de treinamentos onde pode configurar
+      if (formData.possui_prova_final && response.data.data?.id) {
+        navigate(`/ferramentas/treinamento-interno?configurarProva=${response.data.data.id}`);
+      } else {
+        navigate('/ferramentas/treinamento-interno');
+      }
     } catch (error) {
       toast({
         title: 'Erro',
@@ -996,6 +1012,23 @@ const NovoTreinamentoPage = () => {
                     <Switch
                       checked={formData.ativar_certificado}
                       onCheckedChange={(checked) => setFormData({ ...formData, ativar_certificado: checked })}
+                    />
+                  </div>
+                </div>
+
+                <Separator />
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>Este treinamento possui prova final</Label>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Ao marcar, será necessário configurar a prova antes de publicar
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={formData.possui_prova_final}
+                      onCheckedChange={(checked) => setFormData({ ...formData, possui_prova_final: checked })}
                     />
                   </div>
                 </div>

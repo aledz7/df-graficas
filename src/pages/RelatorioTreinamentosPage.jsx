@@ -202,6 +202,9 @@ const RelatorioTreinamentosPage = () => {
           'Duração': item.duracao,
           'Prazo Conclusão': item.prazo_conclusao,
           'Dentro do Prazo': item.dentro_prazo,
+          'Prova Status': item.prova ? (item.prova.aprovado ? 'Aprovado' : 'Reprovado') : '-',
+          'Prova Nota': item.prova ? `${item.prova.nota_obtida}%` : '-',
+          'Prova Tentativa': item.prova ? item.prova.numero_tentativa : '-',
         }));
 
         // Criar workbook
@@ -223,6 +226,9 @@ const RelatorioTreinamentosPage = () => {
           { wch: 12 }, // Duração
           { wch: 18 }, // Prazo Conclusão
           { wch: 15 }, // Dentro do Prazo
+          { wch: 12 }, // Prova Status
+          { wch: 12 }, // Prova Nota
+          { wch: 12 }, // Prova Tentativa
         ];
         ws['!cols'] = colWidths;
 
@@ -274,7 +280,8 @@ const RelatorioTreinamentosPage = () => {
           'Percentual',
           'Data Início',
           'Data Conclusão',
-          'Duração'
+          'Duração',
+          'Prova'
         ];
 
         const data = dadosExportacao.map(item => [
@@ -286,6 +293,7 @@ const RelatorioTreinamentosPage = () => {
           item.data_inicio,
           item.data_conclusao,
           item.duracao,
+          item.prova ? `${item.prova.aprovado ? 'Aprovado' : 'Reprovado'} (${item.prova.nota_obtida}%)` : '-',
         ]);
 
         // Resumo
@@ -465,12 +473,13 @@ const RelatorioTreinamentosPage = () => {
                       <TableHead>Início</TableHead>
                       <TableHead>Conclusão</TableHead>
                       <TableHead>Tempo Total</TableHead>
+                      <TableHead>Prova</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {dados.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={8} className="text-center py-12">
+                        <TableCell colSpan={9} className="text-center py-12">
                           <p className="text-gray-600">Nenhum registro encontrado</p>
                         </TableCell>
                       </TableRow>
@@ -519,6 +528,28 @@ const RelatorioTreinamentosPage = () => {
                             </TableCell>
                             <TableCell>
                               {registro.duracao_total.formatado}
+                            </TableCell>
+                            <TableCell>
+                              {registro.prova ? (
+                                <div className="space-y-1">
+                                  <div className="flex items-center gap-2">
+                                    <Badge className={registro.prova.aprovado ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
+                                      {registro.prova.aprovado ? 'Aprovado' : 'Reprovado'}
+                                    </Badge>
+                                    <span className="text-sm font-medium">{registro.prova.nota_obtida}%</span>
+                                  </div>
+                                  <p className="text-xs text-gray-500">
+                                    Tentativa {registro.prova.numero_tentativa}
+                                  </p>
+                                  {registro.prova.data_envio && (
+                                    <p className="text-xs text-gray-500">
+                                      {formatarDataHora(registro.prova.data_envio)}
+                                    </p>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
                             </TableCell>
                           </TableRow>
                         );

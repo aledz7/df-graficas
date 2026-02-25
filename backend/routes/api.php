@@ -560,6 +560,23 @@ Route::middleware(['api.auth'])->group(function () {
         Route::put('{id}/progresso', [\App\Http\Controllers\Api\CursoController::class, 'atualizarProgresso']);
         Route::post('{id}/concluir', [\App\Http\Controllers\Api\CursoController::class, 'concluirTreinamento']);
         
+        // Provas (apenas administradores para configurar, colaboradores para fazer)
+        Route::prefix('{cursoId}/prova')->group(function () {
+            // Configuração (apenas admin)
+            Route::middleware(['ensure.admin'])->group(function () {
+                Route::get('configuracao', [\App\Http\Controllers\Api\CursoProvaController::class, 'getConfiguracao']);
+                Route::post('configuracao', [\App\Http\Controllers\Api\CursoProvaController::class, 'salvarConfiguracao']);
+                Route::post('questao', [\App\Http\Controllers\Api\CursoProvaController::class, 'salvarQuestao']);
+                Route::delete('questao/{questaoId}', [\App\Http\Controllers\Api\CursoProvaController::class, 'excluirQuestao']);
+                Route::post('questoes/reordenar', [\App\Http\Controllers\Api\CursoProvaController::class, 'reordenarQuestoes']);
+            });
+            
+            // Ações do colaborador
+            Route::post('iniciar', [\App\Http\Controllers\Api\CursoProvaController::class, 'iniciarProva']);
+            Route::post('tentativa/{tentativaId}/enviar', [\App\Http\Controllers\Api\CursoProvaController::class, 'enviarRespostas']);
+            Route::get('tentativa/{tentativaId}/resultado', [\App\Http\Controllers\Api\CursoProvaController::class, 'getResultado']);
+        });
+        
         // Relatórios de cursos (apenas administradores)
         Route::middleware(['ensure.admin'])->group(function () {
             Route::get('relatorio', [\App\Http\Controllers\Api\CursoRelatorioController::class, 'index']);

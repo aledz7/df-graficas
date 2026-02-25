@@ -50,6 +50,7 @@ class Curso extends Model
         'ativar_certificado',
         'dividir_em_modulos',
         'permitir_anexos_adicionais',
+        'possui_prova_final',
         'usuario_criacao_id',
         'usuario_edicao_id',
         'visualizacoes',
@@ -67,6 +68,7 @@ class Curso extends Model
         'ativar_certificado' => 'boolean',
         'dividir_em_modulos' => 'boolean',
         'permitir_anexos_adicionais' => 'boolean',
+        'possui_prova_final' => 'boolean',
         'data_liberacao' => 'datetime',
         'data_inicio_periodo' => 'datetime',
         'data_fim_periodo' => 'datetime',
@@ -164,6 +166,14 @@ class Curso extends Model
     public function continuacoes()
     {
         return $this->hasMany(Curso::class, 'treinamento_anterior_id');
+    }
+
+    /**
+     * Relacionamento com prova final
+     */
+    public function prova()
+    {
+        return $this->hasOne(CursoProva::class, 'curso_id');
     }
 
     /**

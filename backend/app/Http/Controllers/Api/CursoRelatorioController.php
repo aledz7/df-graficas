@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Curso;
 use App\Models\CursoProgresso;
+use App\Models\CursoProvaTentativa;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -122,11 +123,40 @@ class CursoRelatorioController extends Controller
                               ->take($perPage)
                               ->get();
 
+            // Buscar dados de provas
+            $provasData = [];
+            $tentativas = CursoProvaTentativa::where('tenant_id', $tenantId)
+                ->whereIn('curso_id', $registros->pluck('curso_id')->unique())
+                ->whereIn('usuario_id', $registros->pluck('usuario_id')->unique())
+                ->with('prova')
+                ->get()
+                ->groupBy(function($tentativa) {
+                    return $tentativa->curso_id . '_' . $tentativa->usuario_id;
+                });
+
             // Processar dados
-            $dados = $registros->map(function($registro) {
+            $dados = $registros->map(function($registro) use ($tentativas) {
                 $statusCalculado = $this->calcularStatus($registro);
                 $duracao = $this->calcularDuracao($registro);
                 $dentroPrazo = $this->verificarDentroPrazo($registro);
+
+                // Buscar tentativas de prova
+                $key = $registro->curso_id . '_' . $registro->usuario_id;
+                $tentativasUsuario = $tentativas->get($key, collect());
+                $ultimaTentativa = $tentativasUsuario->sortByDesc('numero_tentativa')->first();
+
+                $dadosProva = null;
+                if ($ultimaTentativa) {
+                    $dadosProva = [
+                        'numero_tentativa' => $ultimaTentativa->numero_tentativa,
+                        'data_inicio' => $ultimaTentativa->data_inicio ? $ultimaTentativa->data_inicio->format('Y-m-d H:i:s') : null,
+                        'data_envio' => $ultimaTentativa->data_envio ? $ultimaTentativa->data_envio->format('Y-m-d H:i:s') : null,
+                        'nota_obtida' => $ultimaTentativa->nota_obtida,
+                        'aprovado' => $ultimaTentativa->aprovado,
+                        'status' => $ultimaTentativa->status,
+                        'tempo_gasto_segundos' => $ultimaTentativa->tempo_gasto_segundos,
+                    ];
+                }
 
                 return [
                     'id' => $registro->id,
@@ -151,6 +181,7 @@ class CursoRelatorioController extends Controller
                     'duracao_minutos' => $this->segundosParaMinutos($duracao['total_segundos']),
                     'dentro_prazo' => $dentroPrazo,
                     'percentual' => $registro->percentual_concluido ?? 0,
+                    'prova' => $dadosProva,
                 ];
             });
 

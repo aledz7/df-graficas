@@ -1854,6 +1854,16 @@ export const cursoService = {
   getRelatorio: (params = {}) => api.get('/api/cursos/relatorio', { params }),
   getRelatorioEstatisticas: (params = {}) => api.get('/api/cursos/relatorio/estatisticas', { params }),
   getRelatorioExportar: (params = {}) => api.get('/api/cursos/relatorio/exportar', { params }),
+  
+  // Provas
+  getProvaConfiguracao: (cursoId) => api.get(`/api/cursos/${cursoId}/prova/configuracao`),
+  salvarProvaConfiguracao: (cursoId, data) => api.post(`/api/cursos/${cursoId}/prova/configuracao`, data),
+  salvarQuestao: (cursoId, data) => api.post(`/api/cursos/${cursoId}/prova/questao`, data),
+  excluirQuestao: (cursoId, questaoId) => api.delete(`/api/cursos/${cursoId}/prova/questao/${questaoId}`),
+  reordenarQuestoes: (cursoId, data) => api.post(`/api/cursos/${cursoId}/prova/questoes/reordenar`, data),
+  iniciarProva: (cursoId) => api.post(`/api/cursos/${cursoId}/prova/iniciar`),
+  enviarRespostas: (cursoId, tentativaId, data) => api.post(`/api/cursos/${cursoId}/prova/tentativa/${tentativaId}/enviar`, data),
+  getResultadoProva: (cursoId, tentativaId) => api.get(`/api/cursos/${cursoId}/prova/tentativa/${tentativaId}/resultado`),
 };
 
 // Serviços para Relatório de Produção

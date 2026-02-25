@@ -8,6 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/components/ui/use-toast';
 import { cursoService } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
+import ConfiguracaoProvaModal from '@/components/treinamento/ConfiguracaoProvaModal';
 import {
   ArrowLeft,
   Play,
@@ -34,6 +35,8 @@ const DetalhesTreinamentoPage = () => {
   const [progresso, setProgresso] = useState(null);
   const [confirmacaoLeitura, setConfirmacaoLeitura] = useState(false);
   const [tempoInicio, setTempoInicio] = useState(null);
+  const [provaAprovada, setProvaAprovada] = useState(false);
+  const [modalProvaAberto, setModalProvaAberto] = useState(false);
 
   useEffect(() => {
     carregarCurso();
@@ -72,6 +75,12 @@ const DetalhesTreinamentoPage = () => {
           if (cursoComProgresso) {
             setProgresso(cursoComProgresso.progresso);
             setConfirmacaoLeitura(cursoComProgresso.progresso?.confirmacao_leitura || false);
+            
+            // Verificar se há prova e se foi aprovado
+            if (cursoComProgresso.possui_prova_final && cursoComProgresso.progresso?.concluido) {
+              // Se está concluído e tem prova, provavelmente foi aprovado
+              setProvaAprovada(true);
+            }
           }
         }
       }
@@ -216,6 +225,10 @@ const DetalhesTreinamentoPage = () => {
     ? confirmacaoLeitura 
     : true;
 
+  const conteudoConcluido = progresso?.percentual_concluido >= 100;
+  const temProvaFinal = curso?.possui_prova_final;
+  const podeIniciarProva = conteudoConcluido && temProvaFinal && !progresso?.concluido;
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="container mx-auto px-4 py-6 max-w-5xl">
@@ -262,11 +275,24 @@ const DetalhesTreinamentoPage = () => {
                   {curso.parte_modulo && (
                     <Badge variant="outline">Parte {curso.parte_modulo}</Badge>
                   )}
+                  {curso.possui_prova_final && (
+                    <Badge className="bg-purple-500 text-white">PROVA FINAL</Badge>
+                  )}
                 </div>
                 {curso.descricao && (
                   <p className="text-gray-600 mt-2">{curso.descricao}</p>
                 )}
               </div>
+              {user?.is_admin && (
+                <Button
+                  variant="outline"
+                  onClick={() => setModalProvaAberto(true)}
+                  className="flex items-center gap-2"
+                >
+                  <GraduationCap className="h-4 w-4" />
+                  {curso.possui_prova_final ? 'Configurar Prova' : 'Adicionar Prova'}
+                </Button>
+              )}
             </div>
 
             {progresso && progresso.iniciado && (
@@ -424,41 +450,90 @@ const DetalhesTreinamentoPage = () => {
             </Card>
           )}
 
-          {/* Botão de Conclusão */}
+          {/* Botão de Conclusão ou Iniciar Prova */}
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-medium mb-1">Finalizar Treinamento</p>
-                  {!podeConcluir && (
-                    <p className="text-sm text-red-600">
-                      É necessário confirmar a leitura para concluir
-                    </p>
-                  )}
-                </div>
-                <Button
-                  onClick={concluirTreinamento}
-                  disabled={!podeConcluir || (progresso?.concluido)}
-                  className="bg-green-500 hover:bg-green-600"
-                  size="lg"
-                >
-                  {progresso?.concluido ? (
+                  {podeIniciarProva ? (
                     <>
-                      <CheckCircle2 className="h-5 w-5 mr-2" />
-                      Concluído
+                      <p className="font-medium mb-1">Prova Final</p>
+                      <p className="text-sm text-gray-600">
+                        Você concluiu todo o conteúdo. Agora é necessário fazer a prova final para concluir o treinamento.
+                      </p>
+                    </>
+                  ) : progresso?.concluido ? (
+                    <>
+                      <p className="font-medium mb-1">Treinamento Concluído</p>
+                      {temProvaFinal && (
+                        <p className="text-sm text-green-600">
+                          Você foi aprovado na prova final!
+                        </p>
+                      )}
                     </>
                   ) : (
                     <>
-                      <CheckCircle2 className="h-5 w-5 mr-2" />
-                      Concluir Treinamento
+                      <p className="font-medium mb-1">Finalizar Treinamento</p>
+                      {!podeConcluir && (
+                        <p className="text-sm text-red-600">
+                          É necessário confirmar a leitura para concluir
+                        </p>
+                      )}
+                      {!conteudoConcluido && temProvaFinal && (
+                        <p className="text-sm text-yellow-600">
+                          Complete todo o conteúdo para fazer a prova final
+                        </p>
+                      )}
                     </>
                   )}
-                </Button>
+                </div>
+                {podeIniciarProva ? (
+                  <Button
+                    onClick={() => navigate(`/ferramentas/treinamento/${id}/prova`)}
+                    className="bg-blue-500 hover:bg-blue-600"
+                    size="lg"
+                  >
+                    <GraduationCap className="h-5 w-5 mr-2" />
+                    Iniciar Prova
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={concluirTreinamento}
+                    disabled={!podeConcluir || (progresso?.concluido) || (temProvaFinal && !provaAprovada)}
+                    className="bg-green-500 hover:bg-green-600"
+                    size="lg"
+                  >
+                    {progresso?.concluido ? (
+                      <>
+                        <CheckCircle2 className="h-5 w-5 mr-2" />
+                        Concluído
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="h-5 w-5 mr-2" />
+                        Concluir Treinamento
+                      </>
+                    )}
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>
         </div>
       </div>
+
+      {/* Modal de Configuração da Prova (apenas admin) */}
+      {user?.is_admin && (
+        <ConfiguracaoProvaModal
+          cursoId={id}
+          open={modalProvaAberto}
+          onClose={() => setModalProvaAberto(false)}
+          onSave={() => {
+            setModalProvaAberto(false);
+            carregarCurso();
+          }}
+        />
+      )}
     </div>
   );
 };
