@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Curso;
 use App\Models\CursoProgresso;
+use App\Models\CursoProvaTentativa;
 use App\Models\User;
 use App\Models\Notificacao;
 use Illuminate\Http\Request;
@@ -682,6 +683,37 @@ class CursoController extends Controller
                 ->where('usuario_id', $user->id)
                 ->where('curso_id', $id)
                 ->firstOrFail();
+
+            // Verificar se o curso tem prova final e se foi aprovado
+            $curso = Curso::where('tenant_id', $tenantId)
+                ->where('id', $id)
+                ->with('prova')
+                ->first();
+
+            if ($curso && $curso->possui_prova_final && $curso->prova) {
+                // Verificar se há tentativa aprovada
+                $tentativaAprovada = \App\Models\CursoProvaTentativa::where('tenant_id', $tenantId)
+                    ->where('usuario_id', $user->id)
+                    ->where('curso_id', $id)
+                    ->where('aprovado', true)
+                    ->where('status', 'finalizada')
+                    ->exists();
+
+                if (!$tentativaAprovada) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Você precisa ser aprovado na prova final para concluir o treinamento',
+                    ], 403);
+                }
+
+                // Verificar se a prova exige aprovação para conclusão
+                if ($curso->prova->exigir_aprovacao_conclusao && !$tentativaAprovada) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Você precisa ser aprovado na prova final para concluir o treinamento',
+                    ], 403);
+                }
+            }
 
             if ($request->has('confirmacao_leitura') && $request->confirmacao_leitura) {
                 $progresso->confirmarLeitura();
