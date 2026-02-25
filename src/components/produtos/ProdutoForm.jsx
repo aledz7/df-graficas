@@ -18,6 +18,7 @@ const defaultProduto = {
     venda_pdv: true,
     venda_marketplace: true,
     uso_interno: false,
+    is_digital: false,
     unidadeMedida: 'unidade',
     categoria: '',
     subcategoriaId: '',
@@ -185,6 +186,7 @@ const ProdutoForm = ({ isOpen, onClose, onSave, produtoEmEdicao, showSaveAndNewB
                 venda_pdv: produtoEmEdicao.venda_pdv !== undefined ? (produtoEmEdicao.venda_pdv === true || produtoEmEdicao.venda_pdv === 1 || produtoEmEdicao.venda_pdv === '1') : true,
                 venda_marketplace: produtoEmEdicao.venda_marketplace !== undefined ? (produtoEmEdicao.venda_marketplace === true || produtoEmEdicao.venda_marketplace === 1 || produtoEmEdicao.venda_marketplace === '1') : true,
                 uso_interno: produtoEmEdicao.uso_interno === true || produtoEmEdicao.uso_interno === 1 || produtoEmEdicao.uso_interno === '1',
+                is_digital: produtoEmEdicao.is_digital === true || produtoEmEdicao.is_digital === 1 || produtoEmEdicao.is_digital === '1',
                 // Garantir que campos numéricos sejam strings para os inputs
                 preco_custo: String(produtoEmEdicao.preco_custo || '0'),
                 preco_m2: String(produtoEmEdicao.preco_m2 || '0'),
@@ -403,6 +405,19 @@ const ProdutoForm = ({ isOpen, onClose, onSave, produtoEmEdicao, showSaveAndNewB
         const val = type === 'checkbox' ? checked : value;
         setCurrentProduto(prev => {
             let updatedProduto = { ...prev, [name]: val };
+
+            if (name === 'is_digital' && checked) {
+                updatedProduto.estoque = '0';
+                updatedProduto.estoque_minimo = '0';
+                updatedProduto.controlar_estoque_manual = false;
+                if (Array.isArray(updatedProduto.variacoes)) {
+                    updatedProduto.variacoes = updatedProduto.variacoes.map((variacao) => ({
+                        ...variacao,
+                        estoque_var: '0',
+                    }));
+                }
+            }
+
             // Atualizar preco_venda automaticamente ao alterar preco_custo ou margem_lucro
             if (name === 'preco_custo' || name === 'margem_lucro') {
                 const precoCusto = parseFloat(name === 'preco_custo' ? val : updatedProduto.preco_custo) || 0;
@@ -880,6 +895,16 @@ const ProdutoForm = ({ isOpen, onClose, onSave, produtoEmEdicao, showSaveAndNewB
                 quantidade: parseFloat(c.quantidade) || 0
             }))
         };
+
+        if (produtoFinal.is_digital) {
+            produtoFinal.estoque = 0;
+            produtoFinal.estoque_minimo = 0;
+            produtoFinal.controlar_estoque_manual = false;
+            produtoFinal.variacoes = (produtoFinal.variacoes || []).map((v) => ({
+                ...v,
+                estoque_var: 0,
+            }));
+        }
         
         console.log('📦 [ProdutoForm] Dados do produto sendo salvos:', {
             preco_m2: produtoFinal.preco_m2,

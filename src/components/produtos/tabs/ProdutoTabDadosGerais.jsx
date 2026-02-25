@@ -118,6 +118,28 @@ const ProdutoTabDadosGerais = ({ currentProduto, handleInputChange }) => {
             <p className="text-xs text-gray-500 dark:text-gray-400 ml-6">
               Produto não aparece no PDV nem no Marketplace. Serve apenas para uso interno, custo por OS, controle de estoque, insumos e serviços internos.
             </p>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="is_digital"
+                checked={currentProduto.is_digital ?? false}
+                onCheckedChange={(checked) => {
+                  handleInputChange({
+                    target: {
+                      name: 'is_digital',
+                      checked: checked,
+                      type: 'checkbox'
+                    }
+                  });
+                }}
+              />
+              <Label htmlFor="is_digital" className="text-sm font-medium leading-none cursor-pointer">
+                ☑ Produto Digital (sem controle de estoque)
+              </Label>
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400 ml-6">
+              Quando marcado, este produto não valida nem baixa estoque no PDV/vendas.
+            </p>
           </div>
 
           {/* Aviso quando uso interno está marcado */}

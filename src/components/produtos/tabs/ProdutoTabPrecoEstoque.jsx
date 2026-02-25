@@ -18,7 +18,8 @@ const TIPOS_PRECIFICACAO = [
 
 const ProdutoTabPrecoEstoque = ({ currentProduto, handleInputChange }) => {
   const isUnidadeMetroQuadrado = (currentProduto.unidadeMedida || currentProduto.unidade_medida) === 'm2';
-  const deveControlarEstoque = !currentProduto.isComposto;
+  const isDigital = Boolean(currentProduto.is_digital);
+  const deveControlarEstoque = !currentProduto.isComposto && !isDigital;
   const controlarEstoqueManual = currentProduto.controlar_estoque_manual ?? false;
   
   // Handler customizado para cálculo bidirecional de margem de lucro
@@ -746,8 +747,17 @@ const ProdutoTabPrecoEstoque = ({ currentProduto, handleInputChange }) => {
             </p>
           </div>
         )}
+
+        {isDigital && (
+          <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md">
+            <p className="text-xs text-blue-800 dark:text-blue-200">
+              Produto digital ativo: o sistema ignora controle e baixa de estoque neste produto.
+            </p>
+          </div>
+        )}
         
          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {!isDigital && (
             <div>
                 <Label htmlFor="estoque">
                   Estoque Atual {isUnidadeMetroQuadrado ? '(m²)' : ''}
@@ -763,13 +773,15 @@ const ProdutoTabPrecoEstoque = ({ currentProduto, handleInputChange }) => {
                   placeholder="0"
                   required={controlarEstoqueManual && !isUnidadeMetroQuadrado}
                   readOnly={isUnidadeMetroQuadrado}
-                  disabled={!controlarEstoqueManual && !isUnidadeMetroQuadrado && deveControlarEstoque}
-                  className={isUnidadeMetroQuadrado ? "bg-gray-100 cursor-not-allowed" : (!controlarEstoqueManual && !isUnidadeMetroQuadrado ? "bg-gray-100 cursor-not-allowed" : "")}
+                  disabled={isDigital || (!controlarEstoqueManual && !isUnidadeMetroQuadrado && deveControlarEstoque)}
+                  className={isUnidadeMetroQuadrado || isDigital ? "bg-gray-100 cursor-not-allowed" : (!controlarEstoqueManual && !isUnidadeMetroQuadrado ? "bg-gray-100 cursor-not-allowed" : "")}
                 />
                 {isUnidadeMetroQuadrado ? (
                   <p className="text-xs text-gray-500 mt-1">
                     Calculado automaticamente: (Largura × Altura) × Quantidade de Chapas = {currentProduto.estoque || '0'} m²
                   </p>
+                ) : isDigital ? (
+                  <p className="text-xs text-gray-500 mt-1">Produto digital não utiliza estoque.</p>
                 ) : !deveControlarEstoque ? (
                   <p className="text-xs text-gray-500 mt-1">Controle de estoque desativado para item composto.</p>
                 ) : !controlarEstoqueManual ? (
@@ -778,6 +790,8 @@ const ProdutoTabPrecoEstoque = ({ currentProduto, handleInputChange }) => {
                   <p className="text-xs text-gray-500 mt-1">Informe a quantidade em estoque.</p>
                 )}
             </div>
+            )}
+            {!isDigital && (
             <div>
                 <Label htmlFor="estoque_minimo">
                   Estoque Mínimo
@@ -792,16 +806,12 @@ const ProdutoTabPrecoEstoque = ({ currentProduto, handleInputChange }) => {
                   onChange={handleInputChange} 
                   placeholder="1"
                   required={controlarEstoqueManual && !isUnidadeMetroQuadrado}
-                  disabled={!controlarEstoqueManual && !isUnidadeMetroQuadrado}
-                  className={!controlarEstoqueManual && !isUnidadeMetroQuadrado ? "bg-gray-100 cursor-not-allowed" : ""}
+                  disabled={isDigital || (!controlarEstoqueManual && !isUnidadeMetroQuadrado)}
+                  className={isDigital || (!controlarEstoqueManual && !isUnidadeMetroQuadrado) ? "bg-gray-100 cursor-not-allowed" : ""}
                 />
                 <p className="text-xs text-gray-500 mt-1">Aceita valores fracionados (ex: 1.5, 5.25)</p>
             </div>
-            <div>
-                <Label htmlFor="estoque_minimo">Estoque Mínimo</Label>
-                <Input id="estoque_minimo" name="estoque_minimo" type="number" step="0.01" value={currentProduto.estoque_minimo} onChange={handleInputChange} placeholder="1"/>
-                <p className="text-xs text-gray-500 mt-1">Aceita valores fracionados (ex: 1.5, 5.25)</p>
-            </div>
+            )}
             <div>
                 <Label htmlFor="valor_minimo">Valor Mínimo de Venda (R$)</Label>
                 <Input 
@@ -817,7 +827,7 @@ const ProdutoTabPrecoEstoque = ({ currentProduto, handleInputChange }) => {
             </div>
         </div>
         {/* Alerta de estoque baixo para produto sem variações */}
-        {!currentProduto.variacoes_ativa && (currentProduto.estoque && currentProduto.estoque_minimo && parseFloat(currentProduto.estoque) <= parseFloat(currentProduto.estoque_minimo)) && (
+        {!isDigital && !currentProduto.variacoes_ativa && (currentProduto.estoque && currentProduto.estoque_minimo && parseFloat(currentProduto.estoque) <= parseFloat(currentProduto.estoque_minimo)) && (
             <div className="flex items-center text-sm text-orange-600 bg-orange-100 dark:bg-orange-900/30 p-2 rounded-md">
                 <AlertTriangle size={16} className="mr-2"/>
                 Atenção: Estoque atual igual ou abaixo do mínimo!
@@ -825,7 +835,7 @@ const ProdutoTabPrecoEstoque = ({ currentProduto, handleInputChange }) => {
         )}
         
         {/* Alerta específico para variações com estoque baixo */}
-        {currentProduto.variacoes_ativa && currentProduto.variacoes && currentProduto.variacoes.length > 0 && (() => {
+        {!isDigital && currentProduto.variacoes_ativa && currentProduto.variacoes && currentProduto.variacoes.length > 0 && (() => {
             const variacoesComEstoqueBaixo = currentProduto.variacoes.filter(variacao => {
                 const estoqueBruto = variacao.estoque_var;
                 const estoqueFoiInformado = estoqueBruto !== '' && estoqueBruto !== null && estoqueBruto !== undefined;

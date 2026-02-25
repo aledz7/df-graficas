@@ -249,17 +249,18 @@ export const usePDV = (vendedorAtualProp) => {
     
     // Verificar se o produto é composto
     const isComposto = produto.isComposto || produto.is_composto;
+    const isDigital = produto.is_digital === true || produto.is_digital === 1 || produto.is_digital === '1';
     
     
     // Para produtos com variações, sempre controlar estoque da variação específica
     // Produtos compostos só não controlam estoque se não tiverem variações
     const temVariacoes = produto.variacoes && Array.isArray(produto.variacoes) && produto.variacoes.length > 0;
     
-    // SEMPRE controlar estoque para produtos com variações
-    let deveControlarEstoque = true; // Por padrão, sempre controlar estoque
+    // SEMPRE controlar estoque para produtos com variações, exceto se for digital
+    let deveControlarEstoque = !isDigital;
     
     // Só não controlar estoque se for produto composto SEM variações
-    if (isComposto && !temVariacoes) {
+    if (!isDigital && isComposto && !temVariacoes) {
         deveControlarEstoque = false;
     }
     
