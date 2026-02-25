@@ -108,6 +108,7 @@ const TreinamentoProgressoPage = lazy(() => import('@/pages/TreinamentoProgresso
 const NovoTreinamentoPage = lazy(() => import('@/pages/NovoTreinamentoPage'));
 const MeusTreinamentosPage = lazy(() => import('@/pages/MeusTreinamentosPage'));
 const DetalhesTreinamentoPage = lazy(() => import('@/pages/DetalhesTreinamentoPage'));
+const RelatorioTreinamentosPage = lazy(() => import('@/pages/RelatorioTreinamentosPage'));
 const CentralNotificacoesPage = lazy(() => import('@/pages/CentralNotificacoesPage'));
 const TreinamentoRelatorioSetorPage = lazy(() => import('@/pages/TreinamentoRelatorioSetorPage'));
 const TreinamentoAvisosPage = lazy(() => import('@/pages/TreinamentoAvisosPage'));
@@ -234,6 +235,7 @@ const AppRoutes = ({ logoUrl, nomeEmpresa, vendedorAtual, theme, setTheme, setAp
       <Route path="/ferramentas/novo-treinamento" element={<NovoTreinamentoPage />} />
       <Route path="/ferramentas/meus-treinamentos" element={<MeusTreinamentosPage />} />
       <Route path="/ferramentas/treinamento/:id" element={<DetalhesTreinamentoPage />} />
+      <Route path="/relatorios/treinamentos" element={<RelatorioTreinamentosPage />} />
       <Route path="/relatorios/treinamento-por-setor" element={<TreinamentoRelatorioSetorPage />} />
       <Route path="/ferramentas/treinamento-avisos" element={<TreinamentoAvisosPage />} />
       <Route path="/ferramentas/central-notificacoes" element={<CentralNotificacoesPage />} />
