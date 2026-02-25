@@ -2418,11 +2418,25 @@ const OSItemForm = ({
   const subtotalItemDisplay = Number.isFinite(subtotalCalculadoLocal) 
     ? subtotalCalculadoLocal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
     : '0,00';
+  const valorVendaItemDisplay = Number.isFinite(subtotalCalculadoLocal)
+    ? subtotalCalculadoLocal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+    : 'R$ 0,00';
   const valorUnitarioM2Display = currentServico.valor_unitario_m2 ? formatToDisplay(currentServico.valor_unitario_m2, 2) : '';
   const pecasPorChapaDisplay = Number.isFinite(pecasPorChapa) ? pecasPorChapa.toLocaleString('pt-BR') : '0';
   const chapasNecessariasDisplay = Number.isFinite(chapasNecessarias) ? chapasNecessarias.toLocaleString('pt-BR') : '0';
   const custoTotalDisplay = Number.isFinite(custoTotal) ? custoTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ 0,00';
   const custoUnitarioDisplay = Number.isFinite(custoUnitario) ? custoUnitario.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ 0,00';
+  const quantidadeBaseLucro = parseInt(
+    sanitizeIntegerInput(currentServico?.consumo_quantidade_solicitada || currentServico?.quantidade || ''),
+    10
+  ) || 0;
+  const lucroTotalMaterial = Number.isFinite(subtotalCalculadoLocal) && Number.isFinite(custoTotal)
+    ? subtotalCalculadoLocal - custoTotal
+    : 0;
+  const lucroUnitarioMaterial = quantidadeBaseLucro > 0 ? (lucroTotalMaterial / quantidadeBaseLucro) : 0;
+  const lucroMaterialPositivo = lucroTotalMaterial >= 0;
+  const lucroTotalMaterialDisplay = lucroTotalMaterial.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const lucroUnitarioMaterialDisplay = lucroUnitarioMaterial.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const aproveitamentoDisplay = Number.isFinite(aproveitamentoPercentual) ? `${aproveitamentoPercentual.toFixed(2)}%` : '0%';
 
   const formatMetrosQuadradosDisplay = useCallback((valor) => {
@@ -2733,7 +2747,7 @@ const OSItemForm = ({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
               <div className="rounded-md bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-3">
                 <p className="text-xs text-blue-700 dark:text-blue-200">Peças por chapa</p>
                 <p className="text-lg font-semibold text-blue-900 dark:text-blue-50">{pecasPorChapaDisplay}</p>
@@ -2750,6 +2764,15 @@ const OSItemForm = ({
                 <p className="text-xs text-blue-700 dark:text-blue-200">Custo unitário por peça</p>
                 <p className="text-lg font-semibold text-blue-900 dark:text-blue-50">{custoUnitarioDisplay}</p>
                 <p className="text-[11px] text-blue-700/70 dark:text-blue-200/70 mt-1">Aproveitamento: {aproveitamentoDisplay}</p>
+              </div>
+              <div className="rounded-md bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 p-3">
+                <p className="text-xs text-indigo-700 dark:text-indigo-200">Venda deste item</p>
+                <p className="text-lg font-semibold text-indigo-900 dark:text-indigo-50">{valorVendaItemDisplay}</p>
+              </div>
+              <div className={`rounded-md border p-3 ${lucroMaterialPositivo ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800' : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'}`}>
+                <p className={`text-xs ${lucroMaterialPositivo ? 'text-emerald-700 dark:text-emerald-200' : 'text-red-700 dark:text-red-200'}`}>Lucro estimado por material</p>
+                <p className={`text-lg font-semibold ${lucroMaterialPositivo ? 'text-emerald-900 dark:text-emerald-50' : 'text-red-900 dark:text-red-50'}`}>{lucroTotalMaterialDisplay}</p>
+                <p className={`text-[11px] mt-1 ${lucroMaterialPositivo ? 'text-emerald-700/70 dark:text-emerald-200/70' : 'text-red-700/70 dark:text-red-200/70'}`}>~ {lucroUnitarioMaterialDisplay}/peça</p>
               </div>
             </div>
 

@@ -123,12 +123,20 @@ export const formatarDadosConsumoMaterialParaDescricao = (dadosConsumoMaterial, 
     const custoUnitario = quantidadeSolicitada > 0 ? custoTotal / quantidadeSolicitada : 0;
     const aproveitamento = areaChapa > 0 ? ((pecasPorChapa * areaPeca) / areaChapa) * 100 : 0;
     const metrosUtilizados = chapasNecessarias * areaChapa;
+    const valorVendaItem = safeParse(item?.subtotal_item, 0);
+    const lucroMaterialTotal = valorVendaItem - custoTotal;
+    const lucroMaterialUnitario = quantidadeSolicitada > 0 ? lucroMaterialTotal / quantidadeSolicitada : 0;
     
     descricao += `\n=== CÁLCULOS ===\n`;
     descricao += `Peças por chapa: ${pecasPorChapa}\n`;
     descricao += `Chapas necessárias: ${chapasNecessarias}\n`;
     descricao += `Custo total do material: R$ ${formatCurrency(custoTotal)}\n`;
     descricao += `Custo unitário por peça: R$ ${formatCurrency(custoUnitario)}\n`;
+    if (valorVendaItem > 0) {
+      descricao += `Valor de venda do item: R$ ${formatCurrency(valorVendaItem)}\n`;
+      descricao += `Lucro estimado por material: R$ ${formatCurrency(lucroMaterialTotal)}\n`;
+      descricao += `Lucro unitário estimado: R$ ${formatCurrency(lucroMaterialUnitario)}\n`;
+    }
     descricao += `Aproveitamento: ${formatDecimal(aproveitamento, 2)}%\n`;
     descricao += `m² necessários: ${formatMetros(metrosUtilizados)}\n`;
   }

@@ -3,6 +3,8 @@ import { chatService } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { applyChatEffects, playNotificationSound } from '@/components/chat/ChatEffects';
 
+const CHAT_NOTIFICATION_POLL_INTERVAL_MS = 10000;
+
 /**
  * Hook para gerenciar notificações de chat globalmente
  */
@@ -10,9 +12,9 @@ export function useChatNotifications(chatOpen = false, activeThreadId = null) {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState([]);
   const [lastMessageIds, setLastMessageIds] = useState(new Set());
-  const previousUnreadCountRef = useRef(0);
   const pollingIntervalRef = useRef(null);
   const lastCheckedRef = useRef(new Date());
+  const isCheckingRef = useRef(false);
 
   /**
    * Buscar mensagens não lidas recentes
@@ -102,51 +104,31 @@ export function useChatNotifications(chatOpen = false, activeThreadId = null) {
    * Polling para novas mensagens
    */
   useEffect(() => {
-    if (!user) return;
+    if (!user || chatOpen) return;
 
     // Verificar mensagens não lidas periodicamente
     const checkForNewMessages = async () => {
-      const newMessages = await fetchUnreadMessages();
-      
-      newMessages.forEach(msg => {
-        addNotification(msg);
-      });
-
-      // Atualizar timestamp da última verificação
-      lastCheckedRef.current = new Date();
-
-      // Verificar contagem de não lidas para efeitos visuais
+      if (isCheckingRef.current) return;
+      isCheckingRef.current = true;
       try {
-        const countResponse = await chatService.getUnreadCount();
-        if (countResponse.data.success) {
-          const currentCount = countResponse.data.data.count || 0;
-          
-          // Se aumentou a contagem e há mensagens novas, aplicar efeitos
-          if (currentCount > previousUnreadCountRef.current && newMessages.length > 0) {
-            const chatIcon = document.getElementById('chat-icon-button');
-            if (chatIcon) {
-              const hasUrgent = newMessages.some(m => m.isUrgent);
-              applyChatEffects(chatIcon, hasUrgent);
-              
-              const isSilentMode = localStorage.getItem('chat_silent_mode') === 'true';
-              if (!isSilentMode) {
-                playNotificationSound();
-              }
-            }
-          }
-          
-          previousUnreadCountRef.current = currentCount;
-        }
-      } catch (error) {
-        console.error('Erro ao verificar contagem:', error);
+        const newMessages = await fetchUnreadMessages();
+        
+        newMessages.forEach(msg => {
+          addNotification(msg);
+        });
+
+        // Atualizar timestamp da última verificação
+        lastCheckedRef.current = new Date();
+      } finally {
+        isCheckingRef.current = false;
       }
     };
 
     // Verificar imediatamente
     checkForNewMessages();
 
-    // Configurar polling a cada 3 segundos
-    pollingIntervalRef.current = setInterval(checkForNewMessages, 3000);
+    // Configurar polling a cada 10 segundos
+    pollingIntervalRef.current = setInterval(checkForNewMessages, CHAT_NOTIFICATION_POLL_INTERVAL_MS);
 
     return () => {
       if (pollingIntervalRef.current) {
