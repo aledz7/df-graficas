@@ -23,6 +23,7 @@ class ProdutoController extends ResourceController
         'estoque' => 'sometimes|numeric|min:0',
         'estoque_minimo' => 'sometimes|numeric|min:0',
         'variacao_obrigatoria' => 'sometimes|boolean',
+        'is_digital' => 'sometimes|boolean',
         'categoria_id' => 'required|exists:categorias,id',
         'subcategoria_id' => 'nullable|exists:subcategorias,id',
         'unidade' => 'nullable|string|max:10',
@@ -47,6 +48,7 @@ class ProdutoController extends ResourceController
         'estoque' => 'sometimes|numeric|min:0',
         'estoque_minimo' => 'sometimes|numeric|min:0',
         'variacao_obrigatoria' => 'sometimes|boolean',
+        'is_digital' => 'sometimes|boolean',
         'categoria_id' => 'sometimes|exists:categorias,id',
         'subcategoria_id' => 'nullable|exists:subcategorias,id',
         'unidade' => 'nullable|string|max:10',
@@ -174,6 +176,30 @@ class ProdutoController extends ResourceController
     }
 
     /**
+     * Aplica regras de estoque para produtos digitais.
+     */
+    private function applyDigitalStockRules(array &$data): void
+    {
+        $isDigital = filter_var($data['is_digital'] ?? false, FILTER_VALIDATE_BOOLEAN);
+
+        if ($isDigital) {
+            $data['estoque'] = 0;
+            $data['estoque_minimo'] = 0;
+            $data['controlar_estoque_manual'] = false;
+
+            if (!empty($data['variacoes']) && is_array($data['variacoes'])) {
+                $data['variacoes'] = array_map(function ($variacao) {
+                    if (!is_array($variacao)) {
+                        return $variacao;
+                    }
+                    $variacao['estoque_var'] = 0;
+                    return $variacao;
+                }, $data['variacoes']);
+            }
+        }
+    }
+
+    /**
      * Limpar referências de imagens que não existem no storage
      */
     private function limparReferenciasImagens($produto)
@@ -252,6 +278,7 @@ class ProdutoController extends ResourceController
         try {
             $produtoData = $payload;
             $produtoData['tenant_id'] = auth()->user()->tenant_id;
+            $this->applyDigitalStockRules($produtoData);
 
             // Gerar codigo_produto automaticamente se não vier no request
             // ou se o código já existir para este tenant (retry com novo código)
@@ -337,6 +364,7 @@ class ProdutoController extends ResourceController
 
         try {
             $produtoData = $payload;
+            $this->applyDigitalStockRules($produtoData);
             
             // Limpar referências de imagens que não existem
             $produtoData = $this->limparReferenciasImagens($produtoData);
@@ -440,6 +468,10 @@ class ProdutoController extends ResourceController
             return $this->notFound('Produto não encontrado');
         }
 
+        if ((bool) ($produto->is_digital ?? false)) {
+            return $this->error('Produto digital não possui controle de estoque', 422);
+        }
+
         $quantidade = $request->input('quantidade');
         
         if ($request->input('tipo') === 'entrada') {
@@ -489,6 +521,7 @@ class ProdutoController extends ResourceController
             // Buscar produtos com estoque baixo baseado na porcentagem configurada
             $query = Produto::where('status', true)
                            ->where('tenant_id', $user->tenant_id)
+                           ->where('is_digital', false)
                            ->whereRaw('(estoque / NULLIF(estoque_minimo, 0)) * 100 <= ?', [$percentualAlerta])
                            ->where('estoque_minimo', '>', 0)
                            ->with($this->with);
@@ -498,6 +531,7 @@ class ProdutoController extends ResourceController
             // Também incluir produtos com estoque menor que o mínimo (independente do percentual)
             $produtosAbaixoMinimo = Produto::where('status', true)
                                           ->where('tenant_id', $user->tenant_id)
+                                          ->where('is_digital', false)
                                           ->whereRaw('estoque < estoque_minimo')
                                           ->where('estoque_minimo', '>', 0)
                                           ->with($this->with)
@@ -509,6 +543,7 @@ class ProdutoController extends ResourceController
             // Buscar produtos que têm variações com estoque baixo (independente do estoque principal)
             $produtosComVariacoesBaixas = Produto::where('status', true)
                                                  ->where('tenant_id', $user->tenant_id)
+                                                 ->where('is_digital', false)
                                                  ->where('variacoes_ativa', true)
                                                  ->where('estoque_minimo', '>', 0)
                                                  ->with($this->with)

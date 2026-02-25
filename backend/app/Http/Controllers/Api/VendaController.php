@@ -546,6 +546,15 @@ class VendaController extends ResourceController
             if ($venda->status === 'concluida' || $operacao === 'increment') {
                 $produto = Produto::find($item['produto_id']);
                 if ($produto) {
+                    if ((bool) ($produto->is_digital ?? false)) {
+                        \Log::info('[Estoque] Produto digital sem controle de estoque, pulando ajuste', [
+                            'produto_id' => $produto->id,
+                            'produto_nome' => $produto->nome,
+                            'operacao' => $operacao,
+                        ]);
+                        continue;
+                    }
+
                     $isComposto = (bool) ($produto->is_composto ?? false);
                     $composicao = $produto->composicao ?? [];
                     
@@ -725,6 +734,14 @@ class VendaController extends ResourceController
             if (!$produto) {
                 \Log::error('Produto não encontrado para ID: ' . $item['produto_id']);
                 return false;
+            }
+
+            if ((bool) ($produto->is_digital ?? false)) {
+                \Log::info('Produto digital sem validação de estoque', [
+                    'produto_id' => $produto->id,
+                    'nome' => $produto->nome,
+                ]);
+                continue;
             }
 
             $isComposto = (bool) ($produto->is_composto ?? false);
