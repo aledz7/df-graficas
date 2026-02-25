@@ -1852,7 +1852,8 @@ export const cursoService = {
   atualizarProgresso: (id, data) => api.put(`/api/cursos/${id}/progresso`, data),
   concluirTreinamento: (id, data = {}) => api.post(`/api/cursos/${id}/concluir`, data),
   getRelatorio: (params = {}) => api.get('/api/cursos/relatorio', { params }),
-  getRelatorioEstatisticas: () => api.get('/api/cursos/relatorio/estatisticas'),
+  getRelatorioEstatisticas: (params = {}) => api.get('/api/cursos/relatorio/estatisticas', { params }),
+  getRelatorioExportar: (params = {}) => api.get('/api/cursos/relatorio/exportar', { params }),
 };
 
 // Serviços para Relatório de Produção

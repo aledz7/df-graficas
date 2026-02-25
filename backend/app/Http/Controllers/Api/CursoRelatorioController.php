@@ -265,17 +265,85 @@ class CursoRelatorioController extends Controller
         try {
             $tenantId = $request->user()->tenant_id;
 
-            $total = CursoProgresso::where('tenant_id', $tenantId)->count();
-            $concluidos = CursoProgresso::where('tenant_id', $tenantId)
+            // Filtros opcionais
+            $dataInicio = $request->input('data_inicio');
+            $dataFim = $request->input('data_fim');
+            $area = $request->input('area');
+
+            $query = CursoProgresso::where('curso_progresso.tenant_id', $tenantId)
+                ->join('users', 'curso_progresso.usuario_id', '=', 'users.id')
+                ->join('cursos', 'curso_progresso.curso_id', '=', 'cursos.id');
+
+            // Aplicar filtros
+            if ($dataInicio) {
+                $query->where(function($q) use ($dataInicio) {
+                    $q->where('curso_progresso.data_inicio', '>=', $dataInicio)
+                      ->orWhere('curso_progresso.data_conclusao', '>=', $dataInicio);
+                });
+            }
+
+            if ($dataFim) {
+                $query->where(function($q) use ($dataFim) {
+                    $q->where('curso_progresso.data_inicio', '<=', $dataFim . ' 23:59:59')
+                      ->orWhere('curso_progresso.data_conclusao', '<=', $dataFim . ' 23:59:59');
+                });
+            }
+
+            if ($area && $area !== 'todas') {
+                $query->where(function($q) use ($area) {
+                    $q->where('users.setor', $area)
+                      ->orWhere('cursos.setor', $area);
+                });
+            }
+
+            $total = $query->count();
+            $concluidos = (clone $query)->where('curso_progresso.concluido', true)->count();
+            $emAndamento = (clone $query)
+                ->where('curso_progresso.iniciado', true)
+                ->where('curso_progresso.concluido', false)
+                ->count();
+            $naoIniciados = (clone $query)->where('curso_progresso.iniciado', false)->count();
+            
+            // Treinamentos atrasados
+            $atrasados = (clone $query)
+                ->where('curso_progresso.concluido', false)
+                ->where('cursos.obrigatorio', true)
+                ->where('cursos.prazo_conclusao', '<', now())
+                ->count();
+
+            // Taxa de conclusão
+            $taxaConclusao = $total > 0 ? round(($concluidos / $total) * 100, 2) : 0;
+
+            // Tempo médio de conclusão
+            $tempoMedio = CursoProgresso::where('curso_progresso.tenant_id', $tenantId)
                 ->where('concluido', true)
-                ->count();
-            $emAndamento = CursoProgresso::where('tenant_id', $tenantId)
-                ->where('iniciado', true)
-                ->where('concluido', false)
-                ->count();
-            $naoIniciados = CursoProgresso::where('tenant_id', $tenantId)
-                ->where('iniciado', false)
-                ->count();
+                ->whereNotNull('tempo_total_segundos')
+                ->where('tempo_total_segundos', '>', 0)
+                ->avg('tempo_total_segundos') ?? 0;
+
+            $horasMedias = floor($tempoMedio / 3600);
+            $minutosMedios = floor(($tempoMedio % 3600) / 60);
+
+            // Estatísticas por setor
+            $porSetor = DB::table('curso_progresso')
+                ->join('users', 'curso_progresso.usuario_id', '=', 'users.id')
+                ->join('cursos', 'curso_progresso.curso_id', '=', 'cursos.id')
+                ->where('curso_progresso.tenant_id', $tenantId)
+                ->select(
+                    DB::raw('COALESCE(users.setor, cursos.setor) as setor'),
+                    DB::raw('COUNT(*) as total'),
+                    DB::raw('SUM(CASE WHEN curso_progresso.concluido = 1 THEN 1 ELSE 0 END) as concluidos')
+                )
+                ->groupBy('setor')
+                ->get()
+                ->map(function($item) {
+                    return [
+                        'setor' => $item->setor ?? 'Não definido',
+                        'total' => $item->total,
+                        'concluidos' => $item->concluidos,
+                        'taxa_conclusao' => $item->total > 0 ? round(($item->concluidos / $item->total) * 100, 2) : 0,
+                    ];
+                });
 
             return response()->json([
                 'success' => true,
@@ -284,6 +352,15 @@ class CursoRelatorioController extends Controller
                     'concluidos' => $concluidos,
                     'em_andamento' => $emAndamento,
                     'nao_iniciados' => $naoIniciados,
+                    'atrasados' => $atrasados,
+                    'taxa_conclusao' => $taxaConclusao,
+                    'tempo_medio' => [
+                        'horas' => $horasMedias,
+                        'minutos' => $minutosMedios,
+                        'total_segundos' => round($tempoMedio),
+                        'formatado' => "{$horasMedias}h {$minutosMedios}m",
+                    ],
+                    'por_setor' => $porSetor,
                 ],
             ]);
         } catch (\Exception $e) {
@@ -293,5 +370,147 @@ class CursoRelatorioController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Obter dados para exportação (sem paginação)
+     */
+    public function exportar(Request $request): JsonResponse
+    {
+        try {
+            $tenantId = $request->user()->tenant_id;
+
+            // Aplicar mesmos filtros do index
+            $dataInicio = $request->input('data_inicio');
+            $dataFim = $request->input('data_fim');
+            $area = $request->input('area');
+            $usuarioId = $request->input('usuario_id');
+            $status = $request->input('status');
+            $busca = $request->input('busca');
+
+            $query = CursoProgresso::where('curso_progresso.tenant_id', $tenantId)
+                ->join('users', 'curso_progresso.usuario_id', '=', 'users.id')
+                ->join('cursos', 'curso_progresso.curso_id', '=', 'cursos.id')
+                ->select([
+                    'curso_progresso.id',
+                    'curso_progresso.usuario_id',
+                    'curso_progresso.curso_id',
+                    'curso_progresso.iniciado',
+                    'curso_progresso.concluido',
+                    'curso_progresso.data_inicio',
+                    'curso_progresso.data_conclusao',
+                    'curso_progresso.tempo_total_segundos',
+                    'curso_progresso.percentual_concluido',
+                    'users.name as colaborador_nome',
+                    'users.cargo as colaborador_cargo',
+                    'users.setor as colaborador_setor',
+                    'cursos.titulo as treinamento_nome',
+                    'cursos.setor as treinamento_setor',
+                    'cursos.obrigatorio',
+                    'cursos.prazo_conclusao',
+                    'cursos.nivel',
+                ]);
+
+            // Aplicar filtros (mesma lógica do index)
+            if ($dataInicio) {
+                $query->where(function($q) use ($dataInicio) {
+                    $q->where('curso_progresso.data_inicio', '>=', $dataInicio)
+                      ->orWhere('curso_progresso.data_conclusao', '>=', $dataInicio);
+                });
+            }
+
+            if ($dataFim) {
+                $query->where(function($q) use ($dataFim) {
+                    $q->where('curso_progresso.data_inicio', '<=', $dataFim . ' 23:59:59')
+                      ->orWhere('curso_progresso.data_conclusao', '<=', $dataFim . ' 23:59:59');
+                });
+            }
+
+            if ($area && $area !== 'todas') {
+                $query->where(function($q) use ($area) {
+                    $q->where('users.setor', $area)
+                      ->orWhere('users.cargo', 'like', "%{$area}%")
+                      ->orWhere('cursos.setor', $area);
+                });
+            }
+
+            if ($usuarioId) {
+                $query->where('curso_progresso.usuario_id', $usuarioId);
+            }
+
+            if ($busca) {
+                $query->where(function($q) use ($busca) {
+                    $q->where('users.name', 'like', "%{$busca}%")
+                      ->orWhere('cursos.titulo', 'like', "%{$busca}%");
+                });
+            }
+
+            if ($status && $status !== 'todos') {
+                $query->where(function($q) use ($status) {
+                    if ($status === 'nao_iniciado') {
+                        $q->where('curso_progresso.iniciado', false);
+                    } elseif ($status === 'em_andamento') {
+                        $q->where('curso_progresso.iniciado', true)
+                          ->where('curso_progresso.concluido', false);
+                    } elseif ($status === 'concluido') {
+                        $q->where('curso_progresso.concluido', true);
+                    } elseif ($status === 'atrasado') {
+                        $q->where('curso_progresso.concluido', false)
+                          ->where('cursos.obrigatorio', true)
+                          ->where('cursos.prazo_conclusao', '<', now());
+                    }
+                });
+            }
+
+            $registros = $query->orderBy('curso_progresso.data_inicio', 'desc')->get();
+
+            // Preparar dados para exportação
+            $dados = $registros->map(function($registro) {
+                $statusCalculado = $this->calcularStatus($registro);
+                $duracao = $this->calcularDuracao($registro);
+                $dentroPrazo = $this->verificarDentroPrazo($registro);
+
+                return [
+                    'colaborador' => $registro->colaborador_nome ?? 'N/A',
+                    'cargo' => $registro->colaborador_cargo ?? 'N/A',
+                    'setor' => $registro->colaborador_setor ?? $registro->treinamento_setor ?? 'N/A',
+                    'treinamento' => $registro->treinamento_nome ?? 'N/A',
+                    'nivel' => $registro->nivel ?? 'N/A',
+                    'obrigatorio' => $registro->obrigatorio ? 'Sim' : 'Não',
+                    'status' => $this->getStatusLabel($statusCalculado),
+                    'percentual' => ($registro->percentual_concluido ?? 0) . '%',
+                    'data_inicio' => $registro->data_inicio ? $registro->data_inicio->format('d/m/Y H:i') : 'N/A',
+                    'data_conclusao' => $registro->data_conclusao ? $registro->data_conclusao->format('d/m/Y H:i') : 'N/A',
+                    'duracao' => $duracao['formatado'],
+                    'prazo_conclusao' => $registro->prazo_conclusao ? Carbon::parse($registro->prazo_conclusao)->format('d/m/Y') : 'N/A',
+                    'dentro_prazo' => $dentroPrazo === null ? 'N/A' : ($dentroPrazo ? 'Sim' : 'Não'),
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'data' => $dados,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Erro ao obter dados para exportação',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Obter label do status
+     */
+    private function getStatusLabel($status)
+    {
+        return match($status) {
+            'nao_iniciado' => 'Não Iniciado',
+            'em_andamento' => 'Em Andamento',
+            'concluido' => 'Concluído',
+            'atrasado' => 'Atrasado',
+            default => 'Desconhecido',
+        };
     }
 }

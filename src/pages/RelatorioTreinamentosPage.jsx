@@ -8,6 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/components/ui/use-toast';
 import { cursoService } from '@/services/api';
+import * as XLSX from 'xlsx';
+import { exportToPdf } from '@/lib/reportGenerator';
 import {
   FileText,
   Search,
@@ -167,6 +169,162 @@ const RelatorioTreinamentosPage = () => {
       setSelectedRows(selectedRows.filter(r => r !== id));
     } else {
       setSelectedRows([...selectedRows, id]);
+    }
+  };
+
+  const handleExportExcel = async () => {
+    try {
+      setLoading(true);
+      const params = {
+        data_inicio: dataInicio,
+        data_fim: dataFim,
+        area: area !== 'todas' ? area : null,
+        status: status !== 'todos' ? status : null,
+        busca: busca || null,
+      };
+
+      const response = await cursoService.getRelatorioExportar(params);
+      if (response.data.success && response.data.data) {
+        const dadosExportacao = response.data.data;
+
+        // Preparar dados para Excel
+        const dadosExcel = dadosExportacao.map(item => ({
+          'Colaborador': item.colaborador,
+          'Cargo': item.cargo,
+          'Setor': item.setor,
+          'Treinamento': item.treinamento,
+          'Nível': item.nivel,
+          'Obrigatório': item.obrigatorio,
+          'Status': item.status,
+          'Percentual': item.percentual,
+          'Data Início': item.data_inicio,
+          'Data Conclusão': item.data_conclusao,
+          'Duração': item.duracao,
+          'Prazo Conclusão': item.prazo_conclusao,
+          'Dentro do Prazo': item.dentro_prazo,
+        }));
+
+        // Criar workbook
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.json_to_sheet(dadosExcel);
+
+        // Ajustar largura das colunas
+        const colWidths = [
+          { wch: 20 }, // Colaborador
+          { wch: 15 }, // Cargo
+          { wch: 15 }, // Setor
+          { wch: 30 }, // Treinamento
+          { wch: 12 }, // Nível
+          { wch: 12 }, // Obrigatório
+          { wch: 15 }, // Status
+          { wch: 12 }, // Percentual
+          { wch: 18 }, // Data Início
+          { wch: 18 }, // Data Conclusão
+          { wch: 12 }, // Duração
+          { wch: 18 }, // Prazo Conclusão
+          { wch: 15 }, // Dentro do Prazo
+        ];
+        ws['!cols'] = colWidths;
+
+        XLSX.utils.book_append_sheet(wb, ws, 'Relatório de Treinamentos');
+        
+        // Gerar nome do arquivo
+        const nomeArquivo = `relatorio_treinamentos_${format(new Date(), 'yyyy-MM-dd')}.xlsx`;
+        XLSX.writeFile(wb, nomeArquivo);
+
+        toast({
+          title: 'Sucesso',
+          description: 'Relatório exportado para Excel com sucesso!',
+          variant: 'default',
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao exportar para Excel:', error);
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível exportar o relatório para Excel',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleExportPdf = async () => {
+    try {
+      setLoading(true);
+      const params = {
+        data_inicio: dataInicio,
+        data_fim: dataFim,
+        area: area !== 'todas' ? area : null,
+        status: status !== 'todos' ? status : null,
+        busca: busca || null,
+      };
+
+      const response = await cursoService.getRelatorioExportar(params);
+      if (response.data.success && response.data.data) {
+        const dadosExportacao = response.data.data;
+
+        // Preparar cabeçalhos e dados para PDF
+        const headers = [
+          'Colaborador',
+          'Setor',
+          'Treinamento',
+          'Status',
+          'Percentual',
+          'Data Início',
+          'Data Conclusão',
+          'Duração'
+        ];
+
+        const data = dadosExportacao.map(item => [
+          item.colaborador,
+          item.setor,
+          item.treinamento,
+          item.status,
+          item.percentual,
+          item.data_inicio,
+          item.data_conclusao,
+          item.duracao,
+        ]);
+
+        // Resumo
+        const total = dadosExportacao.length;
+        const concluidos = dadosExportacao.filter(d => d.status === 'Concluído').length;
+        const emAndamento = dadosExportacao.filter(d => d.status === 'Em Andamento').length;
+        const atrasados = dadosExportacao.filter(d => d.status === 'Atrasado').length;
+
+        const summary = [
+          { label: 'Total de Registros', value: total },
+          { label: 'Concluídos', value: concluidos },
+          { label: 'Em Andamento', value: emAndamento },
+          { label: 'Atrasados', value: atrasados },
+        ];
+
+        exportToPdf(
+          'Relatório de Treinamentos',
+          headers,
+          data,
+          summary,
+          null,
+          null
+        );
+
+        toast({
+          title: 'Sucesso',
+          description: 'Relatório exportado para PDF com sucesso!',
+          variant: 'default',
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao exportar para PDF:', error);
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível exportar o relatório para PDF',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -445,15 +603,13 @@ const RelatorioTreinamentosPage = () => {
         {/* Exportação */}
         {!loading && dados.length > 0 && (
           <div className="mt-4 flex justify-end gap-2">
-            <Button variant="outline">
+            <Button variant="outline" onClick={handleExportExcel}>
               <Download className="h-4 w-4 mr-2" />
-              Exportar para
+              Exportar Excel
             </Button>
-            <Button variant="outline">
-              Excel
-            </Button>
-            <Button variant="outline">
-              PDF
+            <Button variant="outline" onClick={handleExportPdf}>
+              <Download className="h-4 w-4 mr-2" />
+              Exportar PDF
             </Button>
           </div>
         )}

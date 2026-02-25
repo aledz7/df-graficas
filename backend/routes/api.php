@@ -559,8 +559,13 @@ Route::middleware(['api.auth'])->group(function () {
         Route::post('{id}/iniciar', [\App\Http\Controllers\Api\CursoController::class, 'iniciarTreinamento']);
         Route::put('{id}/progresso', [\App\Http\Controllers\Api\CursoController::class, 'atualizarProgresso']);
         Route::post('{id}/concluir', [\App\Http\Controllers\Api\CursoController::class, 'concluirTreinamento']);
-        Route::get('relatorio', [\App\Http\Controllers\Api\CursoRelatorioController::class, 'index']);
-        Route::get('relatorio/estatisticas', [\App\Http\Controllers\Api\CursoRelatorioController::class, 'estatisticas']);
+        
+        // Relatórios de cursos (apenas administradores)
+        Route::middleware(['ensure.admin'])->group(function () {
+            Route::get('relatorio', [\App\Http\Controllers\Api\CursoRelatorioController::class, 'index']);
+            Route::get('relatorio/estatisticas', [\App\Http\Controllers\Api\CursoRelatorioController::class, 'estatisticas']);
+            Route::get('relatorio/exportar', [\App\Http\Controllers\Api\CursoRelatorioController::class, 'exportar']);
+        });
     });
     Route::apiResource('cursos', \App\Http\Controllers\Api\CursoController::class);
     

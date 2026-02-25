@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { FileText, BarChart2, PieChart, Users, ShoppingBag, Package, TrendingUp, CreditCard, DollarSign, Printer, Box, Wallet, ArrowDownUp, Award, Target, Gift, Trophy, TrendingDown, GraduationCap, User } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useToast } from "@/components/ui/use-toast";
+import { authService } from '@/services/api';
 
 const reportCategories = [
   {
@@ -56,6 +57,7 @@ const reportCategories = [
     title: 'Treinamento',
     icon: GraduationCap,
     reports: [
+      { id: 'treinamentos', title: 'Relatório de Treinamentos', description: 'Relatório completo de treinamentos com filtros avançados e exportação.', icon: GraduationCap, path: '/relatorios/treinamentos' },
       { id: 'treinamento_setor', title: 'Treinamento por Setor', description: 'Relatório de progresso de treinamento por setor da empresa.', icon: GraduationCap, path: '/relatorios/treinamento-por-setor' },
     ]
   }
@@ -64,6 +66,20 @@ const reportCategories = [
 const RelatoriosPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const checkAdmin = async () => {
+      try {
+        const userData = await authService.checkAuth();
+        setIsAdmin(userData?.is_admin || false);
+      } catch (error) {
+        console.error('Erro ao verificar admin:', error);
+        setIsAdmin(false);
+      }
+    };
+    checkAdmin();
+  }, []);
 
   const handleReportNavigation = (path) => {
     const knownPaths = reportCategories.flatMap(cat => cat.reports.map(r => r.path));
@@ -133,7 +149,15 @@ const RelatoriosPage = () => {
               <h2 className="text-2xl font-semibold">{category.title}</h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-              {category.reports.map((report, reportIndex) => (
+              {category.reports
+                .filter(report => {
+                  // Filtrar relatório de treinamentos apenas para admins
+                  if (report.id === 'treinamentos' && !isAdmin) {
+                    return false;
+                  }
+                  return true;
+                })
+                .map((report, reportIndex) => (
                 <motion.div
                   key={report.id}
                   initial={{ opacity: 0, scale: 0.95, y: 10 }}
