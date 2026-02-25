@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Api\BaseController;
 use App\Models\Tenant;
+use App\Models\Scopes\TenantScope;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -16,7 +17,13 @@ class TenantManagerController extends BaseController
     public function index(Request $request): JsonResponse
     {
         $query = Tenant::query()
-            ->withCount(['users', 'produtos', 'clientes', 'vendas', 'orcamentos']);
+            ->withCount([
+                'users',
+                'produtos' => fn ($q) => $q->withoutGlobalScope(TenantScope::class),
+                'clientes' => fn ($q) => $q->withoutGlobalScope(TenantScope::class),
+                'vendas' => fn ($q) => $q->withoutGlobalScope(TenantScope::class),
+                'orcamentos' => fn ($q) => $q->withoutGlobalScope(TenantScope::class),
+            ]);
 
         if ($request->has('ativo') && $request->ativo !== '' && $request->ativo !== null) {
             $query->where('ativo', filter_var($request->ativo, FILTER_VALIDATE_BOOLEAN));
@@ -52,7 +59,13 @@ class TenantManagerController extends BaseController
      */
     public function show(int $id): JsonResponse
     {
-        $tenant = Tenant::withCount(['users', 'produtos', 'clientes', 'vendas', 'orcamentos'])
+        $tenant = Tenant::withCount([
+                'users',
+                'produtos' => fn ($q) => $q->withoutGlobalScope(TenantScope::class),
+                'clientes' => fn ($q) => $q->withoutGlobalScope(TenantScope::class),
+                'vendas' => fn ($q) => $q->withoutGlobalScope(TenantScope::class),
+                'orcamentos' => fn ($q) => $q->withoutGlobalScope(TenantScope::class),
+            ])
             ->find($id);
 
         if (!$tenant) {
