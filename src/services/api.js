@@ -200,7 +200,7 @@ export const clienteService = {
   },
 
   search: async (term, { perPage = 50, page = 1, ativo = true } = {}) => {
-    const params = { per_page: perPage, page, sort_by: 'nome_completo', sort_order: 'asc' };
+    const params = { per_page: perPage, page, sort_by: 'nome_completo', sort_order: 'asc' }; // Ordem alfabética para seleção
     if (term) params.search = term;
     if (ativo !== null) params.ativo = ativo ? 1 : 0;
     const response = await api.get('/api/clientes', { params });

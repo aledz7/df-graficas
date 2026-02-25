@@ -68,8 +68,8 @@ const ClientesPage = ({ vendedorAtual }) => {
       const params = {
         page,
         per_page: PER_PAGE,
-        sort_by: 'nome',
-        sort_order: 'asc',
+        sort_by: 'created_at', // Ordenar por data de criação
+        sort_order: 'desc', // Mais recente primeiro
       };
 
       const search = searchTermRef.current;

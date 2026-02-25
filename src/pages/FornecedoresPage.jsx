@@ -125,6 +125,30 @@ const FornecedoresPage = () => {
         };
     }, [fornecedorAtual.foto]);
 
+    // Função para gerar código automático do fornecedor
+    const gerarCodigoFornecedor = (fornecedoresExistentes) => {
+        const fornecedoresArray = Array.isArray(fornecedoresExistentes) ? fornecedoresExistentes : [];
+        
+        // Buscar o maior número de código existente
+        let maiorNumero = 0;
+        fornecedoresArray.forEach(fornecedor => {
+            if (fornecedor.codigo) {
+                // Extrair número do código (ex: FORN-001 -> 1)
+                const match = fornecedor.codigo.match(/FORN-(\d+)/i);
+                if (match) {
+                    const numero = parseInt(match[1], 10);
+                    if (numero > maiorNumero) {
+                        maiorNumero = numero;
+                    }
+                }
+            }
+        });
+        
+        // Gerar novo código com 3 dígitos (001, 002, etc.)
+        const novoNumero = maiorNumero + 1;
+        return `FORN-${String(novoNumero).padStart(3, '0')}`;
+    };
+
     const handleSave = async () => {
         if (!fornecedorAtual.nome) {
             toast({ title: "Erro", description: "O nome do fornecedor é obrigatório.", variant: "destructive" });
@@ -139,7 +163,13 @@ const FornecedoresPage = () => {
                 updatedFornecedores = (Array.isArray(fornecedores) ? fornecedores : []).map(f => f.id === fornecedorAtual.id ? fornecedorAtual : f);
                 toast({ title: "Sucesso!", description: "Fornecedor atualizado." });
             } else {
-                const newFornecedor = { ...fornecedorAtual, id: `forn-${Date.now()}` };
+                // Gerar código automaticamente se não foi preenchido
+                const codigoGerado = fornecedorAtual.codigo || gerarCodigoFornecedor(fornecedores);
+                const newFornecedor = { 
+                    ...fornecedorAtual, 
+                    id: `forn-${Date.now()}`,
+                    codigo: codigoGerado
+                };
                 updatedFornecedores = [...(Array.isArray(fornecedores) ? fornecedores : []), newFornecedor];
                 toast({ title: "Sucesso!", description: "Fornecedor adicionado." });
             }
@@ -174,9 +204,11 @@ const FornecedoresPage = () => {
 
     const openModal = () => {
         setIsEditing(false);
+        // Gerar código automaticamente ao abrir modal de novo fornecedor
+        const codigoGerado = gerarCodigoFornecedor(fornecedores);
         setFornecedorAtual({
             id: '',
-            codigo: '',
+            codigo: codigoGerado,
             tipo: 'juridica',
             fundacao: '',
             nome: '',
@@ -212,10 +244,18 @@ const FornecedoresPage = () => {
         }
     };
 
-    const filteredFornecedores = (Array.isArray(fornecedores) ? fornecedores : []).filter(f =>
-        f.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (f.responsavel && f.responsavel.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
+    // Filtrar e ordenar fornecedores alfabeticamente por nome
+    const filteredFornecedores = (Array.isArray(fornecedores) ? fornecedores : [])
+        .filter(f =>
+            f.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (f.responsavel && f.responsavel.toLowerCase().includes(searchTerm.toLowerCase()))
+        )
+        .sort((a, b) => {
+            // Ordenar alfabeticamente por nome (ignorando maiúsculas/minúsculas)
+            const nomeA = (a.nome || '').toLowerCase();
+            const nomeB = (b.nome || '').toLowerCase();
+            return nomeA.localeCompare(nomeB, 'pt-BR');
+        });
 
     return (
         <div className="p-4 md:p-6 space-y-6">
@@ -441,10 +481,17 @@ const FornecedoresPage = () => {
                                             <Label htmlFor="codigo">CÓD:</Label>
                                             <Input 
                                                 id="codigo" 
-                                                placeholder="Código"
+                                                placeholder="Gerado automaticamente"
                                                 value={fornecedorAtual.codigo} 
                                                 onChange={(e) => setFornecedorAtual({ ...fornecedorAtual, codigo: e.target.value })} 
+                                                disabled={!isEditing}
+                                                className={!isEditing ? "bg-gray-100 dark:bg-gray-800 cursor-not-allowed" : ""}
                                             />
+                                            {!isEditing && (
+                                                <p className="text-xs text-muted-foreground mt-1">
+                                                    O código será gerado automaticamente ao salvar
+                                                </p>
+                                            )}
                                         </div>
                                         <div>
                                             <Label htmlFor="tipo">TIPO:</Label>

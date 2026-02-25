@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertTriangle, Plus, Trash2, Info } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const TIPOS_PRECIFICACAO = [
   { value: 'unidade', label: 'Por Unidade', descricao: 'Preço fixo por unidade vendida' },
@@ -18,6 +19,64 @@ const TIPOS_PRECIFICACAO = [
 const ProdutoTabPrecoEstoque = ({ currentProduto, handleInputChange }) => {
   const isUnidadeMetroQuadrado = (currentProduto.unidadeMedida || currentProduto.unidade_medida) === 'm2';
   const deveControlarEstoque = !currentProduto.isComposto;
+  const controlarEstoqueManual = currentProduto.controlar_estoque_manual ?? false;
+  
+  // Handler customizado para cálculo bidirecional de margem de lucro
+  const handlePrecoChange = (e) => {
+    const { name, value } = e.target;
+    const tipoPrecificacao = currentProduto.tipo_precificacao || 'unidade';
+    
+    // Determinar qual campo de preço de venda usar baseado no tipo
+    const campoVenda = tipoPrecificacao === 'm2_cm2' ? 'preco_m2' 
+                      : tipoPrecificacao === 'metro_linear' ? 'preco_metro_linear'
+                      : 'preco_venda';
+    
+    const precoCusto = parseFloat(currentProduto.preco_custo) || 0;
+    const margemLucro = parseFloat(currentProduto.margem_lucro) || 0;
+    const precoVendaAtual = parseFloat(currentProduto[campoVenda]) || 0;
+    
+    if (name === 'margem_lucro') {
+      // Se alterou a margem de lucro, calcular o preço de venda
+      if (precoCusto > 0 && value) {
+        const novaMargem = parseFloat(value) || 0;
+        const novoPrecoVenda = precoCusto + (precoCusto * novaMargem / 100);
+        handleInputChange({
+          target: { name: campoVenda, value: novoPrecoVenda.toFixed(2), type: 'number' }
+        });
+      }
+      // Continuar com o handler normal para atualizar margem_lucro
+      handleInputChange(e);
+    } else if (name === campoVenda) {
+      // Se alterou o preço de venda, calcular a margem de lucro
+      if (precoCusto > 0 && value) {
+        const novoPrecoVenda = parseFloat(value) || 0;
+        if (novoPrecoVenda > 0) {
+          const novaMargem = ((novoPrecoVenda - precoCusto) / precoCusto) * 100;
+          handleInputChange({
+            target: { name: 'margem_lucro', value: novaMargem.toFixed(2), type: 'number' }
+          });
+        }
+      }
+      // Continuar com o handler normal para atualizar o preço de venda
+      handleInputChange(e);
+    } else if (name === 'preco_custo') {
+      // Se alterou o preço de custo e já tem margem de lucro, recalcular preço de venda
+      if (margemLucro > 0 && value) {
+        const novoCusto = parseFloat(value) || 0;
+        if (novoCusto > 0) {
+          const novoPrecoVenda = novoCusto + (novoCusto * margemLucro / 100);
+          handleInputChange({
+            target: { name: campoVenda, value: novoPrecoVenda.toFixed(2), type: 'number' }
+          });
+        }
+      }
+      // Continuar com o handler normal para atualizar preco_custo
+      handleInputChange(e);
+    } else {
+      // Para outros campos, usar o handler normal
+      handleInputChange(e);
+    }
+  };
   const [medidasChapa, setMedidasChapa] = React.useState({
     largura: '',
     altura: '',
@@ -268,11 +327,12 @@ const ProdutoTabPrecoEstoque = ({ currentProduto, handleInputChange }) => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <Label htmlFor="preco_custo">Preço de Custo (R$)</Label>
-              <Input id="preco_custo" name="preco_custo" type="number" step="0.01" value={currentProduto.preco_custo} onChange={handleInputChange} placeholder="0.00"/>
+              <Input id="preco_custo" name="preco_custo" type="number" step="0.01" value={currentProduto.preco_custo} onChange={handlePrecoChange} placeholder="0.00"/>
             </div>
             <div>
               <Label htmlFor="margem_lucro">Margem de Lucro (%)</Label>
-              <Input id="margem_lucro" name="margem_lucro" type="number" step="0.1" min="0" max="1000" value={currentProduto.margem_lucro} onChange={handleInputChange} placeholder="Ex: 50"/>
+              <Input id="margem_lucro" name="margem_lucro" type="number" step="0.1" min="0" max="1000" value={currentProduto.margem_lucro} onChange={handlePrecoChange} placeholder="Ex: 50"/>
+              <p className="text-xs text-muted-foreground mt-1">Preencha % ou preço de venda</p>
             </div>
             <div>
               <Label htmlFor="preco_venda">
@@ -287,11 +347,12 @@ const ProdutoTabPrecoEstoque = ({ currentProduto, handleInputChange }) => {
                 type="number" 
                 step="0.01" 
                 value={currentProduto.preco_venda} 
-                onChange={handleInputChange} 
+                onChange={handlePrecoChange} 
                 placeholder="Calculado ou manual"
                 disabled={currentProduto.isComposto}
                 className={currentProduto.isComposto ? "bg-gray-100 cursor-not-allowed" : ""}
               />
+              <p className="text-xs text-muted-foreground mt-1">Preencha % ou preço de venda</p>
             </div>
           </div>
         );
@@ -362,11 +423,13 @@ const ProdutoTabPrecoEstoque = ({ currentProduto, handleInputChange }) => {
               </div>
               <div>
                 <Label htmlFor="margem_lucro">Margem de Lucro (%)</Label>
-                <Input id="margem_lucro" name="margem_lucro" type="number" step="0.1" min="0" max="1000" value={currentProduto.margem_lucro} onChange={handleInputChange} placeholder="Ex: 50"/>
+                <Input id="margem_lucro" name="margem_lucro" type="number" step="0.1" min="0" max="1000" value={currentProduto.margem_lucro} onChange={handlePrecoChange} placeholder="Ex: 50"/>
+                <p className="text-xs text-muted-foreground mt-1">Preencha % ou preço de venda</p>
               </div>
               <div>
                 <Label htmlFor="preco_m2">Preço de Venda por m² (R$)</Label>
-                <Input id="preco_m2" name="preco_m2" type="number" step="0.01" value={currentProduto.preco_m2 !== null && currentProduto.preco_m2 !== undefined ? currentProduto.preco_m2 : ''} onChange={handleInputChange} placeholder="0.00"/>
+                <Input id="preco_m2" name="preco_m2" type="number" step="0.01" value={currentProduto.preco_m2 !== null && currentProduto.preco_m2 !== undefined ? currentProduto.preco_m2 : ''} onChange={handlePrecoChange} placeholder="0.00"/>
+                <p className="text-xs text-muted-foreground mt-1">Preencha % ou preço de venda</p>
               </div>
             </div>
             <div className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 p-3 rounded-md">
@@ -450,15 +513,17 @@ const ProdutoTabPrecoEstoque = ({ currentProduto, handleInputChange }) => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <Label htmlFor="preco_custo">Preço de Custo por Metro (R$)</Label>
-                <Input id="preco_custo" name="preco_custo" type="number" step="0.01" value={currentProduto.preco_custo} onChange={handleInputChange} placeholder="0.00"/>
+                <Input id="preco_custo" name="preco_custo" type="number" step="0.01" value={currentProduto.preco_custo} onChange={handlePrecoChange} placeholder="0.00"/>
               </div>
               <div>
                 <Label htmlFor="margem_lucro">Margem de Lucro (%)</Label>
-                <Input id="margem_lucro" name="margem_lucro" type="number" step="0.1" min="0" max="1000" value={currentProduto.margem_lucro} onChange={handleInputChange} placeholder="Ex: 50"/>
+                <Input id="margem_lucro" name="margem_lucro" type="number" step="0.1" min="0" max="1000" value={currentProduto.margem_lucro} onChange={handlePrecoChange} placeholder="Ex: 50"/>
+                <p className="text-xs text-muted-foreground mt-1">Preencha % ou preço de venda</p>
               </div>
               <div>
                 <Label htmlFor="preco_metro_linear">Preço de Venda por Metro (R$)</Label>
-                <Input id="preco_metro_linear" name="preco_metro_linear" type="number" step="0.01" value={currentProduto.preco_metro_linear || ''} onChange={handleInputChange} placeholder="0.00"/>
+                <Input id="preco_metro_linear" name="preco_metro_linear" type="number" step="0.01" value={currentProduto.preco_metro_linear || ''} onChange={handlePrecoChange} placeholder="0.00"/>
+                <p className="text-xs text-muted-foreground mt-1">Preencha % ou preço de venda</p>
               </div>
             </div>
             <div className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 p-3 rounded-md">
@@ -656,10 +721,37 @@ const ProdutoTabPrecoEstoque = ({ currentProduto, handleInputChange }) => {
             </div>
           </div>
         )}
+        {/* Checkbox para controlar estoque manualmente */}
+        {deveControlarEstoque && !isUnidadeMetroQuadrado && (
+          <div className="flex items-center space-x-2 p-3 bg-slate-50 dark:bg-slate-800 rounded-md border border-slate-200 dark:border-slate-700">
+            <Checkbox
+              id="controlar_estoque_manual"
+              checked={controlarEstoqueManual}
+              onCheckedChange={(checked) => {
+                handleInputChange({
+                  target: {
+                    name: 'controlar_estoque_manual',
+                    checked: checked,
+                    type: 'checkbox'
+                  }
+                });
+              }}
+            />
+            <Label htmlFor="controlar_estoque_manual" className="text-sm font-medium cursor-pointer">
+              Controlar estoque manualmente
+            </Label>
+            <Info size={14} className="text-muted-foreground ml-2" />
+            <p className="text-xs text-muted-foreground ml-2">
+              Marque esta opção se deseja controlar o estoque deste item. Quando marcado, será necessário informar quantidade atual, quantidade mínima, etc.
+            </p>
+          </div>
+        )}
+        
          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
                 <Label htmlFor="estoque">
-                  Estoque Atual {isUnidadeMetroQuadrado ? '(m²)' : ''}{deveControlarEstoque && <span className="text-red-500"> *</span>}
+                  Estoque Atual {isUnidadeMetroQuadrado ? '(m²)' : ''}
+                  {controlarEstoqueManual && !isUnidadeMetroQuadrado && <span className="text-red-500"> *</span>}
                 </Label>
                 <Input
                   id="estoque"
@@ -669,9 +761,10 @@ const ProdutoTabPrecoEstoque = ({ currentProduto, handleInputChange }) => {
                   value={currentProduto.estoque}
                   onChange={handleInputChange}
                   placeholder="0"
-                  required={deveControlarEstoque}
+                  required={controlarEstoqueManual && !isUnidadeMetroQuadrado}
                   readOnly={isUnidadeMetroQuadrado}
-                  className={isUnidadeMetroQuadrado ? "bg-gray-100 cursor-not-allowed" : ""}
+                  disabled={!controlarEstoqueManual && !isUnidadeMetroQuadrado && deveControlarEstoque}
+                  className={isUnidadeMetroQuadrado ? "bg-gray-100 cursor-not-allowed" : (!controlarEstoqueManual && !isUnidadeMetroQuadrado ? "bg-gray-100 cursor-not-allowed" : "")}
                 />
                 {isUnidadeMetroQuadrado ? (
                   <p className="text-xs text-gray-500 mt-1">
@@ -679,9 +772,30 @@ const ProdutoTabPrecoEstoque = ({ currentProduto, handleInputChange }) => {
                   </p>
                 ) : !deveControlarEstoque ? (
                   <p className="text-xs text-gray-500 mt-1">Controle de estoque desativado para item composto.</p>
+                ) : !controlarEstoqueManual ? (
+                  <p className="text-xs text-gray-500 mt-1">Marque "Controlar estoque manualmente" para habilitar este campo.</p>
                 ) : (
                   <p className="text-xs text-gray-500 mt-1">Informe a quantidade em estoque.</p>
                 )}
+            </div>
+            <div>
+                <Label htmlFor="estoque_minimo">
+                  Estoque Mínimo
+                  {controlarEstoqueManual && !isUnidadeMetroQuadrado && <span className="text-red-500"> *</span>}
+                </Label>
+                <Input 
+                  id="estoque_minimo" 
+                  name="estoque_minimo" 
+                  type="number" 
+                  step="0.01" 
+                  value={currentProduto.estoque_minimo} 
+                  onChange={handleInputChange} 
+                  placeholder="1"
+                  required={controlarEstoqueManual && !isUnidadeMetroQuadrado}
+                  disabled={!controlarEstoqueManual && !isUnidadeMetroQuadrado}
+                  className={!controlarEstoqueManual && !isUnidadeMetroQuadrado ? "bg-gray-100 cursor-not-allowed" : ""}
+                />
+                <p className="text-xs text-gray-500 mt-1">Aceita valores fracionados (ex: 1.5, 5.25)</p>
             </div>
             <div>
                 <Label htmlFor="estoque_minimo">Estoque Mínimo</Label>
