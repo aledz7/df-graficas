@@ -239,8 +239,68 @@ export const calcularSubtotalItem = (item, acabamentosConfig) => {
             });
         } 
     } else if (item.tipo_item === 'unidade') {
-        const valorUnitario = safeParseFloat(item.valor_unitario);
-        subtotalBase = quantidade * valorUnitario;
+        const tipoPrecificacao = (item.tipo_precificacao || item.produto?.tipo_precificacao || '').toLowerCase();
+        const tabelaPrecos = item.tabela_precos || item.produto?.tabela_precos || [];
+        
+        // Verificar se é precificação por quantidade definida e tem tabela de preços
+        if (tipoPrecificacao === 'quantidade_definida' && Array.isArray(tabelaPrecos) && tabelaPrecos.length > 0) {
+            // Buscar o preço exato para a quantidade solicitada
+            const faixaExata = tabelaPrecos.find(faixa => {
+                const qtdFaixa = safeParseInt(faixa.quantidade, 0);
+                return qtdFaixa === quantidade;
+            });
+            
+            if (faixaExata && faixaExata.preco) {
+                // Usar o valor final da tabela para esta quantidade exata
+                subtotalBase = safeParseFloat(faixaExata.preco, 0);
+                console.log('💰 [calcularSubtotalItem] Usando preço da tabela por quantidade definida:', {
+                    quantidade,
+                    valorFinal: subtotalBase,
+                    tipo: 'quantidade_definida'
+                });
+            } else {
+                // Se não encontrou quantidade exata, usar o valor unitário padrão
+                const valorUnitario = safeParseFloat(item.valor_unitario);
+                subtotalBase = quantidade * valorUnitario;
+                console.log('⚠️ [calcularSubtotalItem] Quantidade não encontrada na tabela, usando valor unitário padrão:', {
+                    quantidade,
+                    valorUnitario,
+                    subtotalBase
+                });
+            }
+        } else if (tipoPrecificacao === 'faixa_quantidade' && Array.isArray(tabelaPrecos) && tabelaPrecos.length > 0) {
+            // Buscar a faixa que contém a quantidade solicitada
+            const faixaEncontrada = tabelaPrecos.find(faixa => {
+                const qtdMin = safeParseInt(faixa.quantidade_min, 0);
+                const qtdMax = safeParseInt(faixa.quantidade_max, 0);
+                return quantidade >= qtdMin && (qtdMax === 0 || quantidade <= qtdMax);
+            });
+            
+            if (faixaEncontrada && faixaEncontrada.preco) {
+                // Usar o preço unitário da faixa multiplicado pela quantidade
+                const precoUnitario = safeParseFloat(faixaEncontrada.preco, 0);
+                subtotalBase = quantidade * precoUnitario;
+                console.log('💰 [calcularSubtotalItem] Usando preço da faixa de quantidade:', {
+                    quantidade,
+                    precoUnitario,
+                    subtotalBase,
+                    tipo: 'faixa_quantidade'
+                });
+            } else {
+                // Se não encontrou faixa, usar o valor unitário padrão
+                const valorUnitario = safeParseFloat(item.valor_unitario);
+                subtotalBase = quantidade * valorUnitario;
+                console.log('⚠️ [calcularSubtotalItem] Faixa não encontrada, usando valor unitário padrão:', {
+                    quantidade,
+                    valorUnitario,
+                    subtotalBase
+                });
+            }
+        } else {
+            // Precificação normal por unidade
+            const valorUnitario = safeParseFloat(item.valor_unitario);
+            subtotalBase = quantidade * valorUnitario;
+        }
         
         // Adicionar valor dos acabamentos para itens do tipo unidade
         if (acabamentosSelecionados.length > 0 && Array.isArray(acabamentosConfig)) {

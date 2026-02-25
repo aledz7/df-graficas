@@ -57,7 +57,11 @@ class Produto extends Model
         'tipo_precificacao',
         'tabela_precos',
         'preco_metro_linear',
-        'valor_minimo'
+        'valor_minimo',
+        'tipo_visualizacao',
+        'prazo_producao',
+        'prazo_criacao_arte',
+        'variacoes_usa_preco_base'
     ];
 
     /**
@@ -74,6 +78,7 @@ class Produto extends Model
         'permite_comissao' => 'boolean',
         'variacoes_ativa' => 'boolean',
         'variacao_obrigatoria' => 'boolean',
+        'variacoes_usa_preco_base' => 'boolean',
         'is_composto' => 'boolean',
         'preco_custo' => 'decimal:2',
         'preco_m2' => 'decimal:2',

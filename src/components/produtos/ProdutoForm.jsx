@@ -18,6 +18,9 @@ const defaultProduto = {
     venda_pdv: true,
     venda_marketplace: true,
     uso_interno: false,
+    tipo_visualizacao: 'vendas',
+    prazo_producao: '',
+    prazo_criacao_arte: '',
     unidadeMedida: 'unidade',
     categoria: '',
     subcategoriaId: '',
@@ -44,6 +47,7 @@ const defaultProduto = {
     estoque_minimo: '1',
     variacoes_ativa: false,
     variacao_obrigatoria: true,
+    variacoes_usa_preco_base: true,
     variacoes: [],
     isComposto: false,
     composicao: [],
@@ -185,6 +189,12 @@ const ProdutoForm = ({ isOpen, onClose, onSave, produtoEmEdicao, showSaveAndNewB
                 venda_pdv: produtoEmEdicao.venda_pdv !== undefined ? (produtoEmEdicao.venda_pdv === true || produtoEmEdicao.venda_pdv === 1 || produtoEmEdicao.venda_pdv === '1') : true,
                 venda_marketplace: produtoEmEdicao.venda_marketplace !== undefined ? (produtoEmEdicao.venda_marketplace === true || produtoEmEdicao.venda_marketplace === 1 || produtoEmEdicao.venda_marketplace === '1') : true,
                 uso_interno: produtoEmEdicao.uso_interno === true || produtoEmEdicao.uso_interno === 1 || produtoEmEdicao.uso_interno === '1',
+                tipo_visualizacao: produtoEmEdicao.tipo_visualizacao || 'vendas',
+                prazo_producao: produtoEmEdicao.prazo_producao || '',
+                prazo_criacao_arte: produtoEmEdicao.prazo_criacao_arte || '',
+                variacoes_usa_preco_base: produtoEmEdicao.variacoes_usa_preco_base !== undefined 
+                    ? (produtoEmEdicao.variacoes_usa_preco_base === true || produtoEmEdicao.variacoes_usa_preco_base === 1 || produtoEmEdicao.variacoes_usa_preco_base === '1')
+                    : true,
                 // Garantir que campos numéricos sejam strings para os inputs
                 preco_custo: String(produtoEmEdicao.preco_custo || '0'),
                 preco_m2: String(produtoEmEdicao.preco_m2 || '0'),
@@ -861,6 +871,10 @@ const ProdutoForm = ({ isOpen, onClose, onSave, produtoEmEdicao, showSaveAndNewB
             estoque: parseFloat(rest.estoque) || 0,
             estoque_minimo: parseFloat(rest.estoque_minimo) || 0,  // Aceita valores fracionados
             variacao_obrigatoria: Boolean(rest.variacao_obrigatoria),
+            variacoes_usa_preco_base: Boolean(rest.variacoes_usa_preco_base !== false),
+            tipo_visualizacao: rest.tipo_visualizacao || 'vendas',
+            prazo_producao: rest.prazo_producao || null,
+            prazo_criacao_arte: rest.prazo_criacao_arte || null,
             // Campos de medida de chapa - garantir que sejam enviados
             medida_chapa_largura_cm: parseFloatOrNull(rest.medida_chapa_largura_cm),
             medida_chapa_altura_cm: parseFloatOrNull(rest.medida_chapa_altura_cm),

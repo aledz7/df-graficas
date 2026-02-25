@@ -4,7 +4,7 @@ import ClienteList from '@/components/clientes/ClienteList';
 import ClienteForm from '@/components/clientes/ClienteForm';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { PlusCircle, Search, Upload, Download, Trash2, Loader2, RefreshCw, ChevronLeft, ChevronRight, CheckCircle2, AlertCircle, RefreshCcw, X } from 'lucide-react';
+import { PlusCircle, Search, Upload, Download, Trash2, Loader2, RefreshCw, ChevronLeft, ChevronRight, CheckCircle2, AlertCircle, RefreshCcw, X, Printer, UserCheck, UserX, Users } from 'lucide-react';
 import { safeJsonParse } from '@/lib/utils';
 import { useToast } from '@/components/ui/use-toast';
 import { motion } from 'framer-motion';
@@ -41,6 +41,7 @@ const ClientesPage = ({ vendedorAtual }) => {
   const [pagination, setPagination] = useState(null);
   const [importProgress, setImportProgress] = useState(null);
   const [importResult, setImportResult] = useState(null);
+  const [filtroStatus, setFiltroStatus] = useState('todos'); // 'todos', 'ativos', 'inativos'
 
   // Refs para paginação server-side
   const searchTimerRef = useRef(null);
@@ -69,11 +70,18 @@ const ClientesPage = ({ vendedorAtual }) => {
         page,
         per_page: PER_PAGE,
         sort_by: 'created_at', // Ordenar por data de criação
-        sort_order: 'desc', // Mais recente primeiro
+        sort_order: 'desc', // Mais recente primeiro (mais recente para mais antigo)
       };
 
       const search = searchTermRef.current;
       if (search) params.search = search;
+      
+      // Aplicar filtro de status
+      if (filtroStatus === 'ativos') {
+        params.ativo = true;
+      } else if (filtroStatus === 'inativos') {
+        params.ativo = false;
+      }
 
       const response = await api.get('/api/clientes', { params });
 
@@ -112,7 +120,7 @@ const ClientesPage = ({ vendedorAtual }) => {
     } finally {
       if (fetchCounterRef.current === fetchId) setIsLoading(false);
     }
-  }, [toast, location.state, navigate]);
+  }, [toast, location.state, navigate, filtroStatus]);
 
   // Carga inicial
   useEffect(() => {
@@ -126,6 +134,12 @@ const ClientesPage = ({ vendedorAtual }) => {
     searchTimerRef.current = setTimeout(() => { fetchClientes(1); }, 500);
     return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
   }, [searchTerm, fetchClientes]);
+  
+  // Recarregar quando o filtro de status mudar
+  useEffect(() => {
+    if (isInitialMount.current) return;
+    fetchClientes(1);
+  }, [filtroStatus, fetchClientes]);
 
   const handlePageChange = useCallback((page) => {
     fetchClientes(page);
@@ -425,6 +439,103 @@ const ClientesPage = ({ vendedorAtual }) => {
     toast({ title: "Exportação Iniciada", description: "O download da planilha de clientes começará em breve." });
   };
 
+  // Função para imprimir lista de clientes
+  const handleImprimirClientes = () => {
+    const clientesParaImprimir = clientes.filter(c => {
+      if (filtroStatus === 'ativos') return c.status === true || c.status === 1;
+      if (filtroStatus === 'inativos') return c.status === false || c.status === 0;
+      return true; // todos
+    });
+
+    const printWindow = window.open('', '_blank');
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Lista de Clientes - ${filtroStatus === 'todos' ? 'Todos' : filtroStatus === 'ativos' ? 'Ativos' : 'Inativos'}</title>
+          <style>
+            @media print {
+              @page { margin: 1cm; }
+            }
+            body {
+              font-family: Arial, sans-serif;
+              padding: 20px;
+            }
+            h1 {
+              text-align: center;
+              margin-bottom: 20px;
+              color: #333;
+            }
+            .info {
+              text-align: center;
+              margin-bottom: 20px;
+              color: #666;
+              font-size: 12px;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-top: 20px;
+            }
+            th {
+              background-color: #f0f0f0;
+              padding: 10px;
+              text-align: left;
+              border-bottom: 2px solid #333;
+              font-weight: bold;
+            }
+            td {
+              padding: 8px;
+              border-bottom: 1px solid #ddd;
+            }
+            tr:nth-child(even) {
+              background-color: #f9f9f9;
+            }
+            .footer {
+              margin-top: 30px;
+              text-align: center;
+              font-size: 10px;
+              color: #666;
+            }
+          </style>
+        </head>
+        <body>
+          <h1>Lista de Clientes - ${filtroStatus === 'todos' ? 'Todos os Clientes' : filtroStatus === 'ativos' ? 'Clientes Ativos' : 'Clientes Inativos'}</h1>
+          <div class="info">
+            Data de impressão: ${new Date().toLocaleString('pt-BR')} | Total: ${clientesParaImprimir.length} cliente(s)
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Código</th>
+                <th>Nome</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${clientesParaImprimir.map(cliente => `
+                <tr>
+                  <td>${cliente.codigo_cliente || `#${cliente.id}`}</td>
+                  <td>${cliente.nome_completo || cliente.nome || '-'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+          <div class="footer">
+            Sistema de Gestão - Impresso em ${new Date().toLocaleString('pt-BR')}
+          </div>
+        </body>
+      </html>
+    `;
+    
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 250);
+  };
+
 
   return (
     <motion.div 
@@ -433,9 +544,10 @@ const ClientesPage = ({ vendedorAtual }) => {
       transition={{ duration: 0.5 }}
       className="p-4 md:p-6"
     >
-      <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100">Gerenciamento de Clientes</h1>
-        <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+      <div className="space-y-4 mb-6">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100">Gerenciamento de Clientes</h1>
+          <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
           <div className="relative w-full md:w-auto">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
             <Input
@@ -472,6 +584,15 @@ const ClientesPage = ({ vendedorAtual }) => {
             )}
             Exportar
           </Button>
+          <Button 
+            onClick={handleImprimirClientes} 
+            variant="outline" 
+            className="ml-2"
+            disabled={isLoading || clientes.length === 0}
+          >
+            <Printer className="mr-2 h-4 w-4" />
+            Imprimir
+          </Button>
           <input
             type="file"
             id="import-file"
@@ -496,7 +617,40 @@ const ClientesPage = ({ vendedorAtual }) => {
               <PlusCircle className="mr-2 h-5 w-5" /> Novo Cliente
             </Button>
           </PermissionGate>
+          </div>
         </div>
+      </div>
+      
+      {/* Filtros de Status */}
+      <div className="flex items-center gap-2 bg-white dark:bg-gray-800 p-3 rounded-lg border border-gray-200 dark:border-gray-700 mb-4">
+        <span className="text-sm font-medium text-gray-700 dark:text-gray-300 mr-2">Filtro:</span>
+        <Button
+          variant={filtroStatus === 'todos' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setFiltroStatus('todos')}
+          className="flex items-center gap-2"
+        >
+          <Users size={16} />
+          Todos
+        </Button>
+        <Button
+          variant={filtroStatus === 'ativos' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setFiltroStatus('ativos')}
+          className="flex items-center gap-2"
+        >
+          <UserCheck size={16} />
+          Ativos
+        </Button>
+        <Button
+          variant={filtroStatus === 'inativos' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setFiltroStatus('inativos')}
+          className="flex items-center gap-2"
+        >
+          <UserX size={16} />
+          Inativos
+        </Button>
       </div>
       
       {importProgress && (

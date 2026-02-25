@@ -4,8 +4,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { AlertTriangle, Plus, Trash2, Info } from 'lucide-react';
+import { AlertTriangle, Plus, Trash2, Info, Edit } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
+import AdicionarQuantidadeValorModal from '../modals/AdicionarQuantidadeValorModal';
 
 const TIPOS_PRECIFICACAO = [
   { value: 'unidade', label: 'Por Unidade', descricao: 'Preço fixo por unidade vendida' },
@@ -90,20 +91,45 @@ const ProdutoTabPrecoEstoque = ({ currentProduto, handleInputChange }) => {
   // Tabela de preços para quantidade definida e faixas
   const tabelaPrecos = currentProduto.tabela_precos || [];
 
+  // Estados para o modal
+  const [isModalOpen, setIsModalOpen] = React.useState(false);
+  const [itemEditando, setItemEditando] = React.useState(null);
+
   // Funções para gerenciar tabela de preços
   const handleAddFaixa = () => {
-    const novaFaixa = tipoPrecificacao === 'quantidade_definida' 
-      ? { quantidade: '', preco: '' }
-      : tipoPrecificacao === 'faixa_quantidade'
-      ? { quantidade_min: '', quantidade_max: '', preco: '' }
-      : { area_min: '', area_max: '', preco: '' };
+    setItemEditando(null);
+    setIsModalOpen(true);
+  };
+
+  const handleEditFaixa = (index) => {
+    setItemEditando({ ...tabelaPrecos[index], _index: index });
+    setIsModalOpen(true);
+  };
+
+  const handleSaveModal = (dados) => {
+    let novaTabela = [...tabelaPrecos];
+    
+    // Remover o índice temporário dos dados antes de salvar
+    const { _index, index, ...dadosLimpos } = dados;
+    const indiceEdicao = itemEditando?._index ?? itemEditando?.index;
+    
+    if (indiceEdicao !== undefined && indiceEdicao !== null) {
+      // Editar item existente
+      novaTabela[indiceEdicao] = dadosLimpos;
+    } else {
+      // Adicionar novo item
+      novaTabela.push(dadosLimpos);
+    }
     
     handleInputChange({
       target: {
         name: 'tabela_precos',
-        value: [...tabelaPrecos, novaFaixa],
+        value: novaTabela,
       },
     });
+    
+    setIsModalOpen(false);
+    setItemEditando(null);
   };
 
   const handleRemoveFaixa = (index) => {
@@ -370,7 +396,7 @@ const ProdutoTabPrecoEstoque = ({ currentProduto, handleInputChange }) => {
               <div className="flex items-center justify-between mb-3">
                 <div>
                   <p className="text-sm font-semibold text-blue-800 dark:text-blue-200">Tabela de Preços por Quantidade</p>
-                  <p className="text-xs text-blue-600 dark:text-blue-300">Defina preços específicos para quantidades exatas</p>
+                  <p className="text-xs text-blue-600 dark:text-blue-300">Cadastre um único produto com diferentes quantidades e valores. Cada linha representa uma quantidade específica com seu valor final.</p>
                 </div>
                 <Button type="button" variant="outline" size="sm" onClick={handleAddFaixa} className="border-blue-300 text-blue-700 hover:bg-blue-100">
                   <Plus size={16} className="mr-1" /> Adicionar Quantidade
@@ -380,33 +406,64 @@ const ProdutoTabPrecoEstoque = ({ currentProduto, handleInputChange }) => {
                 <p className="text-sm text-gray-500 italic">Nenhuma quantidade definida. Clique em "Adicionar Quantidade" para começar.</p>
               ) : (
                 <div className="space-y-2">
-                  {tabelaPrecos.map((faixa, index) => (
-                    <div key={index} className="flex items-center gap-3 bg-white dark:bg-slate-800 p-3 rounded-md border">
-                      <div className="flex-1">
-                        <Label className="text-xs">Quantidade</Label>
-                        <Input 
-                          type="number" 
-                          min="1"
-                          value={faixa.quantidade || ''} 
-                          onChange={(e) => handleFaixaChange(index, 'quantidade', e.target.value)}
-                          placeholder="Ex: 100"
-                        />
+                  {/* Cabeçalho da tabela */}
+                  <div className="grid grid-cols-12 gap-2 px-2 py-2 text-xs font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600">
+                    <div className="col-span-2">Quantidade</div>
+                    <div className="col-span-2">Custo (R$)</div>
+                    <div className="col-span-2">Revenda (R$)</div>
+                    <div className="col-span-2">Cliente Final (R$)</div>
+                    <div className="col-span-2">Valor Unit. (R$)</div>
+                    <div className="col-span-2 text-center">Ações</div>
+                  </div>
+                  {tabelaPrecos.map((faixa, index) => {
+                    // Calcular valor unitário a partir do valor final e quantidade
+                    const quantidade = parseFloat(faixa.quantidade) || 0;
+                    const valorFinal = parseFloat(faixa.valor_cliente_final || faixa.preco) || 0;
+                    const valorUnitario = quantidade > 0 ? (valorFinal / quantidade).toFixed(2) : '0.00';
+                    
+                    return (
+                      <div key={index} className="grid grid-cols-12 gap-2 items-center bg-white dark:bg-slate-800 p-3 rounded-md border hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
+                        <div className="col-span-2">
+                          <div className="text-sm font-medium">{faixa.quantidade || '-'}</div>
+                          <p className="text-xs text-muted-foreground">unid.</p>
+                        </div>
+                        <div className="col-span-2">
+                          <div className="text-sm">{faixa.valor_custo ? `R$ ${parseFloat(faixa.valor_custo).toFixed(2).replace('.', ',')}` : '-'}</div>
+                        </div>
+                        <div className="col-span-2">
+                          <div className="text-sm">{faixa.valor_revenda ? `R$ ${parseFloat(faixa.valor_revenda).toFixed(2).replace('.', ',')}` : '-'}</div>
+                        </div>
+                        <div className="col-span-2">
+                          <div className="text-sm font-semibold">{faixa.valor_cliente_final ? `R$ ${parseFloat(faixa.valor_cliente_final).toFixed(2).replace('.', ',')}` : (faixa.preco ? `R$ ${parseFloat(faixa.preco).toFixed(2).replace('.', ',')}` : '-')}</div>
+                        </div>
+                        <div className="col-span-2">
+                          <div className="text-sm text-muted-foreground">{valorUnitario !== '0.00' ? `R$ ${valorUnitario.replace('.', ',')}` : '-'}</div>
+                        </div>
+                        <div className="col-span-2 flex justify-center gap-1">
+                          <Button 
+                            type="button" 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => handleEditFaixa(index)} 
+                            className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 h-8 w-8"
+                            title="Editar"
+                          >
+                            <Edit size={16} />
+                          </Button>
+                          <Button 
+                            type="button" 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => handleRemoveFaixa(index)} 
+                            className="text-red-500 hover:text-red-700 hover:bg-red-50 h-8 w-8"
+                            title="Excluir"
+                          >
+                            <Trash2 size={16} />
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex-1">
-                        <Label className="text-xs">Preço Unitário (R$)</Label>
-                        <Input 
-                          type="number" 
-                          step="0.01"
-                          value={faixa.preco || ''} 
-                          onChange={(e) => handleFaixaChange(index, 'preco', e.target.value)}
-                          placeholder="0.00"
-                        />
-                      </div>
-                      <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveFaixa(index)} className="text-red-500 hover:text-red-700 hover:bg-red-50 mt-5">
-                        <Trash2 size={18} />
-                      </Button>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -462,43 +519,41 @@ const ProdutoTabPrecoEstoque = ({ currentProduto, handleInputChange }) => {
                 <p className="text-sm text-gray-500 italic">Nenhuma faixa definida. Clique em "Adicionar Faixa" para começar.</p>
               ) : (
                 <div className="space-y-2">
+                  <div className="grid grid-cols-12 gap-2 px-2 py-2 text-xs font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600">
+                    <div className="col-span-2">Área (m²)</div>
+                    <div className="col-span-2">Custo (R$)</div>
+                    <div className="col-span-2">Revenda (R$)</div>
+                    <div className="col-span-2">Cliente Final (R$)</div>
+                    <div className="col-span-2">Mín. Revenda</div>
+                    <div className="col-span-2 text-center">Ações</div>
+                  </div>
                   {tabelaPrecos.map((faixa, index) => (
-                    <div key={index} className="flex items-center gap-3 bg-white dark:bg-slate-800 p-3 rounded-md border">
-                      <div className="flex-1">
-                        <Label className="text-xs">Área Mínima (m²)</Label>
-                        <Input 
-                          type="number" 
-                          step="0.01"
-                          min="0"
-                          value={faixa.area_min || ''} 
-                          onChange={(e) => handleFaixaChange(index, 'area_min', e.target.value)}
-                          placeholder="0.00"
-                        />
+                    <div key={index} className="grid grid-cols-12 gap-2 items-center bg-white dark:bg-slate-800 p-3 rounded-md border hover:bg-gray-50 dark:hover:bg-slate-700/50">
+                      <div className="col-span-2">
+                        <div className="text-sm font-medium">
+                          {faixa.area_min || '0'} - {faixa.area_max || '0'} m²
+                        </div>
                       </div>
-                      <div className="flex-1">
-                        <Label className="text-xs">Área Máxima (m²)</Label>
-                        <Input 
-                          type="number" 
-                          step="0.01"
-                          min="0"
-                          value={faixa.area_max || ''} 
-                          onChange={(e) => handleFaixaChange(index, 'area_max', e.target.value)}
-                          placeholder="Ex: 1.00"
-                        />
+                      <div className="col-span-2">
+                        <div className="text-sm">{faixa.valor_custo ? `R$ ${parseFloat(faixa.valor_custo).toFixed(2).replace('.', ',')}` : '-'}</div>
                       </div>
-                      <div className="flex-1">
-                        <Label className="text-xs">Preço por m² (R$)</Label>
-                        <Input 
-                          type="number" 
-                          step="0.01"
-                          value={faixa.preco || ''} 
-                          onChange={(e) => handleFaixaChange(index, 'preco', e.target.value)}
-                          placeholder="0.00"
-                        />
+                      <div className="col-span-2">
+                        <div className="text-sm">{faixa.valor_revenda ? `R$ ${parseFloat(faixa.valor_revenda).toFixed(2).replace('.', ',')}` : '-'}</div>
                       </div>
-                      <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveFaixa(index)} className="text-red-500 hover:text-red-700 hover:bg-red-50 mt-5">
-                        <Trash2 size={18} />
-                      </Button>
+                      <div className="col-span-2">
+                        <div className="text-sm font-semibold">{faixa.valor_cliente_final ? `R$ ${parseFloat(faixa.valor_cliente_final).toFixed(2).replace('.', ',')}` : (faixa.preco ? `R$ ${parseFloat(faixa.preco).toFixed(2).replace('.', ',')}` : '-')}</div>
+                      </div>
+                      <div className="col-span-2">
+                        <div className="text-sm text-muted-foreground">{faixa.valor_min_revenda ? `R$ ${parseFloat(faixa.valor_min_revenda).toFixed(2).replace('.', ',')}` : '-'}</div>
+                      </div>
+                      <div className="col-span-2 flex justify-center gap-1">
+                        <Button type="button" variant="ghost" size="icon" onClick={() => handleEditFaixa(index)} className="text-blue-500 hover:text-blue-700 hover:bg-blue-50" title="Editar">
+                          <Edit size={18} />
+                        </Button>
+                        <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveFaixa(index)} className="text-red-500 hover:text-red-700 hover:bg-red-50" title="Excluir">
+                          <Trash2 size={18} />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -556,41 +611,41 @@ const ProdutoTabPrecoEstoque = ({ currentProduto, handleInputChange }) => {
                 <p className="text-sm text-gray-500 italic">Nenhuma faixa definida. Clique em "Adicionar Faixa" para começar.</p>
               ) : (
                 <div className="space-y-2">
+                  <div className="grid grid-cols-12 gap-2 px-2 py-2 text-xs font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600">
+                    <div className="col-span-2">Quantidade</div>
+                    <div className="col-span-2">Custo (R$)</div>
+                    <div className="col-span-2">Revenda (R$)</div>
+                    <div className="col-span-2">Cliente Final (R$)</div>
+                    <div className="col-span-2">Preço Unit. (R$)</div>
+                    <div className="col-span-2 text-center">Ações</div>
+                  </div>
                   {tabelaPrecos.map((faixa, index) => (
-                    <div key={index} className="flex items-center gap-3 bg-white dark:bg-slate-800 p-3 rounded-md border">
-                      <div className="flex-1">
-                        <Label className="text-xs">Quantidade Mínima</Label>
-                        <Input 
-                          type="number" 
-                          min="1"
-                          value={faixa.quantidade_min || ''} 
-                          onChange={(e) => handleFaixaChange(index, 'quantidade_min', e.target.value)}
-                          placeholder="1"
-                        />
+                    <div key={index} className="grid grid-cols-12 gap-2 items-center bg-white dark:bg-slate-800 p-3 rounded-md border hover:bg-gray-50 dark:hover:bg-slate-700/50">
+                      <div className="col-span-2">
+                        <div className="text-sm font-medium">
+                          {faixa.quantidade_min || '1'} - {faixa.quantidade_max || '∞'}
+                        </div>
                       </div>
-                      <div className="flex-1">
-                        <Label className="text-xs">Quantidade Máxima</Label>
-                        <Input 
-                          type="number" 
-                          min="1"
-                          value={faixa.quantidade_max || ''} 
-                          onChange={(e) => handleFaixaChange(index, 'quantidade_max', e.target.value)}
-                          placeholder="100"
-                        />
+                      <div className="col-span-2">
+                        <div className="text-sm">{faixa.valor_custo ? `R$ ${parseFloat(faixa.valor_custo).toFixed(2).replace('.', ',')}` : '-'}</div>
                       </div>
-                      <div className="flex-1">
-                        <Label className="text-xs">Preço Unitário (R$)</Label>
-                        <Input 
-                          type="number" 
-                          step="0.01"
-                          value={faixa.preco || ''} 
-                          onChange={(e) => handleFaixaChange(index, 'preco', e.target.value)}
-                          placeholder="0.00"
-                        />
+                      <div className="col-span-2">
+                        <div className="text-sm">{faixa.valor_revenda ? `R$ ${parseFloat(faixa.valor_revenda).toFixed(2).replace('.', ',')}` : '-'}</div>
                       </div>
-                      <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveFaixa(index)} className="text-red-500 hover:text-red-700 hover:bg-red-50 mt-5">
-                        <Trash2 size={18} />
-                      </Button>
+                      <div className="col-span-2">
+                        <div className="text-sm font-semibold">{faixa.valor_cliente_final ? `R$ ${parseFloat(faixa.valor_cliente_final).toFixed(2).replace('.', ',')}` : (faixa.preco ? `R$ ${parseFloat(faixa.preco).toFixed(2).replace('.', ',')}` : '-')}</div>
+                      </div>
+                      <div className="col-span-2">
+                        <div className="text-sm text-muted-foreground">{faixa.preco ? `R$ ${parseFloat(faixa.preco).toFixed(2).replace('.', ',')}` : '-'}</div>
+                      </div>
+                      <div className="col-span-2 flex justify-center gap-1">
+                        <Button type="button" variant="ghost" size="icon" onClick={() => handleEditFaixa(index)} className="text-blue-500 hover:text-blue-700 hover:bg-blue-50" title="Editar">
+                          <Edit size={18} />
+                        </Button>
+                        <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveFaixa(index)} className="text-red-500 hover:text-red-700 hover:bg-red-50" title="Excluir">
+                          <Trash2 size={18} />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -864,6 +919,18 @@ const ProdutoTabPrecoEstoque = ({ currentProduto, handleInputChange }) => {
             return null;
         })()}
       </CardContent>
+
+      {/* Modal para adicionar/editar quantidade/valor */}
+      <AdicionarQuantidadeValorModal
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setItemEditando(null);
+        }}
+        onSave={handleSaveModal}
+        tipoPrecificacao={tipoPrecificacao}
+        itemExistente={itemEditando}
+      />
     </Card>
   );
 };

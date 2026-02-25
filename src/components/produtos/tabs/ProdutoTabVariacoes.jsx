@@ -132,26 +132,57 @@ const ProdutoTabVariacoes = ({
 
             {currentProduto.variacoes_ativa && (
                 <div className="space-y-3 pt-3 border-t max-h-80 overflow-y-auto">
-                    <div className="flex items-center space-x-2 rounded-md border p-3 bg-muted/20">
-                        <Checkbox
-                            id="variacao_obrigatoria"
-                            name="variacao_obrigatoria"
-                            checked={currentProduto.variacao_obrigatoria !== false}
-                            onCheckedChange={(checked) =>
-                                handleInputChange({
-                                    target: {
-                                        name: 'variacao_obrigatoria',
-                                        checked: Boolean(checked),
-                                        type: 'checkbox'
+                    <div className="space-y-3">
+                        <div className="flex items-center space-x-2 rounded-md border p-3 bg-muted/20">
+                            <Checkbox
+                                id="variacao_obrigatoria"
+                                name="variacao_obrigatoria"
+                                checked={currentProduto.variacao_obrigatoria !== false}
+                                onCheckedChange={(checked) =>
+                                    handleInputChange({
+                                        target: {
+                                            name: 'variacao_obrigatoria',
+                                            checked: Boolean(checked),
+                                            type: 'checkbox'
+                                        }
+                                    })
+                                }
+                            />
+                            <div className="space-y-0.5">
+                                <Label htmlFor="variacao_obrigatoria">Seleção de variação obrigatória</Label>
+                                <p className="text-xs text-muted-foreground">
+                                    Quando marcado, o vendedor/cliente precisa escolher uma variação antes de adicionar ao carrinho.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center space-x-2 rounded-md border p-3 bg-muted/20">
+                            <Checkbox
+                                id="variacoes_usa_preco_base"
+                                name="variacoes_usa_preco_base"
+                                checked={currentProduto.variacoes_usa_preco_base !== false}
+                                onCheckedChange={(checked) => {
+                                    handleInputChange({
+                                        target: {
+                                            name: 'variacoes_usa_preco_base',
+                                            checked: Boolean(checked),
+                                            type: 'checkbox'
+                                        }
+                                    });
+                                    // Se marcar para usar preço base, limpar preços específicos das variações
+                                    if (checked && currentProduto.variacoes) {
+                                        currentProduto.variacoes.forEach((_, index) => {
+                                            updateVariacao(index, 'preco_var', '0');
+                                        });
                                     }
-                                })
-                            }
-                        />
-                        <div className="space-y-0.5">
-                            <Label htmlFor="variacao_obrigatoria">Seleção de variação obrigatória</Label>
-                            <p className="text-xs text-muted-foreground">
-                                Quando marcado, o vendedor/cliente precisa escolher uma variação antes de adicionar ao carrinho.
-                            </p>
+                                }}
+                            />
+                            <div className="space-y-0.5">
+                                <Label htmlFor="variacoes_usa_preco_base">Variações usam o mesmo preço do produto</Label>
+                                <p className="text-xs text-muted-foreground">
+                                    Quando marcado, todas as variações usarão o preço base do produto. Desmarque para definir preços específicos por variação.
+                                </p>
+                            </div>
                         </div>
                     </div>
 
@@ -208,31 +239,32 @@ const ProdutoTabVariacoes = ({
                                     <Separator />
                                     
                                     {/* Definir Preço e Estoque lado a lado */}
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                        <div>
-                                            <Label className="text-xs font-medium text-blue-700 dark:text-blue-300">
-                                                Definir Preço para Todas (R$)
-                                            </Label>
-                                            <div className="flex gap-2 mt-1">
-                                                <Input
-                                                    type="number"
-                                                    step="0.01"
-                                                    value={bulkPreco}
-                                                    onChange={(e) => setBulkPreco(e.target.value)}
-                                                    placeholder="0.00"
-                                                    className="text-sm"
-                                                />
-                                                <Button 
-                                                    type="button" 
-                                                    size="sm"
-                                                    onClick={aplicarPrecoEmMassa}
-                                                    disabled={!bulkPreco || isNaN(parseFloat(bulkPreco))}
-                                                    className="bg-blue-600 hover:bg-blue-700 text-white"
-                                                >
-                                                    Aplicar
-                                                </Button>
+                                    {!currentProduto.variacoes_usa_preco_base && (
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            <div>
+                                                <Label className="text-xs font-medium text-blue-700 dark:text-blue-300">
+                                                    Definir Preço para Todas (R$)
+                                                </Label>
+                                                <div className="flex gap-2 mt-1">
+                                                    <Input
+                                                        type="number"
+                                                        step="0.01"
+                                                        value={bulkPreco}
+                                                        onChange={(e) => setBulkPreco(e.target.value)}
+                                                        placeholder="0.00"
+                                                        className="text-sm"
+                                                    />
+                                                    <Button 
+                                                        type="button" 
+                                                        size="sm"
+                                                        onClick={aplicarPrecoEmMassa}
+                                                        disabled={!bulkPreco || isNaN(parseFloat(bulkPreco))}
+                                                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                                                    >
+                                                        Aplicar
+                                                    </Button>
+                                                </div>
                                             </div>
-                                        </div>
                                         
                                         <div>
                                             <Label className="text-xs font-medium text-blue-700 dark:text-blue-300">
@@ -258,6 +290,7 @@ const ProdutoTabVariacoes = ({
                                             </div>
                                         </div>
                                     </div>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -444,10 +477,37 @@ const ProdutoTabVariacoes = ({
                                     <Label htmlFor={`var-estoque_var-${index}`}>Estoque (opcional)</Label>
                                     <Input id={`var-estoque_var-${index}`} type="number" value={variacao.estoque_var} onChange={(e) => updateVariacao(index, 'estoque_var', e.target.value)} placeholder="0"/>
                                 </div>
-                                <div>
-                                    <Label htmlFor={`var-preco_var-${index}`}>Preço (R$)</Label>
-                                    <Input id={`var-preco_var-${index}`} type="number" step="0.01" value={variacao.preco_var} onChange={(e) => updateVariacao(index, 'preco_var', e.target.value)} placeholder="0.00"/>
-                                </div>
+                                {!currentProduto.variacoes_usa_preco_base && (
+                                    <div>
+                                        <Label htmlFor={`var-preco_var-${index}`}>Preço Específico (R$)</Label>
+                                        <Input 
+                                            id={`var-preco_var-${index}`} 
+                                            type="number" 
+                                            step="0.01" 
+                                            value={variacao.preco_var || ''} 
+                                            onChange={(e) => updateVariacao(index, 'preco_var', e.target.value)} 
+                                            placeholder="0.00"
+                                        />
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                            Deixe vazio ou 0 para usar o preço base do produto
+                                        </p>
+                                    </div>
+                                )}
+                                {currentProduto.variacoes_usa_preco_base && (
+                                    <div>
+                                        <Label htmlFor={`var-preco_var-${index}`}>Preço (R$)</Label>
+                                        <Input 
+                                            id={`var-preco_var-${index}`} 
+                                            type="text" 
+                                            value={`Usa preço base: R$ ${parseFloat(currentProduto.preco_venda || 0).toFixed(2).replace('.', ',')}`} 
+                                            disabled
+                                            className="bg-gray-100 dark:bg-gray-700 cursor-not-allowed"
+                                        />
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                            Usando o preço base do produto
+                                        </p>
+                                    </div>
+                                )}
                             </div>
                         </motion.div>
                     ))}

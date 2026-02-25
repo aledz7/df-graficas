@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 const ProdutoTabDadosGerais = ({ currentProduto, handleInputChange }) => {
   return (
@@ -26,117 +27,116 @@ const ProdutoTabDadosGerais = ({ currentProduto, handleInputChange }) => {
 
         <Separator />
 
-        {/* Seção de Visibilidade do Produto */}
+        {/* Seção de Tipo de Visualização do Produto */}
         <div className="space-y-4">
           <div>
-            <h3 className="text-lg font-semibold mb-2">📍 Visibilidade do Produto</h3>
+            <h3 className="text-lg font-semibold mb-2">📍 Tipo de Visualização do Produto</h3>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
               Defina onde este produto pode aparecer e ser utilizado no sistema.
             </p>
           </div>
 
-          <div className="space-y-3">
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="venda_pdv"
-                checked={currentProduto.venda_pdv ?? true}
-                onCheckedChange={(checked) => {
-                  handleInputChange({
-                    target: {
-                      name: 'venda_pdv',
-                      checked: checked,
-                      type: 'checkbox'
-                    }
-                  });
-                }}
-              />
-              <Label htmlFor="venda_pdv" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer">
-                ☑ Mostrar no PDV
-              </Label>
+          <RadioGroup 
+            value={currentProduto.tipo_visualizacao || 'vendas'} 
+            onValueChange={(value) => {
+              handleInputChange({
+                target: {
+                  name: 'tipo_visualizacao',
+                  value: value,
+                  type: 'text'
+                }
+              });
+              // Atualizar checkboxes de visibilidade baseado no tipo
+              if (value === 'vendas') {
+                handleInputChange({ target: { name: 'venda_pdv', checked: true, type: 'checkbox' } });
+                handleInputChange({ target: { name: 'venda_marketplace', checked: true, type: 'checkbox' } });
+                handleInputChange({ target: { name: 'uso_interno', checked: false, type: 'checkbox' } });
+              } else if (value === 'catalogo_publico') {
+                handleInputChange({ target: { name: 'venda_pdv', checked: false, type: 'checkbox' } });
+                handleInputChange({ target: { name: 'venda_marketplace', checked: true, type: 'checkbox' } });
+                handleInputChange({ target: { name: 'uso_interno', checked: false, type: 'checkbox' } });
+              } else if (value === 'consumo_interno') {
+                handleInputChange({ target: { name: 'venda_pdv', checked: false, type: 'checkbox' } });
+                handleInputChange({ target: { name: 'venda_marketplace', checked: false, type: 'checkbox' } });
+                handleInputChange({ target: { name: 'uso_interno', checked: true, type: 'checkbox' } });
+              }
+            }}
+            className="space-y-3"
+          >
+            <div className="flex items-start space-x-3 p-3 border rounded-md hover:bg-gray-50 dark:hover:bg-gray-800">
+              <RadioGroupItem value="vendas" id="tipo_vendas" className="mt-1" />
+              <div className="flex-1">
+                <Label htmlFor="tipo_vendas" className="text-sm font-medium cursor-pointer">
+                  Vendas / Comercial
+                </Label>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Produtos para vendas no geral. Aparece no PDV e no Marketplace. Opção padrão para produtos comerciais.
+                </p>
+              </div>
             </div>
-            <p className="text-xs text-gray-500 dark:text-gray-400 ml-6">
-              Produto aparece no sistema de venda balcão. Pode ser vendido diretamente no caixa e aparece na busca do PDV.
-            </p>
 
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="venda_marketplace"
-                checked={currentProduto.venda_marketplace ?? true}
-                onCheckedChange={(checked) => {
-                  handleInputChange({
-                    target: {
-                      name: 'venda_marketplace',
-                      checked: checked,
-                      type: 'checkbox'
-                    }
-                  });
-                }}
-              />
-              <Label htmlFor="venda_marketplace" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer">
-                ☑ Mostrar no Marketplace
-              </Label>
+            <div className="flex items-start space-x-3 p-3 border rounded-md hover:bg-gray-50 dark:hover:bg-gray-800">
+              <RadioGroupItem value="catalogo_publico" id="tipo_catalogo" className="mt-1" />
+              <div className="flex-1">
+                <Label htmlFor="tipo_catalogo" className="text-sm font-medium cursor-pointer">
+                  Catálogo Público
+                </Label>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Escolhendo essa opção, você pode colocar itens com artes prontas. Exibido apenas para clientes finais no catálogo público, evitando que vários itens apareçam no sistema e atrapalhem o vendedor.
+                </p>
+              </div>
             </div>
-            <p className="text-xs text-gray-500 dark:text-gray-400 ml-6">
-              Produto aparece na loja virtual. Visível ao cliente final e pode ser comprado online.
-            </p>
 
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="uso_interno"
-                checked={currentProduto.uso_interno ?? false}
-                onCheckedChange={(checked) => {
-                  handleInputChange({
-                    target: {
-                      name: 'uso_interno',
-                      checked: checked,
-                      type: 'checkbox'
-                    }
-                  });
-                  // Se marcar uso interno, desmarcar automaticamente PDV e Marketplace
-                  if (checked) {
-                    handleInputChange({
-                      target: {
-                        name: 'venda_pdv',
-                        checked: false,
-                        type: 'checkbox'
-                      }
-                    });
-                    handleInputChange({
-                      target: {
-                        name: 'venda_marketplace',
-                        checked: false,
-                        type: 'checkbox'
-                      }
-                    });
-                  }
-                }}
-              />
-              <Label htmlFor="uso_interno" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer">
-                ☑ Uso Interno (Balcão)
-              </Label>
+            <div className="flex items-start space-x-3 p-3 border rounded-md hover:bg-gray-50 dark:hover:bg-gray-800">
+              <RadioGroupItem value="consumo_interno" id="tipo_consumo" className="mt-1" />
+              <div className="flex-1">
+                <Label htmlFor="tipo_consumo" className="text-sm font-medium cursor-pointer">
+                  Consumo Interno
+                </Label>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Visível apenas para pessoas que têm acesso a estoque. Ideal para material de limpeza, escritório e outros itens de uso interno que precisam de controle de estoque.
+                </p>
+              </div>
             </div>
-            <p className="text-xs text-gray-500 dark:text-gray-400 ml-6">
-              Produto não aparece no PDV nem no Marketplace. Serve apenas para uso interno, custo por OS, controle de estoque, insumos e serviços internos.
+          </RadioGroup>
+
+          {/* Campos de Prazo */}
+          <Separator />
+          <div>
+            <h3 className="text-lg font-semibold mb-2">⏱️ Prazos</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              Informe os prazos de produção e criação de arte (opcional).
             </p>
           </div>
 
-          {/* Aviso quando uso interno está marcado */}
-          {currentProduto.uso_interno && (
-            <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md">
-              <p className="text-xs text-amber-800 dark:text-amber-200">
-                ⚠️ <strong>Produto de Uso Interno:</strong> Este produto não será exibido para clientes no PDV nem no Marketplace.
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="prazo_producao">Prazo de Produção</Label>
+              <Input 
+                id="prazo_producao" 
+                name="prazo_producao" 
+                value={currentProduto.prazo_producao || ''} 
+                onChange={handleInputChange} 
+                placeholder="Ex: 5 dias, 1 semana, 10 dias úteis"
+              />
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Tempo necessário para produção do produto
               </p>
             </div>
-          )}
-
-          {/* Aviso quando nenhum está marcado */}
-          {!currentProduto.venda_pdv && !currentProduto.venda_marketplace && !currentProduto.uso_interno && (
-            <div className="mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
-              <p className="text-xs text-red-800 dark:text-red-200">
-                ⚠️ <strong>Atenção:</strong> Nenhuma opção de visibilidade está marcada. O produto ficará oculto de todas as vendas.
+            <div>
+              <Label htmlFor="prazo_criacao_arte">Prazo de Criação de Arte</Label>
+              <Input 
+                id="prazo_criacao_arte" 
+                name="prazo_criacao_arte" 
+                value={currentProduto.prazo_criacao_arte || ''} 
+                onChange={handleInputChange} 
+                placeholder="Ex: 3 dias, 48 horas, 2 dias úteis"
+              />
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Tempo necessário para criação da arte do produto
               </p>
             </div>
-          )}
+          </div>
         </div>
       </CardContent>
     </Card>

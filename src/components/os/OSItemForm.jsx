@@ -1966,6 +1966,12 @@ const OSItemForm = ({
       onItemChange('valor_minimo', produto.valor_minimo || null);
       // Armazenar o tipo de precificação para cálculos corretos (metro_linear, m2, unidade, etc.)
       onItemChange('tipo_precificacao', tipoPrecificacaoProduto || '');
+      // Passar a tabela de preços para produtos com precificação por quantidade
+      if (produto.tabela_precos && Array.isArray(produto.tabela_precos) && produto.tabela_precos.length > 0) {
+        onItemChange('tabela_precos', produto.tabela_precos);
+      } else {
+        onItemChange('tabela_precos', []);
+      }
       
       toast({ 
         title: novoTipoItem === 'm2' ? "Produto Selecionado como Base (Serviço M²)" : "Produto Selecionado (Unidade)", 
