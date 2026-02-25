@@ -15,6 +15,9 @@ const defaultProduto = {
     codigo_produto: '',
     nome: '',
     status: true,
+    venda_pdv: true,
+    venda_marketplace: true,
+    uso_interno: false,
     unidadeMedida: 'unidade',
     categoria: '',
     subcategoriaId: '',
@@ -178,6 +181,10 @@ const ProdutoForm = ({ isOpen, onClose, onSave, produtoEmEdicao, showSaveAndNewB
                 categoria: produtoEmEdicao.categoria_id || produtoEmEdicao.categoria || '',
                 subcategoriaId: produtoEmEdicao.subcategoria_id || produtoEmEdicao.subcategoriaId || '',
                 unidadeMedida: produtoEmEdicao.unidade_medida || produtoEmEdicao.unidadeMedida || 'unidade',
+                // Campos de visibilidade (com valores padrão se não existirem)
+                venda_pdv: produtoEmEdicao.venda_pdv !== undefined ? (produtoEmEdicao.venda_pdv === true || produtoEmEdicao.venda_pdv === 1 || produtoEmEdicao.venda_pdv === '1') : true,
+                venda_marketplace: produtoEmEdicao.venda_marketplace !== undefined ? (produtoEmEdicao.venda_marketplace === true || produtoEmEdicao.venda_marketplace === 1 || produtoEmEdicao.venda_marketplace === '1') : true,
+                uso_interno: produtoEmEdicao.uso_interno === true || produtoEmEdicao.uso_interno === 1 || produtoEmEdicao.uso_interno === '1',
                 // Garantir que campos numéricos sejam strings para os inputs
                 preco_custo: String(produtoEmEdicao.preco_custo || '0'),
                 preco_m2: String(produtoEmEdicao.preco_m2 || '0'),

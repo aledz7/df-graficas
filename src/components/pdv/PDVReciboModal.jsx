@@ -340,6 +340,27 @@ const PDVReciboModal = ({
                   break;
                 case 'Dinheiro':
                   icone = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#eab308" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 5px;"><circle cx="12" cy="12" r="8"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>';
+                  // Para dinheiro, verificar se há informações de valor recebido e troco
+                  const valorRecebido = p.valorRecebido || p.valorFinal || p.valor;
+                  const valorPagamento = parseFloat(p.valorFinal || p.valor || 0);
+                  const trocoPagamento = p.troco || (valorRecebido && parseFloat(valorRecebido) > valorPagamento ? parseFloat(valorRecebido) - valorPagamento : 0);
+                  return `
+                    <div style="font-size: 8px; padding: 4px; margin-bottom: 3px; background-color: white; border: 1px solid #e5e5e5; border-radius: 4px;">
+                      <div style="display: flex; justify-content: space-between; font-weight: 500;">
+                        <span style="display: flex; align-items: center;">
+                          ${icone}
+                          ${p.metodo}
+                        </span>
+                        <span>${formatCurrency(valorPagamento)}</span>
+                      </div>
+                      ${valorRecebido && parseFloat(valorRecebido) > valorPagamento ? `
+                        <div style="margin: 2px 0 0 17px; font-size: 7px; color: #666;">
+                          <p>Valor Recebido: ${formatCurrency(parseFloat(valorRecebido))}</p>
+                          ${trocoPagamento > 0 ? `<p style="color: #16a34a; font-weight: 600;">Troco: ${formatCurrency(trocoPagamento)}</p>` : ''}
+                        </div>
+                      ` : ''}
+                    </div>
+                  `;
                   break;
                 case 'Cartão Débito':
                 case 'Cartão Crédito':
@@ -1007,15 +1028,28 @@ const PDVReciboModal = ({
                     </h2>
                     <div className="space-y-1.5 bg-gray-50 p-2 sm:p-3 rounded-md border border-gray-300" style={{ backgroundColor: '#f9fafb', borderColor: '#d1d5db' }}>
                       {/* Pagamentos originais */}
-                      {documento.pagamentos.filter(p => !p.isHistorico).map((p, i) => (
+                      {documento.pagamentos.filter(p => !p.isHistorico).map((p, i) => {
+                        const valorRecebido = p.valorRecebido || (p.metodo === 'Dinheiro' && p.valorFinal ? p.valorFinal : null);
+                        const valorPagamento = parseFloat(p.valorFinal || p.valor || 0);
+                        const trocoPagamento = p.troco || (valorRecebido && parseFloat(valorRecebido) > valorPagamento ? parseFloat(valorRecebido) - valorPagamento : 0);
+                        
+                        return (
                           <div key={i} className="text-[10px] sm:text-xs p-1.5 sm:p-2 rounded-md bg-white border border-gray-300" style={{ backgroundColor: 'white', borderColor: '#d1d5db' }}>
                               <div className="flex items-center justify-between font-medium">
                                   <span className="flex items-center text-black" style={{ color: 'black' }}>
                                     {formaPagamentoIcones[p.metodo] || <Tag size={16} className="mr-2 text-gray-500" />}
                                     {p.metodo} {p.parcelas ? ` (${p.parcelas}x)` : ''}
                                   </span>
-                                  <span className="text-black" style={{ color: 'black' }}>{formatCurrency(p.valorFinal || p.valor)}</span>
+                                  <span className="text-black" style={{ color: 'black' }}>{formatCurrency(valorPagamento)}</span>
                               </div>
+                              {p.metodo === 'Dinheiro' && valorRecebido && parseFloat(valorRecebido) > valorPagamento && (
+                                <div className="text-gray-600 text-[9px] sm:text-[10px] ml-7 mt-0.5" style={{ color: '#4b5563' }}>
+                                  <p>Valor Recebido: {formatCurrency(parseFloat(valorRecebido))}</p>
+                                  {trocoPagamento > 0 && (
+                                    <p className="text-green-600 font-semibold" style={{ color: '#16a34a' }}>Troco: {formatCurrency(trocoPagamento)}</p>
+                                  )}
+                                </div>
+                              )}
                               {p.maquinaInfo?.nome && <p className="text-gray-600 text-[9px] sm:text-[10px] ml-7" style={{ color: '#4b5563' }}>Máquina: {p.maquinaInfo.nome}</p>}
                               {p.taxaInfo?.valor && parseFloat(p.taxaInfo.valor) > 0 && (
                                   <div className="text-gray-600 text-[9px] sm:text-[10px] ml-7 mt-0.5" style={{ color: '#4b5563' }}>
@@ -1023,7 +1057,8 @@ const PDVReciboModal = ({
                                   </div>
                               )}
                           </div>
-                      ))}
+                        );
+                      })}
                       
                       {/* Pagamentos já recebidos (histórico do crediário) */}
                       {documento.pagamentos.filter(p => p.isHistorico).length > 0 && (

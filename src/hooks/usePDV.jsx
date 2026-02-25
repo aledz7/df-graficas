@@ -121,7 +121,15 @@ export const usePDV = (vendedorAtualProp) => {
                     apiDataManager.getDataAsArray('productSizes', []).catch(() => []),
                     apiDataManager.getDataAsArray('categorias', []).catch(() => []),
                 ]);
-                const produtosFiltrados = (Array.isArray(produtosCache) ? produtosCache : []).filter(p => isProdutoAtivo(p));
+                const produtosFiltrados = (Array.isArray(produtosCache) ? produtosCache : []).filter(p => {
+                    if (!isProdutoAtivo(p)) return false;
+                    // Filtrar por visibilidade: produto deve estar disponível para PDV
+                    // Se venda_pdv não estiver definido, considerar true (compatibilidade com produtos antigos)
+                    const vendaPdv = p.venda_pdv !== undefined ? (p.venda_pdv === true || p.venda_pdv === 1 || p.venda_pdv === '1') : true;
+                    // Se uso_interno estiver marcado, não mostrar no PDV
+                    const usoInterno = p.uso_interno === true || p.uso_interno === 1 || p.uso_interno === '1';
+                    return vendaPdv && !usoInterno;
+                });
                 setProdutos(produtosFiltrados);
                 setClientes(Array.isArray(clientesCache) ? clientesCache : []);
                 setProductColors(Array.isArray(coresCache) ? coresCache : []);
@@ -140,7 +148,13 @@ export const usePDV = (vendedorAtualProp) => {
                 const produtosData = produtosResponse.data?.data?.data || produtosResponse.data?.data || produtosResponse.data || [];
                 const produtosArray = Array.isArray(produtosData) ? produtosData : [];
                 await apiDataManager.setItem('produtos', JSON.stringify(produtosArray));
-                setProdutos(produtosArray.filter(p => isProdutoAtivo(p)));
+                setProdutos(produtosArray.filter(p => {
+                    if (!isProdutoAtivo(p)) return false;
+                    // Filtrar por visibilidade: produto deve estar disponível para PDV
+                    const vendaPdv = p.venda_pdv !== undefined ? (p.venda_pdv === true || p.venda_pdv === 1 || p.venda_pdv === '1') : true;
+                    const usoInterno = p.uso_interno === true || p.uso_interno === 1 || p.uso_interno === '1';
+                    return vendaPdv && !usoInterno;
+                }));
             } catch (apiError) {
                 if (apiError?.response?.status !== 404) console.warn('Produtos API:', apiError?.response?.status || apiError.message);
             }
@@ -514,7 +528,13 @@ export const usePDV = (vendedorAtualProp) => {
             const produtosResponse = await produtoService.getAll('?per_page=1000');
             const produtosData = produtosResponse.data?.data?.data || produtosResponse.data?.data || produtosResponse.data || [];
             const produtosArray = Array.isArray(produtosData) ? produtosData : [];
-            const produtosFiltrados = produtosArray.filter(p => p.status === true);
+            const produtosFiltrados = produtosArray.filter(p => {
+                if (p.status !== true) return false;
+                // Filtrar por visibilidade: produto deve estar disponível para PDV
+                const vendaPdv = p.venda_pdv !== undefined ? (p.venda_pdv === true || p.venda_pdv === 1 || p.venda_pdv === '1') : true;
+                const usoInterno = p.uso_interno === true || p.uso_interno === 1 || p.uso_interno === '1';
+                return vendaPdv && !usoInterno;
+            });
             setProdutos(produtosFiltrados);
             await apiDataManager.setItem('produtos', JSON.stringify(produtosArray));
         } catch (error) {

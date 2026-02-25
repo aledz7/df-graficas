@@ -23,9 +23,17 @@ const MarketplaceProdutoModal = ({ open, onOpenChange, onSelectProduto }) => {
                     const produtosData = response.data?.data?.data || response.data?.data || response.data || [];
                     const produtosArray = Array.isArray(produtosData) ? produtosData : [];
 
-                    // Filter active products
+                    // Filter active products and visibility for marketplace
                     const isActive = (p) => p.status === true || p.status === 1 || String(p.status).toLowerCase() === 'ativo';
-                    const produtosFiltrados = produtosArray.filter(isActive);
+                    const produtosFiltrados = produtosArray.filter(p => {
+                        if (!isActive(p)) return false;
+                        // Filtrar por visibilidade: produto deve estar disponível para Marketplace
+                        // Se venda_marketplace não estiver definido, considerar true (compatibilidade com produtos antigos)
+                        const vendaMarketplace = p.venda_marketplace !== undefined ? (p.venda_marketplace === true || p.venda_marketplace === 1 || p.venda_marketplace === '1') : true;
+                        // Se uso_interno estiver marcado, não mostrar no Marketplace
+                        const usoInterno = p.uso_interno === true || p.uso_interno === 1 || p.uso_interno === '1';
+                        return vendaMarketplace && !usoInterno;
+                    });
 
                     setProdutos(produtosFiltrados);
                 } catch (error) {

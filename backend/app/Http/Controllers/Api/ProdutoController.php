@@ -97,6 +97,21 @@ class ProdutoController extends ResourceController
         //     $query->where('ativo', $request->boolean('ativo'));
         // }
 
+        // Filtrar por visibilidade PDV
+        if ($request->has('venda_pdv')) {
+            $query->where('venda_pdv', $request->boolean('venda_pdv'));
+        }
+
+        // Filtrar por visibilidade Marketplace
+        if ($request->has('venda_marketplace')) {
+            $query->where('venda_marketplace', $request->boolean('venda_marketplace'));
+        }
+
+        // Filtrar por uso interno
+        if ($request->has('uso_interno')) {
+            $query->where('uso_interno', $request->boolean('uso_interno'));
+        }
+
         // Filtrar por estoque baixo
         if ($request->boolean('estoque_baixo')) {
             $query->whereColumn('estoque_atual', '<=', 'estoque_minimo');

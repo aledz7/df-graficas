@@ -27,6 +27,9 @@ const OSPagamentoModal = ({ open, onOpenChange, totalOS, totaisOS, onConfirmPaga
   const [valorPagamento, setValorPagamento] = useState('');
   const [isValorFocused, setIsValorFocused] = useState(false);
   const [hasPrefilledValor, setHasPrefilledValor] = useState(false);
+  // Estados para troco automático quando pagamento for em dinheiro
+  const [valorRecebido, setValorRecebido] = useState('');
+  const [trocoCalculado, setTrocoCalculado] = useState(0);
   const [parcelas, setParcelas] = useState(1);
   const [maquinasCartao, setMaquinasCartao] = useState([]);
   const [maquinaSelecionadaId, setMaquinaSelecionadaId] = useState('');
@@ -456,6 +459,8 @@ const OSPagamentoModal = ({ open, onOpenChange, totalOS, totaisOS, onConfirmPaga
       setHasPrefilledValor(false);
       // Reset do valor quando abrir o modal para evitar inconsistências
       setValorPagamento('');
+      setValorRecebido('');
+      setTrocoCalculado(0);
     }
   }, [open]);
 
@@ -491,6 +496,18 @@ const OSPagamentoModal = ({ open, onOpenChange, totalOS, totaisOS, onConfirmPaga
     const trocoCalculado = Math.max(0, totalDinheiro - necessarioEmDinheiro);
     setTroco(trocoCalculado);
   }, [pagamentosAdicionados, totalOS, calcularTotalParaAbatimento, descontoPontosAplicado]);
+
+  // useEffect para calcular troco automático quando método for Dinheiro e valor recebido for informado
+  useEffect(() => {
+    if (metodoPagamento === 'Dinheiro' && valorRecebido) {
+      const valorRecebidoNum = parseFloat(valorRecebido.replace(',', '.')) || 0;
+      const totalComDesconto = Math.max(0, totalOS - descontoPontosAplicado);
+      const troco = Math.max(0, valorRecebidoNum - totalComDesconto);
+      setTrocoCalculado(troco);
+    } else {
+      setTrocoCalculado(0);
+    }
+  }, [valorRecebido, metodoPagamento, totalOS, descontoPontosAplicado]);
 
   // useEffect separado para preenchimento automático do valor (executa apenas quando necessário)
   useEffect(() => {
@@ -813,10 +830,36 @@ const OSPagamentoModal = ({ open, onOpenChange, totalOS, totaisOS, onConfirmPaga
   };
 
   const handleAdicionarPagamento = () => {
-    let valorNum = parseFloat(valorPagamento);
+    // Para pagamento em dinheiro, usar valorRecebido se estiver preenchido
+    let valorParaUsar = valorPagamento;
+    let valorRecebidoParaPagamento = 0;
+    
+    if (metodoPagamento === 'Dinheiro' && valorRecebido) {
+      valorParaUsar = valorRecebido;
+      valorRecebidoParaPagamento = parseFloat(valorRecebido.replace(',', '.')) || 0;
+    }
+    
+    let valorNum = parseFloat(valorParaUsar.replace(',', '.')) || parseFloat(valorParaUsar);
     if (isNaN(valorNum) || valorNum <= 0) {
       toast({ title: "Valor Inválido", description: "Por favor, insira um valor de pagamento válido.", variant: "destructive" });
       return;
+    }
+
+    // Validação especial para dinheiro: verificar se valor recebido é suficiente
+    if (metodoPagamento === 'Dinheiro') {
+      const totalComDesconto = Math.max(0, totalOS - descontoPontosAplicado);
+      valorRecebidoParaPagamento = valorNum; // Valor recebido do cliente
+      
+      if (valorRecebidoParaPagamento < totalComDesconto) {
+        toast({ 
+          title: "Valor Insuficiente", 
+          description: `O valor recebido (${formatCurrency(valorRecebidoParaPagamento)}) é menor que o total da venda (${formatCurrency(totalComDesconto)}).`, 
+          variant: "destructive" 
+        });
+        return;
+      }
+      // Para dinheiro, o valor do pagamento é sempre o total da venda
+      valorNum = totalComDesconto;
     }
 
     // Validar seleção de conta bancária para todas as formas de pagamento exceto dinheiro e crediário
@@ -829,9 +872,9 @@ const OSPagamentoModal = ({ open, onOpenChange, totalOS, totaisOS, onConfirmPaga
       return;
     }
 
-    // Impedir adicionar pagamentos maiores que o restante a pagar
+    // Impedir adicionar pagamentos maiores que o restante a pagar (exceto dinheiro que já foi validado)
     // Considera pequeno epsilon para evitar problemas de ponto flutuante
-    if (valorNum - (restante || 0) > 0.009) {
+    if (metodoPagamento !== 'Dinheiro' && valorNum - (restante || 0) > 0.009) {
       // Clamp no ato de adicionar
       valorNum = Math.max(0, restante || 0);
       toast({ 
@@ -867,6 +910,11 @@ const OSPagamentoModal = ({ open, onOpenChange, totalOS, totaisOS, onConfirmPaga
       conta_bancaria_id: (metodoPagamento !== 'Dinheiro' && metodoPagamento !== 'Crediário' && contaDestinoId) ? contaDestinoId : null,
       conta_destino_id: (metodoPagamento !== 'Dinheiro' && metodoPagamento !== 'Crediário' && contaDestinoId) ? contaDestinoId : null, // Mantido para compatibilidade
       dataVencimento: metodoPagamento === 'Crediário' ? dataVencimentoCrediario : null,
+      // Informações de troco para pagamento em dinheiro
+      ...(metodoPagamento === 'Dinheiro' && valorRecebido ? {
+        valorRecebido: valorRecebidoParaPagamento || parseFloat(valorRecebido.replace(',', '.')) || 0,
+        troco: trocoCalculado
+      } : {})
     };
 
     if (temTaxa) {
@@ -883,6 +931,8 @@ const OSPagamentoModal = ({ open, onOpenChange, totalOS, totaisOS, onConfirmPaga
     
     setPagamentosAdicionados([...pagamentosAdicionados, pagamentoFinal]);
     setValorPagamento('');
+    setValorRecebido(''); // Limpar valor recebido após adicionar pagamento
+    setTrocoCalculado(0);
     setParcelas(1);
     setTaxaAplicada(null);
     setValorOriginalSemTaxa(null);
@@ -894,6 +944,8 @@ const OSPagamentoModal = ({ open, onOpenChange, totalOS, totaisOS, onConfirmPaga
     setHasPrefilledValor(false);
     // Limpar o campo de valor para permitir preenchimento automático
     setValorPagamento('');
+    setValorRecebido('');
+    setTrocoCalculado(0);
   };
 
   const handleConfirmarEFinalizar = async () => {
@@ -951,7 +1003,18 @@ const OSPagamentoModal = ({ open, onOpenChange, totalOS, totaisOS, onConfirmPaga
 
   const isConfirmButtonDisabled = () => {
     if (totalOS === 0) return false; // Se o total é zero, pode finalizar
-    if (pagamentosAdicionados.length === 0) return true; // Se tem total e nenhum pagamento, desabilita
+    if (pagamentosAdicionados.length === 0) {
+      // Se método for Dinheiro e tem valor recebido, verificar se é suficiente
+      if (metodoPagamento === 'Dinheiro' && valorRecebido) {
+        const valorRecebidoNum = parseFloat(valorRecebido.replace(',', '.')) || 0;
+        const totalComDesconto = Math.max(0, totalOS - descontoPontosAplicado);
+        if (valorRecebidoNum < totalComDesconto) {
+          return true; // Bloquear se valor insuficiente
+        }
+        return false; // Permitir se valor suficiente
+      }
+      return true; // Se tem total e nenhum pagamento, desabilita
+    }
     // Permite pagamento parcial: não exige mais 100% ou Crediário
     
     // Para Crediário, verificar se tem cliente (incluindo clientes avulsos)
@@ -981,6 +1044,8 @@ const OSPagamentoModal = ({ open, onOpenChange, totalOS, totaisOS, onConfirmPaga
         if (!isOpen) {
           setPagamentosAdicionados([]);
           setValorPagamento('');
+          setValorRecebido('');
+          setTrocoCalculado(0);
           setMetodoPagamento('Dinheiro');
           setParcelas(1);
           setTaxaAplicada(null);
@@ -1084,25 +1149,162 @@ const OSPagamentoModal = ({ open, onOpenChange, totalOS, totaisOS, onConfirmPaga
               </div>
             )}
 
-            <div>
-              <Label htmlFor="valorPagamento" className="text-sm font-medium">Valor (R$)</Label>
-              <Input 
-                id="valorPagamento" 
-                type="number" 
-                step="0.01"
-                min="0"
-                max={(restante || 0).toFixed(2)}
-                placeholder="0.00" 
-                value={valorPagamento} 
-                onFocus={() => setIsValorFocused(true)}
-                onBlur={() => setIsValorFocused(false)}
-                onChange={(e) => {
-                  const raw = e.target.value;
-                  // permitir digitação livre; clamp acontece ao adicionar
-                  setValorPagamento(raw);
-                }} 
-              />
-            </div>
+            {/* Seção especial para pagamento em Dinheiro com troco automático */}
+            {metodoPagamento === 'Dinheiro' ? (
+              <div className="space-y-3">
+                <div>
+                  <Label htmlFor="valorRecebido" className="text-sm font-medium">Valor Recebido (R$)</Label>
+                  <Input 
+                    id="valorRecebido" 
+                    type="text" 
+                    placeholder="0,00" 
+                    value={valorRecebido} 
+                    onFocus={() => setIsValorFocused(true)}
+                    onBlur={() => setIsValorFocused(false)}
+                    onChange={(e) => {
+                      let raw = e.target.value;
+                      // Permitir apenas números, vírgula e ponto
+                      raw = raw.replace(/[^\d,.-]/g, '');
+                      // Garantir apenas uma vírgula ou ponto
+                      const parts = raw.split(/[,.]/);
+                      if (parts.length > 2) {
+                        raw = parts[0] + ',' + parts.slice(1).join('');
+                      }
+                      setValorRecebido(raw);
+                      // Atualizar também valorPagamento para compatibilidade
+                      setValorPagamento(raw);
+                    }} 
+                    className={(() => {
+                      if (!valorRecebido) return '';
+                      const valorRecebidoNum = parseFloat(valorRecebido.replace(',', '.')) || 0;
+                      const totalComDesconto = Math.max(0, totalOS - descontoPontosAplicado);
+                      if (valorRecebidoNum < totalComDesconto) {
+                        return 'border-red-500 focus:border-red-500 focus:ring-red-500';
+                      }
+                      return '';
+                    })()}
+                  />
+                  {valorRecebido && (() => {
+                    const valorRecebidoNum = parseFloat(valorRecebido.replace(',', '.')) || 0;
+                    const totalComDesconto = Math.max(0, totalOS - descontoPontosAplicado);
+                    if (valorRecebidoNum < totalComDesconto) {
+                      return (
+                        <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+                          ⚠️ Valor insuficiente. Faltam {formatCurrency(totalComDesconto - valorRecebidoNum)}
+                        </p>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
+                
+                <div className="p-3 bg-green-50 dark:bg-green-900/30 border border-green-300 dark:border-green-700 rounded-md">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-green-700 dark:text-green-300">Troco:</span>
+                    <span className="text-lg font-bold text-green-600 dark:text-green-400">
+                      {formatCurrency(trocoCalculado)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Botões rápidos de valor */}
+                <div className="grid grid-cols-3 gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setValorRecebido('10,00');
+                      setValorPagamento('10,00');
+                    }}
+                    className="text-xs"
+                  >
+                    R$ 10
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setValorRecebido('20,00');
+                      setValorPagamento('20,00');
+                    }}
+                    className="text-xs"
+                  >
+                    R$ 20
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setValorRecebido('50,00');
+                      setValorPagamento('50,00');
+                    }}
+                    className="text-xs"
+                  >
+                    R$ 50
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setValorRecebido('100,00');
+                      setValorPagamento('100,00');
+                    }}
+                    className="text-xs"
+                  >
+                    R$ 100
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setValorRecebido('200,00');
+                      setValorPagamento('200,00');
+                    }}
+                    className="text-xs"
+                  >
+                    R$ 200
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const totalComDesconto = Math.max(0, totalOS - descontoPontosAplicado);
+                      setValorRecebido(totalComDesconto.toFixed(2).replace('.', ','));
+                      setValorPagamento(totalComDesconto.toFixed(2).replace('.', ','));
+                    }}
+                    className="text-xs bg-green-100 hover:bg-green-200 dark:bg-green-800 dark:hover:bg-green-700"
+                  >
+                    Valor Exato
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <Label htmlFor="valorPagamento" className="text-sm font-medium">Valor (R$)</Label>
+                <Input 
+                  id="valorPagamento" 
+                  type="number" 
+                  step="0.01"
+                  min="0"
+                  max={(restante || 0).toFixed(2)}
+                  placeholder="0.00" 
+                  value={valorPagamento} 
+                  onFocus={() => setIsValorFocused(true)}
+                  onBlur={() => setIsValorFocused(false)}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    // permitir digitação livre; clamp acontece ao adicionar
+                    setValorPagamento(raw);
+                  }} 
+                />
+              </div>
+            )}
 
             {/* Seção de Pontos - Aparece apenas quando há cliente selecionado e sistema ativo */}
             {configPontos.ativo && clienteId && clienteId !== 'null' && clienteId !== null && (
@@ -1302,7 +1504,15 @@ const OSPagamentoModal = ({ open, onOpenChange, totalOS, totaisOS, onConfirmPaga
             <Button 
               onClick={handleAdicionarPagamento} 
               className="w-full bg-orange-500 hover:bg-orange-600 text-white"
-              disabled={!valorPagamento || parseFloat(valorPagamento) <= 0 || (parseFloat(valorPagamento) - (restante || 0) > 0.009)}
+              disabled={(() => {
+                if (metodoPagamento === 'Dinheiro') {
+                  if (!valorRecebido) return true;
+                  const valorRecebidoNum = parseFloat(valorRecebido.replace(',', '.')) || 0;
+                  const totalComDesconto = Math.max(0, totalOS - descontoPontosAplicado);
+                  return valorRecebidoNum < totalComDesconto;
+                }
+                return !valorPagamento || parseFloat(valorPagamento) <= 0 || (parseFloat(valorPagamento) - (restante || 0) > 0.009);
+              })()}
             >
               <PlusCircle size={18} className="mr-2" /> Adicionar Pagamento
             </Button>

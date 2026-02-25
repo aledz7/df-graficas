@@ -21,6 +21,9 @@ class Produto extends Model
         'codigo_produto',
         'nome',
         'status',
+        'venda_pdv',
+        'venda_marketplace',
+        'uso_interno',
         'unidade_medida',
         'tipo_produto',
         'categoria_id',
@@ -64,6 +67,9 @@ class Produto extends Model
      */
     protected $casts = [
         'status' => 'boolean',
+        'venda_pdv' => 'boolean',
+        'venda_marketplace' => 'boolean',
+        'uso_interno' => 'boolean',
         'promocao_ativa' => 'boolean',
         'permite_comissao' => 'boolean',
         'variacoes_ativa' => 'boolean',
