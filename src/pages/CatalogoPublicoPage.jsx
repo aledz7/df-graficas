@@ -186,11 +186,16 @@ const CatalogoPublicoPage = () => {
                             return;
                         }
                     } else {
-                        // Carregar dados gerais (comportamento original)
-                        produtosResponse = await produtoService.getAll();
-                        categoriasResponse = await productCategoryService.getAll();
-                        // Não carregar empresa se não tiver tenantId (rota protegida não deve ser usada em catálogo público)
-                        empresaResponse = null;
+                        // Sem tenantId, não podemos carregar produtos (catálogo público precisa de tenantId)
+                        // Mostrar mensagem informativa
+                        setTenantError(true);
+                        toast({
+                            title: 'Tenant não especificado',
+                            description: 'Para acessar o catálogo público, é necessário informar o ID do tenant na URL (ex: /catalogo-publico/1)',
+                            variant: 'destructive'
+                        });
+                        setLoading(false);
+                        return;
                     }
                     
                     // Processar produtos

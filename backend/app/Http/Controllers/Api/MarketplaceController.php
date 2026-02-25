@@ -130,7 +130,64 @@ class MarketplaceController extends Controller
     }
 
     /**
-     * Obter vendas de marketplace
+     * Obter vendas de marketplace (público - apenas visualização)
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function obterVendasPublico(Request $request, $tenantId)
+    {
+        try {
+            $query = MarketplaceVenda::with('produtos')
+                ->where('tenant_id', $tenantId);
+            
+            // Aplicar filtros de data se fornecidos
+            if ($request->has('data_inicio')) {
+                $query->where('data_venda', '>=', $request->input('data_inicio') . ' 00:00:00');
+            }
+            
+            if ($request->has('data_fim')) {
+                $query->where('data_venda', '<=', $request->input('data_fim') . ' 23:59:59');
+            }
+            
+            $vendas = $query->orderBy('data_venda', 'desc')->get();
+            
+            // Converter para o formato esperado pelo frontend
+            $vendasFormatadas = $vendas->map(function ($venda) {
+                return [
+                    'id' => $venda->id_venda,
+                    'data_venda' => $venda->data_venda->toISOString(),
+                    'cliente_nome' => $venda->cliente_nome,
+                    'cliente_contato' => $venda->cliente_contato,
+                    'cliente_endereco' => $venda->cliente_endereco,
+                    'produtos' => $venda->produtos->map(function ($produto) {
+                        return [
+                            'id' => $produto->produto_id,
+                            'nome' => $produto->nome,
+                            'quantidade' => (int) $produto->quantidade,
+                            'preco_unitario' => (float) $produto->preco_unitario,
+                            'subtotal' => (float) $produto->subtotal,
+                        ];
+                    })->toArray(),
+                    'valor_total' => (float) $venda->valor_total,
+                    'status_pedido' => $venda->status_pedido,
+                    'codigo_rastreio' => $venda->codigo_rastreio,
+                    'link_produto' => $venda->link_produto,
+                    'fotos_produto' => $venda->fotos_produto,
+                    'observacoes' => $venda->observacoes,
+                    'vendedor_id' => $venda->vendedor_id,
+                    'vendedor_nome' => $venda->vendedor_nome,
+                ];
+            });
+
+            return response()->json($vendasFormatadas, 200);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Erro ao obter vendas de marketplace: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Obter vendas de marketplace (protegido - para usuários autenticados)
      *
      * @param Request $request
      * @return \Illuminate\Http\JsonResponse

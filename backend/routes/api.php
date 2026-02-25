@@ -139,6 +139,8 @@ Route::prefix('public')->group(function () {
     Route::get('formas-pagamento/tenant/{tenantId}', [FormaPagamentoController::class, 'getByTenant']);
     Route::post('cupons/validar/{tenantId}', [CupomController::class, 'validarCupom']);
     Route::post('cupons/registrar-uso/{tenantId}', [CupomController::class, 'registrarUso']);
+    // Rota pública para visualizar produtos do marketplace (sem autenticação)
+    Route::get('marketplace/produtos/tenant/{tenantId}', [MarketplaceController::class, 'obterVendasPublico']);
 });
 
 // Webhook público para disparar fechamento automático de funcionários (aceita GET e POST)

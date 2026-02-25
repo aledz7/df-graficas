@@ -21,6 +21,19 @@ class PublicProdutoController extends Controller
         try {
             $query = Produto::withoutTenant()
                            ->where('tenant_id', $tenantId)
+                           ->where('status', true) // Apenas produtos ativos
+                           ->where(function($q) {
+                               // Produtos que devem aparecer no catálogo público:
+                               // - tipo_visualizacao = 'catalogo_publico' OU
+                               // - tipo_visualizacao = 'vendas' (também aparecem no catálogo público) OU
+                               // - venda_marketplace = true (compatibilidade com sistema antigo)
+                               $q->where(function($subQ) {
+                                   $subQ->where('tipo_visualizacao', 'catalogo_publico')
+                                        ->orWhere('tipo_visualizacao', 'vendas')
+                                        ->orWhereNull('tipo_visualizacao'); // Produtos antigos sem tipo_visualizacao
+                               })
+                               ->orWhere('venda_marketplace', true); // Compatibilidade com sistema antigo
+                           })
                            ->with([
                                'categoria' => function($query) use ($tenantId) {
                                    $query->withoutGlobalScope(\App\Models\Scopes\TenantScope::class)
@@ -101,6 +114,15 @@ class PublicProdutoController extends Controller
                     'subcategoria'
                 ])
                 ->where('status', true) // Apenas produtos ativos
+                ->where(function($q) {
+                    // Produtos que devem aparecer no catálogo público
+                    $q->where(function($subQ) {
+                        $subQ->where('tipo_visualizacao', 'catalogo_publico')
+                             ->orWhere('tipo_visualizacao', 'vendas')
+                             ->orWhereNull('tipo_visualizacao');
+                    })
+                    ->orWhere('venda_marketplace', true);
+                })
                 ->find($id);
 
             if (!$produto) {
