@@ -348,6 +348,11 @@ const OrdensServicoPage = ({ vendedorAtual }) => {
       }
     };
 
+    const handleCompartilharOS = (osId) => {
+        setOsIdParaCompartilhar(osId);
+        setIsCompartilharModalOpen(true);
+    };
+
     if (isLoading) {
         return (
           <div className="flex flex-1 justify-center items-center h-full">
