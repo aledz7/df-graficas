@@ -25,6 +25,11 @@ const formatToDisplay = (value, precision = 2) => {
     return num.toFixed(precision).replace('.', ',');
 };
 
+const isProdutoDigital = (produto) => {
+  if (!produto) return false;
+  return produto.is_digital === true || produto.is_digital === 1 || produto.is_digital === '1';
+};
+
 const OSProdutoUnidadeForm = ({ 
   itemAtual, 
   onItemChange, 
@@ -156,6 +161,10 @@ const OSProdutoUnidadeForm = ({
 
     const produtoSelecionado = produtosCadastrados.find(p => p.id === currentProduto.produto_id);
     if (!produtoSelecionado) {
+      return { valido: true };
+    }
+
+    if (isProdutoDigital(produtoSelecionado)) {
       return { valido: true };
     }
 
