@@ -15,6 +15,7 @@ class ProdutoController extends ResourceController
     protected $storeRules = [
         'nome' => 'required|string|max:255',
         'codigo_barras' => 'nullable|string|max:50|unique:produtos,codigo_barras,NULL,id,tenant_id,' . null,
+        'ncm' => 'nullable|string|max:20',
         'preco_custo' => 'required|numeric|min:0',
         'preco_venda' => 'required|numeric|min:0',
         'medida_chapa_largura_cm' => 'nullable|numeric|min:0',
@@ -40,6 +41,7 @@ class ProdutoController extends ResourceController
     protected $updateRules = [
         'nome' => 'sometimes|string|max:255',
         'codigo_barras' => 'nullable|string|max:50',
+        'ncm' => 'nullable|string|max:20',
         'preco_custo' => 'sometimes|numeric|min:0',
         'preco_venda' => 'sometimes|numeric|min:0',
         'medida_chapa_largura_cm' => 'nullable|numeric|min:0',

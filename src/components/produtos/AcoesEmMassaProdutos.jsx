@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { DollarSign, Percent, Trash2, X } from 'lucide-react';
+import { DollarSign, Percent, Trash2, X, Power, Tags } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -15,8 +15,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/components/ui/use-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const AcoesEmMassaProdutos = ({ selectedCount, onAdjustPrice, onDeleteSelected, onClearSelection }) => {
+const AcoesEmMassaProdutos = ({
+  selectedCount,
+  onAdjustPrice,
+  onDeleteSelected,
+  onClearSelection,
+  onInactivateSelected,
+  onInactivateByCategory,
+  categorias = [],
+  canEdit = true,
+}) => {
   const [isAdjustPriceModalOpen, setIsAdjustPriceModalOpen] = useState(false);
+  const [isInactivateByCategoryModalOpen, setIsInactivateByCategoryModalOpen] = useState(false);
+  const [categoriaSelecionada, setCategoriaSelecionada] = useState('');
   const [ajuste, setAjuste] = useState({
     tipo: 'aumento', // aumento | desconto
     base: 'preco_venda', // preco_venda | preco_custo
@@ -39,6 +50,21 @@ const AcoesEmMassaProdutos = ({ selectedCount, onAdjustPrice, onDeleteSelected, 
     setAjuste({ tipo: 'aumento', base: 'preco_venda', valorTipo: 'percentual', valor: '' }); // Reset form
   };
 
+  const handleInactivateByCategory = () => {
+    if (!categoriaSelecionada) {
+      toast({
+        title: "Categoria obrigatória",
+        description: "Selecione uma categoria para inativar os produtos.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    onInactivateByCategory(Number(categoriaSelecionada));
+    setIsInactivateByCategoryModalOpen(false);
+    setCategoriaSelecionada('');
+  };
+
   if (selectedCount === 0) return null;
 
   return (
@@ -58,6 +84,16 @@ const AcoesEmMassaProdutos = ({ selectedCount, onAdjustPrice, onDeleteSelected, 
               <Button variant="outline" size="sm" onClick={() => setIsAdjustPriceModalOpen(true)}>
                 <DollarSign className="mr-2 h-4 w-4" /> Ajustar Preço
               </Button>
+              {canEdit && onInactivateSelected && (
+                <Button variant="outline" size="sm" onClick={onInactivateSelected}>
+                  <Power className="mr-2 h-4 w-4" /> Inativar Selecionados
+                </Button>
+              )}
+              {canEdit && onInactivateByCategory && (
+                <Button variant="outline" size="sm" onClick={() => setIsInactivateByCategoryModalOpen(true)}>
+                  <Tags className="mr-2 h-4 w-4" /> Inativar por Categoria
+                </Button>
+              )}
               <Button variant="destructive" size="sm" onClick={onDeleteSelected}>
                 <Trash2 className="mr-2 h-4 w-4" /> Excluir Selecionados
               </Button>
@@ -136,6 +172,40 @@ const AcoesEmMassaProdutos = ({ selectedCount, onAdjustPrice, onDeleteSelected, 
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsAdjustPriceModalOpen(false)}>Cancelar</Button>
             <Button onClick={handleApplyPriceAdjustment}>Aplicar Ajuste</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isInactivateByCategoryModalOpen} onOpenChange={setIsInactivateByCategoryModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Inativar Produtos por Categoria</DialogTitle>
+            <DialogDescription>
+              Selecione uma categoria para inativar em lote todos os produtos ativos dela.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-y-3 py-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-2 md:gap-4">
+              <Label htmlFor="categoria-inativacao" className="md:text-right">Categoria</Label>
+              <div className="md:col-span-3">
+                <Select value={categoriaSelecionada} onValueChange={setCategoriaSelecionada}>
+                  <SelectTrigger id="categoria-inativacao">
+                    <SelectValue placeholder="Selecione a categoria" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categorias.map((categoria) => (
+                      <SelectItem key={categoria.id} value={String(categoria.id)}>
+                        {categoria.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsInactivateByCategoryModalOpen(false)}>Cancelar</Button>
+            <Button onClick={handleInactivateByCategory}>Inativar Produtos</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

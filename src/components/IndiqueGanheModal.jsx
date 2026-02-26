@@ -7,26 +7,72 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Gift, CheckCircle2, Star, MessageCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/components/ui/use-toast';
+import { indicacaoService } from '@/services/indicacaoService';
 
 const IndiqueGanheModal = ({ open, onOpenChange }) => {
   const { user } = useAuth();
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    empresa_nome: '',
+    responsavel_nome: '',
+    whatsapp: '',
+  });
 
-  // Número do WhatsApp para contato
-  const whatsappNumber = '5561998524612';
+  const handleChange = (field, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
 
-  const handleContatoWhatsApp = () => {
-    const nomeEmpresa = user?.empresa_nome || user?.name || 'Cliente';
-    const mensagem = encodeURIComponent(
-      `Olá! Sou cliente do sistema e gostaria de indicar alguém.\n\n` +
-      `Minha empresa: ${nomeEmpresa}\n\n` +
-      `Dados do indicado:\n` +
-      `Nome: \n` +
-      `Telefone: \n` +
-      `Empresa: `
-    );
-    window.open(`https://wa.me/${whatsappNumber}?text=${mensagem}`, '_blank');
+  const limparFormulario = () => {
+    setFormData({
+      empresa_nome: '',
+      responsavel_nome: '',
+      whatsapp: '',
+    });
+  };
+
+  const handleEnviarIndicacao = async () => {
+    if (!formData.empresa_nome || !formData.responsavel_nome || !formData.whatsapp) {
+      toast({
+        title: 'Preencha os campos obrigatórios',
+        description: 'Informe empresa, responsável e WhatsApp para enviar a indicação.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await indicacaoService.enviarIndicacao({
+        empresa_nome: formData.empresa_nome.trim(),
+        responsavel_nome: formData.responsavel_nome.trim(),
+        whatsapp: formData.whatsapp.trim(),
+      });
+
+      toast({
+        title: 'Indicação enviada com sucesso',
+        description: 'A indicação já foi encaminhada para o administrador.',
+      });
+
+      limparFormulario();
+      onOpenChange(false);
+    } catch (error) {
+      toast({
+        title: 'Não foi possível enviar a indicação',
+        description: error?.response?.data?.message || 'Tente novamente em instantes.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -71,9 +117,9 @@ const IndiqueGanheModal = ({ open, onOpenChange }) => {
                   <span className="text-orange-600 dark:text-orange-400 font-bold">1</span>
                 </div>
                 <div>
-                  <h5 className="font-medium">Entre em contato conosco</h5>
+                  <h5 className="font-medium">Preencha os dados da indicação</h5>
                   <p className="text-sm text-muted-foreground">
-                    Clique no botão abaixo e envie os dados da pessoa ou empresa que deseja indicar
+                    Informe empresa, responsável e WhatsApp para o time comercial entrar em contato
                   </p>
                 </div>
               </div>
@@ -104,19 +150,55 @@ const IndiqueGanheModal = ({ open, onOpenChange }) => {
             </div>
           </div>
 
-          {/* Botão WhatsApp */}
-          <Button 
-            onClick={handleContatoWhatsApp}
-            className="w-full h-14 text-lg bg-green-600 hover:bg-green-700 text-white"
-          >
-            <MessageCircle className="h-6 w-6 mr-3" />
-            Indicar pelo WhatsApp
-          </Button>
+          <div className="space-y-4 rounded-lg border p-4">
+            <div className="space-y-2">
+              <Label htmlFor="empresa_nome">Nome da empresa indicada *</Label>
+              <Input
+                id="empresa_nome"
+                placeholder="Ex.: Gráfica Exemplo LTDA"
+                value={formData.empresa_nome}
+                onChange={(event) => handleChange('empresa_nome', event.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="responsavel_nome">Responsável *</Label>
+              <Input
+                id="responsavel_nome"
+                placeholder="Ex.: João Silva"
+                value={formData.responsavel_nome}
+                onChange={(event) => handleChange('responsavel_nome', event.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="whatsapp">WhatsApp *</Label>
+              <Input
+                id="whatsapp"
+                placeholder="Ex.: (61) 99999-9999"
+                value={formData.whatsapp}
+                onChange={(event) => handleChange('whatsapp', event.target.value)}
+              />
+            </div>
+
+            <Button
+              onClick={handleEnviarIndicacao}
+              disabled={loading}
+              className="w-full h-12 text-base bg-green-600 hover:bg-green-700 text-white"
+            >
+              <MessageCircle className="h-5 w-5 mr-2" />
+              {loading ? 'Enviando indicação...' : 'Enviar indicação'}
+            </Button>
+          </div>
 
           {/* Termos */}
           <p className="text-xs text-muted-foreground text-center">
             * A bonificação será creditada após a confirmação da assinatura do indicado.
             Não há limite de indicações. Válido para novos clientes apenas.
+          </p>
+
+          <p className="text-xs text-muted-foreground text-center">
+            Indicando como: <strong>{user?.name || 'Usuário'}</strong>
           </p>
         </div>
       </DialogContent>

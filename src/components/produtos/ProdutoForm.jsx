@@ -25,6 +25,7 @@ const defaultProduto = {
     descricao_longa: '',
     localizacao: '',
     codigo_barras: '',
+    ncm: '',
     imagem_principal: '',
     galeria_urls: [],
     preco_custo: '0',
@@ -190,6 +191,7 @@ const ProdutoForm = ({ isOpen, onClose, onSave, produtoEmEdicao, showSaveAndNewB
             // Converter dados do produto para o formato do formulário
             const produtoParaEdicao = {
                 ...produtoEmEdicao,
+                ncm: produtoEmEdicao.ncm || '',
                 // Ajustar campos que podem ter nomes diferentes
                 categoria: produtoEmEdicao.categoria_id || produtoEmEdicao.categoria || '',
                 subcategoriaId: produtoEmEdicao.subcategoria_id || produtoEmEdicao.subcategoriaId || '',
@@ -923,6 +925,7 @@ const ProdutoForm = ({ isOpen, onClose, onSave, produtoEmEdicao, showSaveAndNewB
 
         const produtoFinal = {
             ...rest,
+            ncm: rest.ncm ? String(rest.ncm).trim() : null,
             categoria_id: Number(categoria),  // Converter para número
             subcategoria_id: subcategoriaId ? Number(subcategoriaId) : null,  // Converter para número ou null
             unidade_medida: unidadeMedida || 'unidade', // Mapear para o nome do campo esperado pela API

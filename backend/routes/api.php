@@ -75,6 +75,7 @@ use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\QuickActionController;
 use App\Http\Controllers\Api\KanbanController;
 use App\Http\Controllers\Api\ChatController;
+use App\Http\Controllers\Api\IndicacaoController;
 
 /*
 |--------------------------------------------------------------------------
@@ -746,6 +747,9 @@ Route::middleware(['api.auth'])->group(function () {
     // Catálogo de Partes
     Route::apiResource('catalogo-partes', CatalogoParteController::class);
     Route::post('/catalogo-partes/upload', [CatalogoParteController::class, 'uploadImagem']);
+
+    // Indicações
+    Route::post('indicacoes', [IndicacaoController::class, 'store']);
 
     // Caixa - Abertura e Fechamento
     Route::prefix('caixa')->group(function () {

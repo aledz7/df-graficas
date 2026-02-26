@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { MoreVertical, Edit, Trash2, Package, Share2, Copy } from 'lucide-react';
+import { MoreVertical, Edit, Trash2, Package, Share2, Copy, Power } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { motion } from 'framer-motion';
 import { calcularEstoqueTotal } from '@/utils/estoqueUtils';
@@ -57,6 +57,7 @@ const ProdutoList = ({
     onDelete, 
     onShare,
     onDuplicate,
+    onToggleStatus,
     selectedProdutos, 
     setSelectedProdutos,
     canEdit = true,
@@ -188,6 +189,16 @@ const ProdutoList = ({
                                                             <Trash2 className="h-4 w-4" />
                                                         </Button>
                                                     )}
+                                                    {canEdit && onToggleStatus && (
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={() => onToggleStatus(produto)}
+                                                            className="text-amber-600 hover:text-amber-700 border-amber-300 hover:border-amber-400"
+                                                        >
+                                                            <Power className="h-4 w-4" />
+                                                        </Button>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
@@ -275,6 +286,12 @@ const ProdutoList = ({
                                                                 )}
                                                                 {canEdit && (
                                                                     <DropdownMenuItem onClick={() => onEdit(produto)}><Edit className="mr-2 h-4 w-4"/>Editar</DropdownMenuItem>
+                                                                )}
+                                                                {canEdit && onToggleStatus && (
+                                                                    <DropdownMenuItem onClick={() => onToggleStatus(produto)}>
+                                                                        <Power className="mr-2 h-4 w-4"/>
+                                                                        {produto.status ? 'Inativar' : 'Ativar'}
+                                                                    </DropdownMenuItem>
                                                                 )}
                                                                 {canDelete && (
                                                                     <DropdownMenuItem className="text-red-500" onClick={() => setProdutoParaDeletar(produto)}><Trash2 className="mr-2 h-4 w-4"/>Deletar</DropdownMenuItem>

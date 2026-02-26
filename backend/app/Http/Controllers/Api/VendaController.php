@@ -2020,11 +2020,26 @@ class VendaController extends ResourceController
                 ->where('ativo', true)
                 ->first();
 
-            if (!$contaCaixa) {
-                \Log::warning('Conta de caixa não encontrada', [
-                    'venda_id' => $venda->id
+            // Buscar conta padrão para fallback (quando não existir conta de caixa)
+            $contaPadrao = \App\Models\ContaBancaria::where('tenant_id', $venda->tenant_id)
+                ->where('conta_padrao', true)
+                ->where('ativo', true)
+                ->first();
+
+            if (!$contaCaixa && !$contaPadrao) {
+                \Log::warning('Nenhuma conta ativa disponível para registrar lançamento de venda', [
+                    'venda_id' => $venda->id,
+                    'tenant_id' => $venda->tenant_id
                 ]);
                 return;
+            }
+
+            if (!$contaCaixa && $contaPadrao) {
+                \Log::info('Conta de caixa não encontrada, usando conta padrão para vendas em dinheiro', [
+                    'venda_id' => $venda->id,
+                    'conta_padrao_id' => $contaPadrao->id,
+                    'conta_padrao_nome' => $contaPadrao->nome
+                ]);
             }
 
             // Buscar categoria de receita
@@ -2068,20 +2083,17 @@ class VendaController extends ResourceController
                     $metodoPagamentoLower = strtolower($metodoPagamento);
                     
                     if ($metodoPagamentoLower === 'dinheiro') {
-                        // Para dinheiro, usar conta de caixa
-                        $contaBancariaIdFinal = $contaCaixa->id;
-                        $contaBancariaNome = $contaCaixa->nome;
-                        \Log::info('Usando conta de caixa para pagamento em dinheiro', [
+                        // Para dinheiro, priorizar conta de caixa. Se não existir, usar conta padrão.
+                        $contaDinheiro = $contaCaixa ?: $contaPadrao;
+                        $contaBancariaIdFinal = $contaDinheiro?->id;
+                        $contaBancariaNome = $contaDinheiro?->nome;
+                        \Log::info('Usando conta para pagamento em dinheiro', [
                             'venda_id' => $venda->id,
-                            'conta_id' => $contaBancariaIdFinal
+                            'conta_id' => $contaBancariaIdFinal,
+                            'origem_conta' => $contaCaixa ? 'caixa' : 'padrao'
                         ]);
                     } else {
-                        // Para outras formas de pagamento, buscar conta padrão do sistema
-                        $contaPadrao = \App\Models\ContaBancaria::where('tenant_id', $venda->tenant_id)
-                            ->where('conta_padrao', true)
-                            ->where('ativo', true)
-                            ->first();
-                        
+                        // Para outras formas de pagamento, priorizar conta padrão do sistema
                         if ($contaPadrao) {
                             $contaBancariaIdFinal = $contaPadrao->id;
                             $contaBancariaNome = $contaPadrao->nome;
@@ -2092,9 +2104,9 @@ class VendaController extends ResourceController
                             ]);
                         } else {
                             // Fallback: usar conta de caixa se não houver conta padrão
-                            $contaBancariaIdFinal = $contaCaixa->id;
-                            $contaBancariaNome = $contaCaixa->nome;
-                            \Log::warning('Nenhuma conta padrão encontrada, usando conta de caixa como fallback', [
+                            $contaBancariaIdFinal = $contaCaixa?->id;
+                            $contaBancariaNome = $contaCaixa?->nome;
+                            \Log::warning('Conta padrão não encontrada, usando conta de caixa como fallback', [
                                 'venda_id' => $venda->id,
                                 'conta_id' => $contaBancariaIdFinal,
                                 'forma_pagamento' => $metodoPagamento

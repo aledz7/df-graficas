@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -356,6 +356,13 @@ const OSProdutoUnidadeForm = ({
   
   const subtotalItemDisplay = formatToDisplay(currentProduto.subtotal_item);
   const valorUnitarioDisplay = String(currentProduto.valor_unitario || '').replace('.',',');
+  const produtosUnidadeParaModal = useMemo(() => {
+    if (!Array.isArray(produtosCadastrados)) return [];
+    return produtosCadastrados.filter((p) => (
+      p.unidadeMedida === 'unidade' ||
+      (p.unidadeMedida !== 'm2' && p.unidadeMedida !== 'metro_linear')
+    ));
+  }, [produtosCadastrados]);
 
 
   return (
@@ -367,8 +374,8 @@ const OSProdutoUnidadeForm = ({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="flex items-end space-x-2">
-            <div className="flex-grow">
+        <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_auto] gap-3 items-start">
+            <div className="min-w-0">
                 <Label htmlFor="nome_produto">Nome do Produto <span className="text-red-500">*</span></Label>
                 <ProductAutocompleteSimple
                     id="nome_produto"
@@ -388,20 +395,22 @@ const OSProdutoUnidadeForm = ({
                   </p>
                 )}
             </div>
-            <OSProdutoLookupModal
-              produtosCadastrados={Array.isArray(produtosCadastrados) ? produtosCadastrados.filter(p => p.unidadeMedida === 'unidade' || (p.unidadeMedida !== 'm2' && p.unidadeMedida !== 'metro_linear')) : []}
-              onSelectProduto={handleProdutoSelecionadoModal}
-              onOpen={solicitarProdutos}
-            >
-                <Button variant="outline" className="h-10 px-3" disabled={isDisabled}>
-                    <Search size={18} className="mr-2"/> Buscar Produto
-                </Button>
-            </OSProdutoLookupModal>
-            {currentProduto.produto_id !== null && (
-                <Button variant="ghost" size="icon" onClick={handleClearProdutoSelecionado} title="Limpar produto selecionado" className="h-10 w-10 text-red-500 hover:text-red-600" disabled={isDisabled}>
-                    <XCircle size={20} />
-                </Button>
-            )}
+            <div className="flex items-end gap-2 md:pt-6">
+              <OSProdutoLookupModal
+                produtosCadastrados={produtosUnidadeParaModal}
+                onSelectProduto={handleProdutoSelecionadoModal}
+                onOpen={solicitarProdutos}
+              >
+                  <Button variant="outline" className="h-10 px-4 whitespace-nowrap" disabled={isDisabled}>
+                      <Search size={18} className="mr-2"/> Buscar Produto
+                  </Button>
+              </OSProdutoLookupModal>
+              {currentProduto.produto_id !== null && (
+                  <Button variant="ghost" size="icon" onClick={handleClearProdutoSelecionado} title="Limpar produto selecionado" className="h-10 w-10 text-red-500 hover:text-red-600 shrink-0" disabled={isDisabled}>
+                      <XCircle size={20} />
+                  </Button>
+              )}
+            </div>
         </div>
         
         {/* Botão para escolher variação - só aparece se o produto tem variações */}

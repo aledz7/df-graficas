@@ -31,9 +31,11 @@ const FluxoCaixaPage = () => {
   const [pendingEditLancamento, setPendingEditLancamento] = useState(null);
 
   // Projeção de Saldo
-  const [saldoAtual, setSaldoAtual] = useState(() => {
-    const saved = localStorage.getItem('fluxocaixa_saldo_atual');
-    return saved !== null ? parseFloat(saved) : 0;
+  const [saldoInicialConta, setSaldoInicialConta] = useState(() => {
+    const saved = localStorage.getItem('fluxocaixa_saldo_inicial');
+    const legado = localStorage.getItem('fluxocaixa_saldo_atual');
+    const valorSalvo = saved ?? legado;
+    return valorSalvo !== null ? parseFloat(valorSalvo) : 0;
   });
   const [totalAReceber, setTotalAReceber] = useState(0);
   const [totalAPagar, setTotalAPagar] = useState(0);
@@ -119,10 +121,10 @@ const FluxoCaixaPage = () => {
     }
   };
 
-  const handleSaldoAtualChange = (novoSaldo) => {
+  const handleSaldoInicialChange = (novoSaldo) => {
     const valor = parseFloat(novoSaldo) || 0;
-    setSaldoAtual(valor);
-    localStorage.setItem('fluxocaixa_saldo_atual', String(valor));
+    setSaldoInicialConta(valor);
+    localStorage.setItem('fluxocaixa_saldo_inicial', String(valor));
   };
 
   // Carregar dados iniciais
@@ -275,6 +277,17 @@ const FluxoCaixaPage = () => {
         return acc;
       }, {});
   }, [todosLancamentosDoDia]);
+
+  const saldoAtualCalculado = useMemo(() => {
+    const totalEntradas = lancamentos
+      .filter((l) => l.tipo === 'entrada')
+      .reduce((acc, curr) => acc + parseFloat(curr.valor || 0), 0);
+    const totalSaidas = lancamentos
+      .filter((l) => l.tipo === 'saida')
+      .reduce((acc, curr) => acc + parseFloat(curr.valor || 0), 0);
+
+    return saldoInicialConta + totalEntradas - totalSaidas;
+  }, [lancamentos, saldoInicialConta]);
 
 
   return (
@@ -442,8 +455,9 @@ const FluxoCaixaPage = () => {
         totaisDoDia={totaisDoDia}
         totaisPorFormaPagamento={totaisPorFormaPagamento}
         totaisPorConta={totaisPorConta}
-        saldoAtual={saldoAtual}
-        onSaldoAtualChange={handleSaldoAtualChange}
+        saldoAtual={saldoAtualCalculado}
+        saldoInicial={saldoInicialConta}
+        onSaldoInicialChange={handleSaldoInicialChange}
         totalAReceber={totalAReceber}
         totalAPagar={totalAPagar}
         isLoadingProjecao={isLoadingProjecao}

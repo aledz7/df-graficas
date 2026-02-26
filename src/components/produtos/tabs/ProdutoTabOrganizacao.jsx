@@ -244,10 +244,14 @@ const ProdutoTabOrganizacao = ({
                 </div>
             </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
                 <Label htmlFor="codigo_barras">Código de Barras (EAN)</Label>
                 <Input id="codigo_barras" name="codigo_barras" value={currentProduto.codigo_barras} onChange={handleInputChange} placeholder="Leia ou digite o código"/>
+            </div>
+            <div>
+                <Label htmlFor="ncm">NCM</Label>
+                <Input id="ncm" name="ncm" value={currentProduto.ncm || ''} onChange={handleInputChange} placeholder="Ex: 49111090"/>
             </div>
             <div>
                 <Label htmlFor="localizacao">Localização no Estoque</Label>

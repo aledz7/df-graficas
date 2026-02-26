@@ -313,6 +313,19 @@ const OrdensServicoPage = ({ vendedorAtual }) => {
         }
     }, [location.state]);
 
+    // Fechar todos os modais e limpar estilos ao desmontar a página
+    useEffect(() => {
+        return () => {
+            setIsClienteModalOpen(false);
+            setIsPagamentoModalOpen(false);
+            setIsDocumentModalOpen(false);
+            setIsFinalizacaoObrigatoriaModalOpen(false);
+            setIsCompartilharModalOpen(false);
+            document.body.style.pointerEvents = '';
+            document.body.style.overflow = '';
+        };
+    }, []);
+
     const [isNovoClienteModalOpen, setIsNovoClienteModalOpen] = useState(false);
 
     // Log de debug removido para evitar loop infinito

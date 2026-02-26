@@ -493,6 +493,13 @@ function AppContent() {
   const location = useLocation();
   const navigateApp = useNavigate();
 
+  // Limpar estado residual de overlay/modal sempre que a rota muda
+  useEffect(() => {
+    document.body.style.pointerEvents = '';
+    document.body.style.overflow = '';
+    document.body.removeAttribute('data-scroll-locked');
+  }, [location.pathname]);
+
   // Handler para clique em notificação de pré-venda - navega para o Histórico PDV
   const handleNotificacaoClick = useCallback((notificacao, vendaId) => {
     if (notificacao.tipo === 'pre_venda' && vendaId) {

@@ -45,7 +45,7 @@ const ContasReceberPage = () => {
     pendentes: false,
     parcialmentePagas: false,
     parceladas: false,
-    pagas: false
+    pagas: true
   });
   const [contasSelecionadas, setContasSelecionadas] = useState(new Set());
   const [isProcessandoLote, setIsProcessandoLote] = useState(false);

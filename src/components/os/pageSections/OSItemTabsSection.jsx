@@ -38,8 +38,25 @@ const OSItemTabsSection = ({
   const [activeTab, setActiveTab] = useState('m2');
   const [consumoMaterialModalTrigger, setConsumoMaterialModalTrigger] = useState(0);
   const shouldOpenAfterTabChange = useRef(false);
+  const timeoutIdsRef = useRef([]);
 
   const isDisabled = useMemo(() => isOSFinalizada || viewOnly, [isOSFinalizada, viewOnly]);
+
+  const scheduleTimeout = (callback, delay) => {
+    const timeoutId = setTimeout(() => {
+      timeoutIdsRef.current = timeoutIdsRef.current.filter((id) => id !== timeoutId);
+      callback();
+    }, delay);
+    timeoutIdsRef.current.push(timeoutId);
+    return timeoutId;
+  };
+
+  useEffect(() => {
+    return () => {
+      timeoutIdsRef.current.forEach((id) => clearTimeout(id));
+      timeoutIdsRef.current = [];
+    };
+  }, []);
 
   const handleOpenConsumoMaterial = (e) => {
     // Prevenir abertura acidental - só abrir se for um clique real do mouse
@@ -68,7 +85,7 @@ const OSItemTabsSection = ({
     if (activeTab === 'm2' && shouldOpenAfterTabChange.current) {
       shouldOpenAfterTabChange.current = false; // Resetar a flag
       // Pequeno delay para garantir que o OSItemForm esteja renderizado
-      setTimeout(() => {
+      scheduleTimeout(() => {
         setConsumoMaterialModalTrigger(prev => prev + 1);
       }, 150);
     }
@@ -120,7 +137,6 @@ const OSItemTabsSection = ({
           // Verificar se não foi fechado recentemente
           const agora = Date.now();
           if (!modalFechadoAposAtualizacaoRef.current || (agora - lastUpdateTimestampRef.current) >= 2000) {
-            console.log('✅ [OSItemTabsSection] isEditing=true e item tem consumo - preparando para abrir modal');
             pendingOpenRef.current = itemIdAtual;
             
             // Resetar flags
@@ -134,7 +150,7 @@ const OSItemTabsSection = ({
         }
       }
     }
-  }, [isEditing, itemAtual]);
+  }, [isEditing, itemAtual?.id_item_os, itemAtual?.tipo_item]);
   
   // Efeito principal para abrir o modal quando todas as condições estiverem prontas
   useEffect(() => {
@@ -145,7 +161,6 @@ const OSItemTabsSection = ({
       
       // Se o modal foi fechado após atualização recentemente (últimos 2 segundos), não reabrir
       if (modalFechadoAposAtualizacaoRef.current && (agora - lastUpdateTimestampRef.current) < 2000) {
-        console.log('⏸️ [OSItemTabsSection] Modal foi fechado após atualização recente - não reabrindo');
         return;
       }
       
@@ -169,7 +184,6 @@ const OSItemTabsSection = ({
                        (pendingOpenRef.current === itemIdAtual || !hasOpenedConsumoModalRef.current);
       
       if (deveAbrir) {
-        console.log('✅ [OSItemTabsSection] Item tem origem "Consumo de Material" - abrindo modal automaticamente');
         hasOpenedConsumoModalRef.current = true;
         pendingOpenRef.current = null; // Limpar flag pendente
         
@@ -177,12 +191,12 @@ const OSItemTabsSection = ({
         if (activeTab !== 'm2') {
           setActiveTab('m2');
           // Aguardar a aba mudar antes de abrir o modal
-          setTimeout(() => {
+          scheduleTimeout(() => {
             setConsumoMaterialModalTrigger(prev => prev + 1);
           }, 200);
         } else {
           // Pequeno delay para garantir que o componente esteja pronto
-          setTimeout(() => {
+          scheduleTimeout(() => {
             setConsumoMaterialModalTrigger(prev => prev + 1);
           }, 100);
         }
@@ -196,7 +210,7 @@ const OSItemTabsSection = ({
         pendingOpenRef.current = null;
       }
     }
-  }, [itemAtual, activeTab, isEditing]);
+  }, [itemAtual?.id_item_os, itemAtual?.tipo_item, activeTab, isEditing]);
   
   // Resetar a flag quando isEditing mudar para false (modal foi fechado ou edição cancelada)
   useEffect(() => {
@@ -217,7 +231,6 @@ const OSItemTabsSection = ({
           // Item ainda tem origem "Consumo de Material", provavelmente foi uma atualização
           modalFechadoAposAtualizacaoRef.current = true;
           lastUpdateTimestampRef.current = Date.now();
-          console.log('✅ [OSItemTabsSection] Modal fechado após atualização - marcando para não reabrir imediatamente');
         }
       }
       
@@ -228,12 +241,6 @@ const OSItemTabsSection = ({
   }, [isEditing, itemAtual]);
 
   const handleEditItemWrapper = (item) => {
-    console.log('🔵 [OSItemTabsSection] handleEditItemWrapper chamado para item:', {
-      id_item_os: item.id_item_os,
-      nome: item.nome_servico_produto || item.nome_produto,
-      tipo_item: item.tipo_item
-    });
-
     // Chamar a função original de edição
     onEditarItem(item);
 
@@ -247,17 +254,7 @@ const OSItemTabsSection = ({
     const temConsumoMaterial = (temLarguraAlturaPeca || temLarguraAlturaChapa) && 
                                (temQuantidadeSolicitada || temPecasPorChapa || temChapasNecessarias);
 
-    console.log('🔍 [OSItemTabsSection] Verificando consumo de material:', {
-      temConsumoMaterial,
-      temLarguraAlturaPeca,
-      temLarguraAlturaChapa,
-      temQuantidadeSolicitada,
-      activeTab
-    });
-
     if (temConsumoMaterial) {
-        console.log('✅ [OSItemTabsSection] Item tem consumo de material - disparando abertura do modal');
-        
         // Resetar flags para forçar a abertura
         modalFechadoAposAtualizacaoRef.current = false;
         hasOpenedConsumoModalRef.current = true; // Marcamos como já tratado para evitar duplicidade com useEffect
@@ -267,8 +264,7 @@ const OSItemTabsSection = ({
             setActiveTab('m2');
         } else {
             // Pequeno delay para garantir que o state do itemAtual tenha propagado
-            setTimeout(() => {
-                console.log('🚀 [OSItemTabsSection] Disparando trigger do modal de consumo');
+            scheduleTimeout(() => {
                 setConsumoMaterialModalTrigger(prev => prev + 1);
             }, 100);
         }

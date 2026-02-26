@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose, DialogFooter } from '@/components/ui/dialog';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogClose, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -14,67 +14,74 @@ const OSProdutoLookupModal = ({ onSelectProduto, children, isOpen, setIsOpen, pr
   const [searchTerm, setSearchTerm] = useState('');
   const [produtos, setProdutos] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const prevOpenRef = useRef(false);
 
   const openState = isOpen !== undefined ? isOpen : internalIsOpen;
   const setOpenState = setIsOpen !== undefined ? setIsOpen : setInternalIsOpen;
 
   useEffect(() => {
-    if (openState && typeof onOpen === 'function') {
-      try {
-        const resultado = onOpen();
-        if (resultado && typeof resultado.then === 'function') {
-          resultado.catch(error => console.error('❌ [OSProdutoLookupModal] Erro ao solicitar produtos antes da abertura:', error));
-        }
-      } catch (error) {
-        console.error('❌ [OSProdutoLookupModal] Erro ao executar onOpen:', error);
+    const wasOpen = prevOpenRef.current;
+    prevOpenRef.current = openState;
+
+    if (!openState || wasOpen || typeof onOpen !== 'function') return;
+
+    try {
+      const resultado = onOpen();
+      if (resultado && typeof resultado.then === 'function') {
+        resultado.catch(error => console.error('❌ [OSProdutoLookupModal] Erro ao solicitar produtos antes da abertura:', error));
       }
+    } catch (error) {
+      console.error('❌ [OSProdutoLookupModal] Erro ao executar onOpen:', error);
     }
   }, [openState, onOpen]);
 
   useEffect(() => {
+    let cancelled = false;
+
     const loadProdutos = async () => {
       if (!openState) return;
-      
-      // Se produtosCadastrados foi fornecido e não está vazio, usar diretamente
-      if (produtosCadastrados && Array.isArray(produtosCadastrados) && produtosCadastrados.length > 0) {
-        // Carregar serviços adicionais da calculadora
-        let servicosAdicionais = [];
-        try {
-          const servicosResponse = await calculadoraService.getServicosAdicionais();
-          if (servicosResponse?.data?.data) {
-            servicosAdicionais = servicosResponse.data.data;
-          }
-        } catch (servicosError) {
-          console.warn('⚠️ Erro ao carregar serviços adicionais:', servicosError);
-        }
-        
-        // Combinar produtos da prop e serviços adicionais
-        const produtosComServicos = [
-          ...produtosCadastrados,
-          ...servicosAdicionais.map(servico => ({
-            id: `servico_${servico.id}`,
-            nome: servico.nome,
-            preco_venda: servico.preco,
-            unidadeMedida: servico.unidade || 'm²',
-            tipo_produto: 'm2',
-            estoque: 999999,
-            codigo_produto: `SERV-${servico.id}`,
-            categoria_nome: 'Serviços Adicionais',
-            imagem_principal: null,
-            sku: `SERV-${servico.id}`,
-            descricao: servico.descricao,
-            isServicoAdicional: true,
-            servico_original: servico
-          }))
-        ];
-        
-        setProdutos(produtosComServicos);
-        return;
-      }
-      
-      // Caso contrário, buscar da API com todas as informações
       setIsLoading(true);
       try {
+        // Se produtosCadastrados foi fornecido e não está vazio, usar diretamente
+        if (produtosCadastrados && Array.isArray(produtosCadastrados) && produtosCadastrados.length > 0) {
+          // Carregar serviços adicionais da calculadora
+          let servicosAdicionais = [];
+          try {
+            const servicosResponse = await calculadoraService.getServicosAdicionais();
+            if (servicosResponse?.data?.data) {
+              servicosAdicionais = servicosResponse.data.data;
+            }
+          } catch (servicosError) {
+            console.warn('⚠️ Erro ao carregar serviços adicionais:', servicosError);
+          }
+          
+          // Combinar produtos da prop e serviços adicionais
+          const produtosComServicos = [
+            ...produtosCadastrados,
+            ...servicosAdicionais.map(servico => ({
+              id: `servico_${servico.id}`,
+              nome: servico.nome,
+              preco_venda: servico.preco,
+              unidadeMedida: servico.unidade || 'm²',
+              tipo_produto: 'm2',
+              estoque: 999999,
+              codigo_produto: `SERV-${servico.id}`,
+              categoria_nome: 'Serviços Adicionais',
+              imagem_principal: null,
+              sku: `SERV-${servico.id}`,
+              descricao: servico.descricao,
+              isServicoAdicional: true,
+              servico_original: servico
+            }))
+          ];
+          
+          if (!cancelled) {
+            setProdutos(produtosComServicos);
+          }
+          return;
+        }
+
+        // Caso contrário, buscar da API com todas as informações
         // Buscar todos os produtos com relacionamentos (categoria, subcategoria)
         // Usar um per_page alto para garantir que todos sejam carregados
         let allProdutos = [];
@@ -83,6 +90,7 @@ const OSProdutoLookupModal = ({ onSelectProduto, children, isOpen, setIsOpen, pr
         let hasMore = true;
         
         while (hasMore) {
+          if (cancelled) break;
           const response = await produtoService.getAll(`?per_page=1000&page=${currentPage}`);
           
           // Normalizar diferentes formatos de resposta do Laravel
@@ -168,15 +176,25 @@ const OSProdutoLookupModal = ({ onSelectProduto, children, isOpen, setIsOpen, pr
             servico_original: servico
           }))
         ];
-        setProdutos(produtosComServicos);
+        if (!cancelled) {
+          setProdutos(produtosComServicos);
+        }
       } catch (error) {
         console.error('❌ [OSProdutoLookupModal] Erro ao carregar produtos:', error);
-        setProdutos([]);
+        if (!cancelled) {
+          setProdutos([]);
+        }
       } finally {
-        setIsLoading(false);
+        if (!cancelled) {
+          setIsLoading(false);
+        }
       }
     };
     loadProdutos();
+
+    return () => {
+      cancelled = true;
+    };
   }, [openState, produtosCadastrados]);
 
   const filteredProdutos = useMemo(() => {
@@ -232,6 +250,9 @@ const OSProdutoLookupModal = ({ onSelectProduto, children, isOpen, setIsOpen, pr
       <DialogContent className="max-w-3xl p-0">
         <DialogHeader className="p-4 border-b">
           <DialogTitle>Selecionar Produto</DialogTitle>
+          <DialogDescription className="sr-only">
+            Busque e selecione um produto para adicionar na ordem de servico.
+          </DialogDescription>
         </DialogHeader>
         <div className="p-4">
           <div className="relative">

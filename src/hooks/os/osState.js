@@ -96,25 +96,11 @@ export const useOSStateManagement = (vendedorAtual) => {
         
         // Se todos os itens já têm id_item_os, não precisamos fazer nada
         if (itensSemId.length === 0) {
-          console.log('✅ [setOrdemServico] Todos os itens já têm id_item_os, preservando:', {
-            itens_ids: novaOS.itens.map(i => ({ 
-              id_item_os: i.id_item_os,
-              id: i.id,
-              nome: i.nome_servico_produto || i.nome_produto 
-            }))
-          });
           return novaOS;
         }
         
         // Se algum item não tem id_item_os, garantir IDs
         const osComIds = garantirIdsItensOS(novaOS);
-        console.log('✅ [setOrdemServico] IDs dos itens garantidos:', {
-          itens_ids: osComIds.itens.map(i => ({ 
-            id_item_os: i.id_item_os,
-            id: i.id,
-            nome: i.nome_servico_produto || i.nome_produto 
-          }))
-        });
         return osComIds;
       }
       
@@ -403,8 +389,6 @@ export const useOSStateManagement = (vendedorAtual) => {
   }, [fetchAcabamentosFromAPI, isInitialized]);
 
   const resetOrdemServico = useCallback(async () => {
-    console.log('🔍 useOSStateManagement - resetOrdemServico chamado');
-    
     const novoEstadoOS = initialOrdemServicoStateSync();
     if (vendedorAtual) {
       novoEstadoOS.vendedor_id = vendedorAtual.id;
@@ -412,16 +396,12 @@ export const useOSStateManagement = (vendedorAtual) => {
     }
     setOrdemServico(novoEstadoOS);
     setItemAtual(initialServicoM2State());
-    
-    console.log('🔍 useOSStateManagement - Limpando clienteSelecionado');
     setClienteSelecionado(null);
     
     setIsOSFinalizada(false);
     setIsEditingItem(false);
     navigate('/operacional/ordens-servico', { replace: true });
     toast({ title: "Nova OS", description: "Campos limpos para uma nova Ordem de Serviço." });
-    
-    console.log('✅ useOSStateManagement - resetOrdemServico concluído');
   }, [navigate, toast, vendedorAtual]);
 
   const handleItemChange = useCallback((field, value, resetFormType = false) => {

@@ -48,6 +48,8 @@ const ProdutosPage = ({ vendedorAtual }) => {
   const [filteredProdutos, setFilteredProdutos] = useState([]);
   const [isFilteringEstoqueBaixo, setIsFilteringEstoqueBaixo] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isImportandoProdutos, setIsImportandoProdutos] = useState(false);
+  const [importProgress, setImportProgress] = useState({ total: 0, processados: 0, sucesso: 0, falhas: 0 });
   
   // Estados para paginação
   const [currentPage, setCurrentPage] = useState(1);
@@ -401,6 +403,96 @@ const ProdutosPage = ({ vendedorAtual }) => {
     }
   };
 
+  const handleToggleStatusProduto = async (produto) => {
+    if (!produto?.id) return;
+
+    const novoStatus = !Boolean(produto.status);
+
+    try {
+      await produtoService.update(produto.id, { status: novoStatus });
+      await loadData(currentPage, searchTerm);
+      toast({
+        title: novoStatus ? "Produto ativado" : "Produto inativado",
+        description: `O produto "${produto.nome}" foi ${novoStatus ? 'ativado' : 'inativado'} com sucesso.`,
+      });
+    } catch (error) {
+      console.error('Erro ao alterar status do produto:', error);
+      toast({
+        title: "Erro ao alterar status",
+        description: error.response?.data?.message || "Não foi possível alterar o status do produto.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleInactivateSelectedProdutos = async () => {
+    if (!selectedProdutosIds.length) return;
+
+    try {
+      const produtosSelecionados = produtos.filter((produto) => selectedProdutosIds.includes(produto.id));
+      const produtosAtivos = produtosSelecionados.filter((produto) => Boolean(produto.status));
+
+      if (!produtosAtivos.length) {
+        toast({
+          title: "Sem produtos ativos",
+          description: "Os produtos selecionados já estão inativos.",
+        });
+        return;
+      }
+
+      await Promise.all(produtosAtivos.map((produto) => produtoService.update(produto.id, { status: false })));
+
+      await loadData(currentPage, searchTerm);
+      setSelectedProdutosIds([]);
+      toast({
+        title: "Produtos inativados",
+        description: `${produtosAtivos.length} produto(s) foram inativados com sucesso.`,
+      });
+    } catch (error) {
+      console.error('Erro ao inativar produtos selecionados:', error);
+      toast({
+        title: "Erro ao inativar selecionados",
+        description: error.response?.data?.message || "Não foi possível inativar os produtos selecionados.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleInactivateByCategory = async (categoriaId) => {
+    if (!categoriaId) return;
+
+    try {
+      const categoriaNome = categorias.find((categoria) => Number(categoria.id) === Number(categoriaId))?.nome || 'categoria selecionada';
+      const resposta = await produtoService.getAll(`?per_page=1000&categoria_id=${categoriaId}`);
+      const produtosCategoria = Array.isArray(resposta?.data) ? resposta.data : [];
+      const produtosAtivos = produtosCategoria.filter((produto) => Boolean(produto.status));
+
+      if (!produtosAtivos.length) {
+        toast({
+          title: "Nada para inativar",
+          description: `Todos os produtos de "${categoriaNome}" já estão inativos.`,
+        });
+        return;
+      }
+
+      await Promise.all(produtosAtivos.map((produto) => produtoService.update(produto.id, { status: false })));
+
+      await loadData(currentPage, searchTerm);
+      setSelectedProdutosIds([]);
+      toast({
+        title: "Categoria inativada",
+        description: `${produtosAtivos.length} produto(s) da categoria "${categoriaNome}" foram inativados.`,
+      });
+    } catch (error) {
+      console.error('Erro ao inativar produtos por categoria:', error);
+      toast({
+        title: "Erro ao inativar por categoria",
+        description: error.response?.data?.message || "Não foi possível inativar os produtos desta categoria.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleShareProduto = (produto) => {
     setProdutoParaCompartilhar(produto);
     setIsCompartilharModalOpen(true);
@@ -457,16 +549,33 @@ const ProdutosPage = ({ vendedorAtual }) => {
 
   const handleImportProdutos = async (file) => {
     try {
+      setIsImportandoProdutos(true);
       const importedData = await importFromExcel(file);
       if (!Array.isArray(importedData) || importedData.length === 0) {
         toast({ title: 'Arquivo vazio', description: 'Nenhuma linha válida encontrada no arquivo.', variant: 'destructive' });
+        setIsImportandoProdutos(false);
         return;
       }
+      toast({ title: 'Importação iniciada', description: `Processando ${importedData.length} linha(s)...` });
+      setImportProgress({ total: importedData.length, processados: 0, sucesso: 0, falhas: 0 });
 
       // Normalizar e converter tipos; manter apenas colunas aceitas pela API
       const toNumber = (v) => {
         if (v === null || v === undefined || v === '') return 0;
-        const n = Number(String(v).replace(',', '.'));
+        const raw = String(v).trim();
+        if (!raw) return 0;
+
+        // Suporte a formatos: 1234.56, 1234,56 e 1.234,56
+        let normalized = raw.replace(/\s/g, '');
+        if (/^\d{1,3}(\.\d{3})*,\d+$/.test(normalized)) {
+          normalized = normalized.replace(/\./g, '').replace(',', '.');
+        } else if (normalized.includes(',') && !normalized.includes('.')) {
+          normalized = normalized.replace(',', '.');
+        } else if (normalized.includes(',') && normalized.includes('.')) {
+          normalized = normalized.replace(/,/g, '');
+        }
+
+        const n = Number(normalized);
         return Number.isNaN(n) ? 0 : n;
       };
       const toInt = (v) => {
@@ -485,18 +594,96 @@ const ProdutosPage = ({ vendedorAtual }) => {
         if (Number.isNaN(d.getTime())) return null;
         return d.toISOString().slice(0, 10);
       };
+      const normalizeHeader = (header) => String(header || '')
+        .trim()
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '');
+      const resolveImportKey = (header) => {
+        const key = normalizeHeader(header);
+        const aliases = {
+          nome: 'nome',
+          name: 'nome',
+          descricao: 'descricao_curta',
+          categoria: 'categoria_id',
+          categoria_: 'categoria_id',
+          categoriaid: 'categoria_id',
+          categoria_id: 'categoria_id',
+          id_categoria: 'categoria_id',
+          subcategoria: 'subcategoria_id',
+          subcategoria_id: 'subcategoria_id',
+          id_subcategoria: 'subcategoria_id',
+          ean: 'codigo_barras',
+          ean_codigo_barras: 'codigo_barras',
+          ean_codigo_barra: 'codigo_barras',
+          codigo_barras: 'codigo_barras',
+          codigo_de_barras: 'codigo_barras',
+          codigo_barra: 'codigo_barras',
+          precocusto: 'preco_custo',
+          preco_custo: 'preco_custo',
+          preco_de_custo: 'preco_custo',
+          custo: 'preco_custo',
+          valorcusto: 'preco_custo',
+          valor_custo: 'preco_custo',
+          precovenda: 'preco_venda',
+          preco_venda: 'preco_venda',
+          preco_de_venda: 'preco_venda',
+          valorprecofixado: 'preco_venda',
+          valor_preco_fixado: 'preco_venda',
+          valorpreco: 'preco_venda',
+          valor_preco: 'preco_venda',
+          valorvenda: 'preco_venda',
+          valor_venda: 'preco_venda',
+          ncm: 'ncm',
+        };
+        return aliases[key] || key;
+      };
+      const isCategoriaInvalida = (value) => {
+        if (value === null || value === undefined || value === '') return true;
+        const num = Number(value);
+        return Number.isNaN(num) || num <= 0;
+      };
+      let categoriaImportadosId = null;
+      const ensureCategoriaImportados = async () => {
+        if (categoriaImportadosId) return categoriaImportadosId;
+        const categoriaNome = 'Produtos Importados';
+        const response = await categoriaService.getAll();
+        const categoriasData = response.data?.data?.data || response.data?.data || response.data || [];
+        const categoriasLista = Array.isArray(categoriasData) ? categoriasData : [];
+        const categoriaExistente = categoriasLista.find(
+          (cat) => String(cat?.nome || '').trim().toLowerCase() === categoriaNome.toLowerCase()
+        );
+        if (categoriaExistente?.id) {
+          categoriaImportadosId = Number(categoriaExistente.id);
+          return categoriaImportadosId;
+        }
+        const criada = await categoriaService.create({
+          nome: categoriaNome,
+          descricao: 'Categoria criada automaticamente durante importação de produtos.',
+          tipo: 'produto',
+          ativo: true,
+        });
+        const novaCategoria = criada.data?.data || criada.data;
+        categoriaImportadosId = Number(novaCategoria?.id);
+        return categoriaImportadosId;
+      };
 
       const allowedKeys = new Set([
-        'nome','categoria_id','subcategoria_id','codigo_barras','unidade_medida','preco_custo','preco_venda','preco_m2','margem_lucro','estoque','estoque_minimo','status','promocao_ativa','preco_promocional','promo_data_inicio','promo_data_fim','permite_comissao','percentual_comissao','codigo_produto','localizacao','descricao_curta','descricao_longa','is_composto','variacoes_ativa'
+        'nome','categoria_id','subcategoria_id','codigo_barras','ncm','unidade_medida','preco_custo','preco_venda','preco_m2','margem_lucro','estoque','estoque_minimo','status','promocao_ativa','preco_promocional','promo_data_inicio','promo_data_fim','permite_comissao','percentual_comissao','codigo_produto','localizacao','descricao_curta','descricao_longa','is_composto','variacoes_ativa'
       ]);
 
       const sanitized = importedData.map((rowRaw) => {
-        const row = Object.fromEntries(Object.entries(rowRaw).map(([k, v]) => [String(k).trim(), v]));
+        const row = Object.fromEntries(
+          Object.entries(rowRaw || {}).map(([k, v]) => [resolveImportKey(k), v])
+        );
         const obj = {};
         for (const key of allowedKeys) {
           if (row[key] !== undefined) obj[key] = row[key];
         }
         const rawBarcode = obj.codigo_barras !== undefined && obj.codigo_barras !== null ? String(obj.codigo_barras).trim() : '';
+        const barcodeNormalized = rawBarcode.replace(/[-\s]/g, '');
         const generateBarcode13 = () => {
           const base = (Date.now().toString().slice(-10) + Math.floor(Math.random() * 1000).toString().padStart(3, '0')).slice(0, 12);
           // checksum simplificado para 13 dígitos (EAN-13)
@@ -505,10 +692,12 @@ const ProdutosPage = ({ vendedorAtual }) => {
           const check = (10 - (sum % 10)) % 10;
           return base + String(check);
         };
-        const codigo_barras = rawBarcode || generateBarcode13();
+        const codigo_barras = barcodeNormalized ? rawBarcode : generateBarcode13();
         const codigo_produto = (obj.codigo_produto && String(obj.codigo_produto).trim()) ? String(obj.codigo_produto).trim() : `PROD-${Date.now()}-${Math.floor(Math.random()*10000).toString().padStart(4,'0')}`;
         return {
           ...obj,
+          nome: obj.nome ? String(obj.nome).trim() : '',
+          ncm: obj.ncm !== undefined && obj.ncm !== null ? String(obj.ncm).trim() : '',
           codigo_barras,
           codigo_produto,
           categoria_id: obj.categoria_id ? Number(obj.categoria_id) : undefined,
@@ -529,19 +718,38 @@ const ProdutosPage = ({ vendedorAtual }) => {
           is_composto: obj.is_composto ? toBool(obj.is_composto) : false,
           variacoes_ativa: obj.variacoes_ativa ? toBool(obj.variacoes_ativa) : false,
         };
-      });
+      }).filter((item) => item.nome);
 
       // Importação: criar um a um para aproveitar validações e mensagens do backend
       let sucesso = 0;
       let falhas = 0;
+      let processados = 0;
       for (const p of sanitized) {
+        const payload = { ...p };
+        if (isCategoriaInvalida(payload.categoria_id)) {
+          payload.categoria_id = await ensureCategoriaImportados();
+        }
         try {
-          await produtoService.create(p);
+          await produtoService.create(payload);
           sucesso++;
         } catch (err) {
-          console.error('Falha ao importar produto:', p?.nome, err?.response?.data || err);
-          falhas++;
+          const hasCategoriaError = Boolean(err?.response?.data?.errors?.categoria_id);
+          if (hasCategoriaError) {
+            try {
+              payload.categoria_id = await ensureCategoriaImportados();
+              await produtoService.create(payload);
+              sucesso++;
+            } catch (retryError) {
+              console.error('Falha ao importar produto após retry de categoria:', payload?.nome, retryError?.response?.data || retryError);
+              falhas++;
+            }
+          } else {
+            console.error('Falha ao importar produto:', payload?.nome, err?.response?.data || err);
+            falhas++;
+          }
         }
+        processados++;
+        setImportProgress({ total: sanitized.length, processados, sucesso, falhas });
       }
 
       await loadData(currentPage, searchTerm);
@@ -557,6 +765,8 @@ const ProdutosPage = ({ vendedorAtual }) => {
         description: error.response?.data?.message || "Não foi possível importar os produtos. Verifique o formato do arquivo.",
         variant: "destructive"
       });
+    } finally {
+      setIsImportandoProdutos(false);
     }
   };
 
@@ -569,6 +779,8 @@ const ProdutosPage = ({ vendedorAtual }) => {
     const headers = [
       'nome',
       'categoria_id',
+      'codigo_barras',
+      'ncm',
       'preco_custo',
       'preco_venda',
       'subcategoria_id',
@@ -593,6 +805,8 @@ const ProdutosPage = ({ vendedorAtual }) => {
     const exampleRow = {
       nome: 'Produto Exemplo',
       categoria_id: 1,
+      codigo_barras: '7891234567895',
+      ncm: '49111090',
       preco_custo: 10.00,
       preco_venda: 15.90,
       subcategoria_id: '',
@@ -732,6 +946,10 @@ const ProdutosPage = ({ vendedorAtual }) => {
     return pages;
   };
 
+  const importProgressPercent = importProgress.total > 0
+    ? Math.min(100, Math.round((importProgress.processados / importProgress.total) * 100))
+    : 0;
+
   return (
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
@@ -776,9 +994,9 @@ const ProdutosPage = ({ vendedorAtual }) => {
            <Button onClick={handleDownloadTemplate} variant="outline" className="w-full md:w-auto">
              <Upload className="mr-2 h-4 w-4" /> Baixar Modelo de Cad. de Produtos
            </Button>
-          <Button asChild variant="outline" className="w-full md:w-auto">
+          <Button asChild variant="outline" className="w-full md:w-auto" disabled={isImportandoProdutos}>
             <label htmlFor="import-excel-produtos" className="cursor-pointer flex items-center justify-center w-full">
-              <Download className="mr-2 h-4 w-4" /> Importar
+              <Download className="mr-2 h-4 w-4" /> {isImportandoProdutos ? 'Importando...' : 'Importar'}
               <input type="file" id="import-excel-produtos" accept=".xlsx, .xls" onChange={(e) => {
                 const file = e.target.files[0];
                 if (file) {
@@ -795,6 +1013,27 @@ const ProdutosPage = ({ vendedorAtual }) => {
           </PermissionGate>
         </div>
       </div>
+      {isImportandoProdutos && (
+        <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/40 p-3 shadow-sm">
+          <div className="flex items-center justify-between gap-3 text-sm">
+            <p className="font-medium text-blue-900 dark:text-blue-100">
+              Importando produtos: {importProgress.processados}/{importProgress.total} processados
+            </p>
+            <span className="font-semibold text-blue-700 dark:text-blue-300">
+              {importProgressPercent}%
+            </span>
+          </div>
+          <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-blue-100 dark:bg-blue-900/60">
+            <div
+              className="h-full rounded-full bg-blue-600 transition-all duration-300"
+              style={{ width: `${importProgressPercent}%` }}
+            />
+          </div>
+          <p className="mt-2 text-xs text-blue-700 dark:text-blue-300">
+            {importProgress.sucesso} sucesso, {importProgress.falhas} falhas
+          </p>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="flex justify-center items-center h-64">
@@ -806,6 +1045,7 @@ const ProdutosPage = ({ vendedorAtual }) => {
               produtos={filteredProdutos}
               onEdit={handleEditProduto}
               onDelete={handleDeleteProduto}
+              onToggleStatus={handleToggleStatusProduto}
               onShare={handleShareProduto}
               onDuplicate={handleDuplicateProduto}
               selectedProdutos={selectedProdutosIds}
@@ -891,6 +1131,10 @@ const ProdutosPage = ({ vendedorAtual }) => {
         selectedCount={selectedProdutosIds.length}
         onAdjustPrice={handleAdjustPriceMany}
         onDeleteSelected={handleDeleteSelectedProdutos}
+        onInactivateSelected={handleInactivateSelectedProdutos}
+        onInactivateByCategory={handleInactivateByCategory}
+        categorias={categorias}
+        canEdit={canEdit}
         onClearSelection={() => setSelectedProdutosIds([])}
       />
 

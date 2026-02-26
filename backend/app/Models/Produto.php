@@ -33,6 +33,7 @@ class Produto extends Model
         'descricao_longa',
         'localizacao',
         'codigo_barras',
+        'ncm',
         'imagem_principal',
         'galeria_urls',
         'preco_custo',

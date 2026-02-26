@@ -35,7 +35,8 @@ const FluxoCaixaSummary = ({
   totaisPorFormaPagamento = {},
   totaisPorConta = {},
   saldoAtual = 0,
-  onSaldoAtualChange,
+  saldoInicial = 0,
+  onSaldoInicialChange,
   totalAReceber = 0,
   totalAPagar = 0,
   isLoadingProjecao = false,
@@ -60,13 +61,13 @@ const FluxoCaixaSummary = ({
   const projecaoSaldo = saldoAtual + totalAReceber - totalAPagar;
 
   const handleIniciarEdicaoSaldo = () => {
-    setInputSaldo(saldoAtual === 0 ? '' : String(saldoAtual));
+    setInputSaldo(saldoInicial === 0 ? '' : String(saldoInicial));
     setEditandoSaldo(true);
   };
 
   const handleConfirmarSaldo = () => {
     const valor = parseFloat(inputSaldo.replace(',', '.')) || 0;
-    onSaldoAtualChange?.(valor);
+    onSaldoInicialChange?.(valor);
     setEditandoSaldo(false);
   };
 
@@ -126,9 +127,9 @@ const FluxoCaixaSummary = ({
         <Card className="border-2 border-indigo-200 dark:border-indigo-800">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <CardTitle className="text-sm font-medium">Saldo Atual em Conta</CardTitle>
+              <CardTitle className="text-sm font-medium">Saldo Atual em Conta (Automático)</CardTitle>
               <CardDescription className="text-xs mt-0.5">
-                Valor que você possui atualmente disponível
+                Calculado por: saldo inicial + entradas - saídas
               </CardDescription>
             </div>
             <Wallet className="h-4 w-4 text-indigo-500" />
@@ -175,9 +176,13 @@ const FluxoCaixaSummary = ({
               </div>
             )}
             <p className="text-xs text-muted-foreground">
-              Clique em <strong>Editar</strong> para informar o saldo atual da sua conta.
-              Este valor é salvo localmente no navegador.
+              Clique em <strong>Editar</strong> para informar o saldo inicial da conta.
+              O saldo atual é calculado automaticamente e o saldo inicial é salvo localmente no navegador.
             </p>
+            <div className="flex items-center justify-between text-xs pt-1 border-t">
+              <span className="text-muted-foreground">Saldo inicial informado</span>
+              <span className="font-medium">{formatCurrency(saldoInicial)}</span>
+            </div>
           </CardContent>
         </Card>
 
