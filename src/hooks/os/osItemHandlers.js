@@ -5,6 +5,11 @@ import { useCallback } from 'react';
 import { isEstoqueNoLimiteMinimo, podeConsumirEstoque, podeConsumirAreaEstoque } from '@/utils/estoqueUtils';
 import { safeParseFloat } from '@/lib/utils';
 
+const isProdutoDigital = (produto) => {
+  if (!produto) return false;
+  return produto.is_digital === true || produto.is_digital === 1 || produto.is_digital === '1';
+};
+
 export const useOSItemHandlers = (
   ordemServico, setOrdemServico,
   itemAtual, setItemAtual,
@@ -275,7 +280,7 @@ export const useOSItemHandlers = (
     if (itemParaAdicionar.produto_id) {
       const produtoSelecionado = Array.isArray(produtosCadastrados) ? produtosCadastrados.find(p => p.id === itemParaAdicionar.produto_id) : null;
       
-      if (produtoSelecionado) {
+      if (produtoSelecionado && !isProdutoDigital(produtoSelecionado)) {
         // Verificar se estoque está no limite mínimo
         if (isEstoqueNoLimiteMinimo(produtoSelecionado)) {
           toast({ 
@@ -453,7 +458,7 @@ export const useOSItemHandlers = (
     // Itens de consumo de material podem não ter produto_id
     if (itemParaAtualizar.tipo_item === 'm2' && itemParaAtualizar.produto_id && !temConsumoMaterial) {
       const produtoSelecionado = Array.isArray(produtosCadastrados) ? produtosCadastrados.find(p => p.id === itemParaAtualizar.produto_id) : null;
-      if (produtoSelecionado && produtoSelecionado.unidadeMedida === 'm2') {
+      if (produtoSelecionado && !isProdutoDigital(produtoSelecionado) && produtoSelecionado.unidadeMedida === 'm2') {
         // Verificar se estoque está no limite mínimo
         if (isEstoqueNoLimiteMinimo(produtoSelecionado)) {
           toast({ 
@@ -502,7 +507,7 @@ export const useOSItemHandlers = (
       }
     } else if (itemParaAtualizar.tipo_item === 'unidade' && itemParaAtualizar.produto_id) {
       const produtoSelecionado = Array.isArray(produtosCadastrados) ? produtosCadastrados.find(p => p.id === itemParaAtualizar.produto_id) : null;
-      if (produtoSelecionado) {
+      if (produtoSelecionado && !isProdutoDigital(produtoSelecionado)) {
         // Verificar se estoque está no limite mínimo
         if (isEstoqueNoLimiteMinimo(produtoSelecionado)) {
           toast({ 

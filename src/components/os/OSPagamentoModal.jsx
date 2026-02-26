@@ -86,6 +86,7 @@ const OSPagamentoModal = ({ open, onOpenChange, totalOS, totaisOS, onConfirmPaga
   const [totalPago, setTotalPago] = useState(0);
   const [troco, setTroco] = useState(0);
   const [restante, setRestante] = useState(totalOS);
+  const EPSILON_PAGAMENTO = 0.009;
   
   // Valor total com desconto de pontos (para exibição clara no resumo)
   const totalComDescontoUI = Math.max(0, totalOS - (parseFloat(descontoPontosAplicado) || 0));
@@ -951,12 +952,45 @@ const OSPagamentoModal = ({ open, onOpenChange, totalOS, totaisOS, onConfirmPaga
   const handleConfirmarEFinalizar = async () => {
     if (isFinalizandoPagamento) return;
 
-    if (totalOS > 0 && pagamentosAdicionados.length === 0) {
+    let pagamentosParaConfirmar = [...pagamentosAdicionados];
+
+    // Fluxo rápido: se o usuário selecionou Dinheiro e não clicou em "Adicionar",
+    // confirma automaticamente com base no valor recebido.
+    if (totalOS > 0 && pagamentosParaConfirmar.length === 0 && metodoPagamento === 'Dinheiro') {
+      const totalComDesconto = Math.max(0, totalOS - descontoPontosAplicado);
+      const valorRecebidoNum = parseFloat(String(valorRecebido || '').replace(',', '.')) || 0;
+
+      if (valorRecebidoNum + EPSILON_PAGAMENTO < totalComDesconto) {
+        toast({
+          title: "Valor Insuficiente",
+          description: `O valor recebido (${formatCurrency(valorRecebidoNum)}) é menor que o total da venda (${formatCurrency(totalComDesconto)}).`,
+          variant: "destructive"
+        });
+        return;
+      }
+
+      pagamentosParaConfirmar = [{
+        metodo: 'Dinheiro',
+        valor: totalComDesconto,
+        valorOriginal: totalComDesconto,
+        valorFinal: totalComDesconto,
+        parcelas: 1,
+        maquinaInfo: null,
+        taxaInfo: null,
+        conta_bancaria_id: null,
+        conta_destino_id: null,
+        dataVencimento: null,
+        valorRecebido: valorRecebidoNum,
+        troco: Math.max(0, valorRecebidoNum - totalComDesconto),
+      }];
+    }
+
+    if (totalOS > 0 && pagamentosParaConfirmar.length === 0) {
       toast({ title: "Nenhum Pagamento", description: "Adicione pelo menos uma forma de pagamento.", variant: "destructive" });
       return;
     }
     
-    const isCrediarioPresente = pagamentosAdicionados.some(p => p.metodo === 'Crediário');
+    const isCrediarioPresente = pagamentosParaConfirmar.some(p => p.metodo === 'Crediário');
     // Permite pagamento parcial: não exige mais 100% ou Crediário; apenas exige pelo menos um pagamento
     // (o restante será registrado como conta a receber no backend quando parcial)
     
@@ -978,11 +1012,18 @@ const OSPagamentoModal = ({ open, onOpenChange, totalOS, totaisOS, onConfirmPaga
       isPrimeiraVenda
     };
     
-    const pagamentoParcial = restante > 0.009 && !isCrediarioPresente;
-      const opcoes = { evoluirParaProducao: pagamentoParcial ? evoluirParaProducao : true };
+    // Recalcular no momento da confirmação para evitar qualquer defasagem de estado
+    const totalComDescontoAtual = Math.max(0, totalOS - descontoPontosAplicado);
+    const totalAbatimentoAtual = pagamentosParaConfirmar.reduce((acc, p) => {
+      const valorAbatimento = p.valorOriginal ?? p.valor ?? 0;
+      return acc + parseFloat(valorAbatimento);
+    }, 0);
+    const restanteAtual = Math.max(0, totalComDescontoAtual - totalAbatimentoAtual);
+    const pagamentoParcial = restanteAtual > EPSILON_PAGAMENTO && !isCrediarioPresente;
+    const opcoes = { evoluirParaProducao: pagamentoParcial ? evoluirParaProducao : true };
     try {
       setIsFinalizandoPagamento(true);
-      const resultado = await onConfirmPagamento(pagamentosAdicionados, dadosPontos, opcoes);
+      const resultado = await onConfirmPagamento(pagamentosParaConfirmar, dadosPontos, opcoes);
 
       if (resultado) {
         setPagamentosAdicionados([]);
@@ -1026,6 +1067,13 @@ const OSPagamentoModal = ({ open, onOpenChange, totalOS, totaisOS, onConfirmPaga
     return false; // Caso contrário, habilita
   };
 
+  // Recalcular para exibição do rótulo do botão sem depender de atualização assíncrona do estado "restante"
+  const totalComDescontoAtualUI = Math.max(0, totalOS - descontoPontosAplicado);
+  const totalAbatimentoAtualUI = calcularTotalParaAbatimento();
+  const restanteAtualUI = Math.max(0, totalComDescontoAtualUI - totalAbatimentoAtualUI);
+  const isCrediarioPresenteUI = pagamentosAdicionados.some(p => p.metodo === 'Crediário');
+  const exibirAcaoParcial = restanteAtualUI > EPSILON_PAGAMENTO && !isCrediarioPresenteUI;
+
   const formaPagamentoIcones = {
     Pix: <Smartphone size={16} className="mr-2 text-green-500" />,
     Dinheiro: <Coins size={16} className="mr-2 text-yellow-500" />,
@@ -1062,17 +1110,17 @@ const OSPagamentoModal = ({ open, onOpenChange, totalOS, totaisOS, onConfirmPaga
         }
         onOpenChange(isOpen);
       }}>
-      <DialogContent className="sm:max-w-2xl md:max-w-3xl lg:max-w-4xl max-h-[95vh] overflow-hidden flex flex-col">
+      <DialogContent className="w-[96vw] max-w-5xl max-h-[96vh] overflow-hidden flex flex-col p-4 sm:p-5">
         <DialogHeader className="flex-shrink-0">
-          <DialogTitle className="text-xl font-semibold text-gray-800 dark:text-gray-100">Registrar Pagamento</DialogTitle>
-          <DialogDescription>
+          <DialogTitle className="text-lg font-semibold text-gray-800 dark:text-gray-100">Registrar Pagamento</DialogTitle>
+          <DialogDescription className="text-sm">
             Total do Pedido: <span className="font-bold text-primary">{formatCurrency(totalOS)}</span>
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start py-4">
-          <div className="space-y-3 pr-0 md:pr-4 md:border-r border-gray-200 dark:border-gray-700">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-start py-2">
+          <div className="space-y-2 pr-0 md:pr-3 md:border-r border-gray-200 dark:border-gray-700">
             <div>
               <Label htmlFor="metodoPagamento" className="text-sm font-medium">Método de Pagamento</Label>
               <Select value={metodoPagamento} onValueChange={setMetodoPagamento}>
@@ -1151,7 +1199,7 @@ const OSPagamentoModal = ({ open, onOpenChange, totalOS, totaisOS, onConfirmPaga
 
             {/* Seção especial para pagamento em Dinheiro com troco automático */}
             {metodoPagamento === 'Dinheiro' ? (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <div>
                   <Label htmlFor="valorRecebido" className="text-sm font-medium">Valor Recebido (R$)</Label>
                   <Input 
@@ -1198,10 +1246,10 @@ const OSPagamentoModal = ({ open, onOpenChange, totalOS, totaisOS, onConfirmPaga
                   })()}
                 </div>
                 
-                <div className="p-3 bg-green-50 dark:bg-green-900/30 border border-green-300 dark:border-green-700 rounded-md">
+                <div className="p-2 bg-green-50 dark:bg-green-900/30 border border-green-300 dark:border-green-700 rounded-md">
                   <div className="flex justify-between items-center">
                     <span className="text-sm font-medium text-green-700 dark:text-green-300">Troco:</span>
-                    <span className="text-lg font-bold text-green-600 dark:text-green-400">
+                    <span className="text-base font-bold text-green-600 dark:text-green-400">
                       {formatCurrency(trocoCalculado)}
                     </span>
                   </div>
@@ -1308,8 +1356,8 @@ const OSPagamentoModal = ({ open, onOpenChange, totalOS, totaisOS, onConfirmPaga
 
             {/* Seção de Pontos - Aparece apenas quando há cliente selecionado e sistema ativo */}
             {configPontos.ativo && clienteId && clienteId !== 'null' && clienteId !== null && (
-              <div className="mt-3 p-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800/50">
-                <div className="flex items-center justify-between mb-2">
+              <div className="mt-2 p-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                <div className="flex items-center justify-between mb-1.5">
                   <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center">
                     <Star size={16} className="mr-2 text-yellow-500" />
                     Sistema de Pontos
@@ -1320,14 +1368,14 @@ const OSPagamentoModal = ({ open, onOpenChange, totalOS, totaisOS, onConfirmPaga
                 </div>
 
                 {/* Informações do cliente */}
-                <div className="grid grid-cols-2 gap-2 mb-3 text-xs">
-                  <div className="text-center p-2 bg-white dark:bg-gray-700 rounded border">
+                <div className="grid grid-cols-2 gap-2 mb-2 text-xs">
+                  <div className="text-center p-1.5 bg-white dark:bg-gray-700 rounded border">
                     <div className="font-medium text-gray-700 dark:text-gray-300">Pontos Atuais</div>
-                    <div className="text-lg font-bold text-blue-600 dark:text-blue-400">{clientePontos.saldo_atual}</div>
+                    <div className="text-base font-bold text-blue-600 dark:text-blue-400">{clientePontos.saldo_atual}</div>
                   </div>
-                  <div className="text-center p-2 bg-white dark:bg-gray-700 rounded border">
+                  <div className="text-center p-1.5 bg-white dark:bg-gray-700 rounded border">
                     <div className="font-medium text-gray-700 dark:text-gray-300">Valor Equivalente</div>
-                    <div className="text-lg font-bold text-green-600 dark:text-green-400">{formatCurrency(clientePontos.saldo_atual)}</div>
+                    <div className="text-base font-bold text-green-600 dark:text-green-400">{formatCurrency(clientePontos.saldo_atual)}</div>
                   </div>
                 </div>
 
@@ -1519,8 +1567,8 @@ const OSPagamentoModal = ({ open, onOpenChange, totalOS, totaisOS, onConfirmPaga
           </div>
 
           <div className="space-y-3">
-            <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-2">Pagamentos Adicionados</h3>
-            <ScrollArea className="h-40 border rounded-md bg-gray-50 dark:bg-gray-700/30 p-2">
+            <h3 className="text-base font-semibold text-gray-700 dark:text-gray-200 mb-1">Pagamentos Adicionados</h3>
+            <ScrollArea className="h-24 border rounded-md bg-gray-50 dark:bg-gray-700/30 p-2">
               {pagamentosAdicionados.length === 0 ? (
                 <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">Nenhum pagamento adicionado.</p>
               ) : (
@@ -1552,7 +1600,7 @@ const OSPagamentoModal = ({ open, onOpenChange, totalOS, totaisOS, onConfirmPaga
                 ))
               )}
             </ScrollArea>
-            <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 space-y-1 text-sm">
+            <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700 space-y-1 text-xs sm:text-sm">
               {totaisOS ? (
                 <>
                   <div className="flex justify-between">
@@ -1636,105 +1684,98 @@ const OSPagamentoModal = ({ open, onOpenChange, totalOS, totaisOS, onConfirmPaga
                 </div>
               )}
             </div>
+
+            {(restante > 0.009 ||
+              metodoPagamento === 'Crediário' ||
+              !configPontos.ativo ||
+              (configPontos.ativo && (!clienteId || clienteId === 'null' || clienteId === null)) ||
+              (configPontos.ativo && clienteId && clienteId !== 'null' && clienteId !== null && isPrimeiraVenda) ||
+              (configPontos.ativo && clienteId && clienteId !== 'null' && clienteId !== null && !isPrimeiraVenda && clientePontos.saldo_atual > 0) ||
+              !!clienteInfo) && (
+              <div className="mt-2 p-2 border border-gray-200 dark:border-gray-700 rounded-md bg-gray-50 dark:bg-gray-800/50 space-y-1.5 text-xs sm:text-sm">
+                {restante > 0.009 && !pagamentosAdicionados.some(p => p.metodo === 'Crediário') && (
+                  <>
+                    <div className="text-orange-700 dark:text-orange-300">
+                      O valor total dos pagamentos ainda não cobre o total do pedido. Uma conta a receber será criada para o saldo restante de {formatCurrency(restante)}.
+                    </div>
+                    <div className="border border-blue-300 bg-blue-50 dark:bg-blue-900/30 rounded p-2">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="evoluirProducao"
+                          checked={evoluirParaProducao}
+                          onCheckedChange={(checked) => setEvoluirParaProducao(checked)}
+                        />
+                        <label
+                          htmlFor="evoluirProducao"
+                          className="flex items-center cursor-pointer text-xs sm:text-sm text-blue-800 dark:text-blue-200"
+                        >
+                          <Package size={14} className="mr-1.5" />
+                          Evoluir esta O.S para produção agora?
+                        </label>
+                      </div>
+                      <p className="mt-1 text-[11px] sm:text-xs text-blue-600 dark:text-blue-300 ml-5">
+                        Se desmarcado, a O.S ficará como "Aguardando" até o pagamento ser concluído ou você avançar manualmente.
+                      </p>
+                    </div>
+                  </>
+                )}
+
+                {metodoPagamento === 'Crediário' && (
+                  <div className="text-blue-700 dark:text-blue-300">
+                    Uma conta a receber será criada automaticamente com vencimento em {format(new Date(dataVencimentoCrediario), 'dd/MM/yyyy')}.
+                  </div>
+                )}
+
+                {metodoPagamento === 'Crediário' && (!clienteId || clienteId === 'null' || clienteId === null) && (
+                  <div className="text-red-700 dark:text-red-300">
+                    ⚠️ Cliente obrigatório para pagamentos em Crediário.
+                  </div>
+                )}
+
+                {metodoPagamento === 'Crediário' && clienteId && clienteId !== 'null' && clienteId !== null && !isClienteAutorizadoCrediario && (
+                  <div className="text-red-700 dark:text-red-300">
+                    ⚠️ Este cliente não está autorizado a comprar a prazo/crediário.
+                  </div>
+                )}
+
+                {!configPontos.ativo && (
+                  <div className="text-orange-700 dark:text-orange-300">
+                    ⚠️ Sistema de pontos está desativado.
+                  </div>
+                )}
+
+                {configPontos.ativo && (!clienteId || clienteId === 'null' || clienteId === null) && (
+                  <div className="text-blue-700 dark:text-blue-300">
+                    💡 Selecione um cliente para usar o sistema de pontos.
+                  </div>
+                )}
+
+                {configPontos.ativo && clienteId && clienteId !== 'null' && clienteId !== null && isPrimeiraVenda && (
+                  <div className="text-blue-700 dark:text-blue-300">
+                    🎉 Primeira compra! Pontos serão acumulados automaticamente.
+                  </div>
+                )}
+
+                {configPontos.ativo && clienteId && clienteId !== 'null' && clienteId !== null && !isPrimeiraVenda && clientePontos.saldo_atual > 0 && (
+                  <div className="text-green-700 dark:text-green-300">
+                    ⭐ Cliente possui {clientePontos.saldo_atual} pontos disponíveis para desconto.
+                  </div>
+                )}
+
+                {clienteInfo && (
+                  <div className="text-purple-700 dark:text-purple-300">
+                    {clienteInfo.classificacao_cliente === 'Terceirizado' && clienteInfo.desconto_fixo_os_terceirizado
+                      ? `Cliente ${clienteInfo.nome} é terceirizado. Desconto fixo de ${clienteInfo.desconto_fixo_os_terceirizado}% aplicado.`
+                      : `Cliente ${clienteInfo.nome} não é terceirizado.`}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
-        
-        {restante > 0.009 && !pagamentosAdicionados.some(p => p.metodo === 'Crediário') && (
-            <>
-            <div className="mt-2 p-3 border border-orange-400 bg-orange-50 dark:bg-orange-900/30 rounded-md text-sm text-orange-700 dark:text-orange-300 flex items-center">
-                <AlertTriangle size={20} className="mr-2 flex-shrink-0"/>
-                <span>O valor total dos pagamentos ainda não cobre o total do pedido. Uma conta a receber será criada para o saldo restante de {formatCurrency(restante)}.</span>
-            </div>
-            <div className="mt-3 p-3 border border-blue-400 bg-blue-50 dark:bg-blue-900/30 rounded-md">
-              <div className="flex items-center space-x-3">
-                <Checkbox 
-                  id="evoluirProducao"
-                  checked={evoluirParaProducao}
-                  onCheckedChange={(checked) => setEvoluirParaProducao(checked)}
-                />
-                <label 
-                  htmlFor="evoluirProducao" 
-                  className="flex items-center cursor-pointer text-sm text-blue-800 dark:text-blue-200"
-                >
-                  <Package size={18} className="mr-2" />
-                  Evoluir esta O.S para produção agora?
-                </label>
-              </div>
-              <p className="mt-2 text-xs text-blue-600 dark:text-blue-300 ml-6">
-                Se desmarcado, a O.S ficará como "Aguardando" até o pagamento ser concluído ou você avançar manualmente.
-              </p>
-            </div>
-            </>
-        )}
-
-        {metodoPagamento === 'Crediário' && (
-            <div className="mt-2 p-3 border border-blue-400 bg-blue-50 dark:bg-blue-900/30 rounded-md text-sm text-blue-700 dark:text-blue-300 flex items-center">
-                <CreditCard size={20} className="mr-2 flex-shrink-0"/>
-                <span>Uma conta a receber será criada automaticamente com vencimento em {format(new Date(dataVencimentoCrediario), 'dd/MM/yyyy')}.</span>
-            </div>
-        )}
-
-        {metodoPagamento === 'Crediário' && (!clienteId || clienteId === 'null' || clienteId === null) && (
-            <div className="mt-2 p-3 border border-red-400 bg-red-50 dark:bg-red-900/30 rounded-md text-sm text-red-700 dark:text-red-300 flex items-center">
-                <AlertTriangle size={20} className="mr-2 flex-shrink-0"/>
-                <span>⚠️ Cliente obrigatório para pagamentos em Crediário. Selecione um cliente (cadastrado ou avulso) antes de finalizar. (ID: {clienteId})</span>
-            </div>
-        )}
-
-        {metodoPagamento === 'Crediário' && clienteId && clienteId !== 'null' && clienteId !== null && !isClienteAutorizadoCrediario && (
-            <div className="mt-2 p-3 border border-red-400 bg-red-50 dark:bg-red-900/30 rounded-md text-sm text-red-700 dark:text-red-300 flex items-center">
-                <AlertTriangle size={20} className="mr-2 flex-shrink-0"/>
-                <span>⚠️ Este cliente não está autorizado a comprar a prazo/crediário. Verifique as configurações do cliente.</span>
-            </div>
-        )}
-
-        {!configPontos.ativo && (
-            <div className="mt-2 p-3 border border-orange-400 bg-orange-50 dark:bg-orange-900/30 rounded-md text-sm text-orange-700 dark:text-orange-300 flex items-center">
-                <AlertTriangle size={20} className="mr-2 flex-shrink-0"/>
-                <span>⚠️ Sistema de pontos está desativado. Ative nas configurações para usar pontos.</span>
-            </div>
-        )}
-
-        {configPontos.ativo && (!clienteId || clienteId === 'null' || clienteId === null) && (
-            <div className="mt-2 p-3 border border-blue-400 bg-blue-50 dark:bg-blue-900/30 rounded-md text-sm text-blue-700 dark:text-blue-300 flex items-center">
-                <Star size={20} className="mr-2 flex-shrink-0"/>
-                <span>💡 Selecione um cliente para usar o sistema de pontos.</span>
-            </div>
-        )}
-
-        {configPontos.ativo && clienteId && clienteId !== 'null' && clienteId !== null && isPrimeiraVenda && (
-            <div className="mt-2 p-3 border border-blue-400 bg-blue-50 dark:bg-blue-900/30 rounded-md text-sm text-blue-700 dark:text-blue-300 flex items-center">
-                <Star size={20} className="mr-2 flex-shrink-0"/>
-                <span>🎉 Primeira compra! Pontos serão acumulados automaticamente.</span>
-            </div>
-        )}
-
-        {configPontos.ativo && clienteId && clienteId !== 'null' && clienteId !== null && !isPrimeiraVenda && clientePontos.saldo_atual > 0 && (
-            <div className="mt-2 p-3 border border-green-400 bg-green-50 dark:bg-green-900/30 rounded-md text-sm text-green-700 dark:text-green-300 flex items-center">
-                <Star size={20} className="mr-2 flex-shrink-0"/>
-                <span>⭐ Cliente possui {clientePontos.saldo_atual} pontos disponíveis para desconto.</span>
-            </div>
-        )}
-
-        {clienteInfo && (
-          <div className="mt-2 p-3 border border-purple-400 bg-purple-50 dark:bg-purple-900/30 rounded-md text-sm text-purple-700 dark:text-purple-300 flex items-center">
-            <Info size={20} className="mr-2 flex-shrink-0" />
-            <span>
-              {clienteInfo.classificacao_cliente === 'Terceirizado' && clienteInfo.desconto_fixo_os_terceirizado ? (
-                <>
-                  Cliente {clienteInfo.nome} é terceirizado. Desconto fixo de {clienteInfo.desconto_fixo_os_terceirizado}% aplicado.
-                </>
-              ) : (
-                <>
-                  Cliente {clienteInfo.nome} não é terceirizado.
-                </>
-              )}
-            </span>
-          </div>
-        )}
           </div>
 
-        <DialogFooter className="mt-6 flex-shrink-0">
+        <DialogFooter className="mt-3 flex-shrink-0">
           <DialogClose asChild>
             <Button variant="outline">Cancelar</Button>
           </DialogClose>
@@ -1744,7 +1785,7 @@ const OSPagamentoModal = ({ open, onOpenChange, totalOS, totaisOS, onConfirmPaga
             disabled={isConfirmButtonDisabled() || isFinalizandoPagamento}
           >
             <CheckCircle2 size={18} className="mr-2"/>
-            {isFinalizandoPagamento ? 'Processando...' : (restante > 0.009 && !pagamentosAdicionados.some(p => p.metodo === 'Crediário') ? 'Registrar pagamento parcial' : 'Confirmar Pagamento e Finalizar')}
+            {isFinalizandoPagamento ? 'Processando...' : (exibirAcaoParcial ? 'Registrar pagamento parcial' : 'Confirmar Pagamento e Finalizar')}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -1471,6 +1471,10 @@ const OSItemForm = ({
     }
 
     const produtoSelecionado = produtosCadastrados.find(p => p.id === currentServico.produto_id);
+    const isDigital = produtoSelecionado?.is_digital === true || produtoSelecionado?.is_digital === 1 || produtoSelecionado?.is_digital === '1';
+    if (isDigital) {
+      return { valido: true };
+    }
     
     if (!produtoSelecionado || (produtoSelecionado.unidadeMedida !== 'm2' && produtoSelecionado.unidade_medida !== 'm2')) {
       return { valido: true };

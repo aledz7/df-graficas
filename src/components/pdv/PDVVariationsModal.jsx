@@ -115,6 +115,7 @@ const PDVVariationsModal = ({ isOpen, setIsOpen, produto, selectedVariacaoDetail
   }, [produto?.variacoes, searchTerm, getNomeVariacao, getTamanhosPersonalizados]);
 
   if (!produto) return null;
+  const isDigital = produto.is_digital === true || produto.is_digital === 1 || produto.is_digital === '1';
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -154,7 +155,7 @@ const PDVVariationsModal = ({ isOpen, setIsOpen, produto, selectedVariacaoDetail
             const estoqueDisponivel = calcularEstoqueDisponivel(variacao);
             const estoqueOriginal = parseFloat(variacao.estoque_var || 0);
             const quantidadeNoCarrinho = estoqueOriginal - estoqueDisponivel;
-            const semEstoque = estoqueDisponivel === 0;
+            const semEstoque = !isDigital && estoqueDisponivel === 0;
             const tamanhosPersonalizados = getTamanhosPersonalizados(variacao);
             const temTamanhoCustom = tamanhosPersonalizados.length > 0;
             const nomeCor = getNomeVariacao(variacao.cor, 'cor');
