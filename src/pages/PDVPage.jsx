@@ -67,6 +67,16 @@ const PDVPage = ({ vendedorAtual }) => {
         
         // Verificar se o produto é composto (kit/serviço)
         const isComposto = produto.isComposto || produto.is_composto;
+        const isDigital = produto.is_digital === true || produto.is_digital === 1 || produto.is_digital === '1';
+
+        // Produto digital ignora validação de estoque na seleção
+        if (isDigital) {
+            addProdutoAoCarrinho(produto, 1, null);
+            if (window.innerWidth < 1024) {
+                setActiveTab('carrinho');
+            }
+            return;
+        }
         
         // Se não tem variações ativas e tem estoque principal, adicionar diretamente
         if (!produto.variacoes_ativa && estoquePrincipal > 0) {

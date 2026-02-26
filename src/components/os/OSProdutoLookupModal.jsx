@@ -216,7 +216,8 @@ const OSProdutoLookupModal = ({ onSelectProduto, children, isOpen, setIsOpen, pr
 
   const handleSelect = (produto) => {
     const estoqueDisponivel = calcularEstoqueTotal(produto);
-    if (estoqueDisponivel <= 0 && produto.tipo_produto === 'unidade') {
+    const isDigital = produto.is_digital === true || produto.is_digital === 1 || produto.is_digital === '1';
+    if (!isDigital && estoqueDisponivel <= 0 && produto.tipo_produto === 'unidade') {
         alert(`Estoque zerado para o produto ${produto.nome}.`);
         return;
     }

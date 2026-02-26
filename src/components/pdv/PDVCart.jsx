@@ -112,8 +112,9 @@ const PDVCart = ({ carrinho, setCarrinho, productColors, productSizes, produtos 
         }
 
         const isComposto = produtoOriginal.isComposto || produtoOriginal.is_composto;
+        const isDigital = produtoOriginal.is_digital === true || produtoOriginal.is_digital === 1 || produtoOriginal.is_digital === '1';
         
-        if (!isComposto && quantidade > estoqueDisponivel) {
+        if (!isComposto && !isDigital && quantidade > estoqueDisponivel) {
           toast({ 
             title: "Estoque Insuficiente", 
             description: `Disponível: ${estoqueDisponivel}. Solicitado: ${quantidade}. Quantidade ajustada para o máximo disponível.`, 
@@ -190,9 +191,10 @@ const PDVCart = ({ carrinho, setCarrinho, productColors, productSizes, produtos 
 
     // Verificar se o produto é composto
     const isComposto = produtoOriginal.isComposto || produtoOriginal.is_composto;
+    const isDigital = produtoOriginal.is_digital === true || produtoOriginal.is_digital === 1 || produtoOriginal.is_digital === '1';
     
     // Validar estoque apenas se não for produto composto
-    if (!isComposto && quantidade > estoqueDisponivel) {
+    if (!isComposto && !isDigital && quantidade > estoqueDisponivel) {
       toast({ 
         title: "Estoque Insuficiente", 
         description: `Disponível: ${estoqueDisponivel}. Solicitado: ${quantidade}. Quantidade ajustada para o máximo disponível.`, 

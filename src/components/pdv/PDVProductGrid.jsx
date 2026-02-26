@@ -145,6 +145,7 @@ const PDVProductGrid = ({ produtos, searchTerm, setSearchTerm, handleProdutoClic
               const estoqueTotal = produto.variacoes_ativa ? estoqueVariacoes : estoqueAtual;
               const estoqueMinimo = parseFloat(produto.estoque_minimo || 0);
               const isComposto = produto.isComposto || produto.is_composto;
+              const isDigital = produto.is_digital === true || produto.is_digital === 1 || produto.is_digital === '1';
               
               // Produtos compostos não são bloqueados por estoque próprio
               // Produtos com variações são bloqueados apenas se não tiverem variações com estoque
@@ -160,7 +161,7 @@ const PDVProductGrid = ({ produtos, searchTerm, setSearchTerm, handleProdutoClic
               }
               // Lógica de bloqueio corrigida
               let bloqueado = false;
-              if (isComposto) {
+              if (isDigital || isComposto) {
                 bloqueado = false; // Produtos compostos nunca são bloqueados
               } else if (produto.variacoes_ativa) {
                 // Para produtos com variação, só bloqueia se não tiver variações com estoque
