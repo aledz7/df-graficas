@@ -38,15 +38,20 @@ return new class extends Migration
             
             // Remover unique do codigo e criar unique composto
             if (Schema::hasColumn('quick_actions', 'codigo')) {
-                // Verificar se existe índice unique no codigo
+                // Buscar o nome real do índice único existente na coluna 'codigo'
                 $indexes = DB::select("SHOW INDEX FROM quick_actions WHERE Column_name = 'codigo' AND Non_unique = 0");
-                if (count($indexes) > 0) {
-                    Schema::table('quick_actions', function (Blueprint $table) {
-                        $table->dropUnique(['codigo']);
-                    });
+                foreach ($indexes as $index) {
+                    // Ignorar o índice composto (tenant_id + codigo) caso já exista
+                    if ($index->Key_name !== 'quick_actions_tenant_id_codigo_unique') {
+                        try {
+                            DB::statement("ALTER TABLE quick_actions DROP INDEX `{$index->Key_name}`");
+                        } catch (\Exception $e) {
+                            // Índice já removido ou não existe — ignorar
+                        }
+                    }
                 }
-                
-                // Adicionar unique composto
+
+                // Adicionar unique composto apenas se ainda não existir
                 $compositeIndex = DB::select("SHOW INDEX FROM quick_actions WHERE Key_name = 'quick_actions_tenant_id_codigo_unique'");
                 if (count($compositeIndex) === 0) {
                     Schema::table('quick_actions', function (Blueprint $table) {
