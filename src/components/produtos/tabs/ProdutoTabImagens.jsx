@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,98 @@ const ProdutoTabImagens = ({
   handleGaleriaImageUpload,
   removeGaleriaImage,
 }) => {
+  const [isMainDragOver, setIsMainDragOver] = useState(false);
+  const [isGalleryDragOver, setIsGalleryDragOver] = useState(false);
+
+  const isImageFile = useCallback((file) => {
+    if (!file) return false;
+    if (file.type && file.type.startsWith('image/')) return true;
+    return /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(file.name || '');
+  }, []);
+
+  const readEntryFiles = useCallback(async (entry) => {
+    if (!entry) return [];
+
+    if (entry.isFile) {
+      return new Promise((resolve) => {
+        entry.file(
+          (file) => resolve(file ? [file] : []),
+          () => resolve([])
+        );
+      });
+    }
+
+    if (entry.isDirectory) {
+      const reader = entry.createReader();
+      const entries = [];
+
+      return new Promise((resolve) => {
+        const readBatch = () => {
+          reader.readEntries(
+            async (batch) => {
+              if (!batch.length) {
+                const nestedFiles = await Promise.all(entries.map((nestedEntry) => readEntryFiles(nestedEntry)));
+                resolve(nestedFiles.flat());
+                return;
+              }
+              entries.push(...batch);
+              readBatch();
+            },
+            () => resolve([])
+          );
+        };
+
+        readBatch();
+      });
+    }
+
+    return [];
+  }, []);
+
+  const getDroppedFiles = useCallback(async (dataTransfer) => {
+    const items = Array.from(dataTransfer?.items || []);
+
+    if (items.length > 0 && items.some((item) => typeof item.webkitGetAsEntry === 'function')) {
+      const entries = items
+        .map((item) => item.webkitGetAsEntry?.())
+        .filter(Boolean);
+
+      if (entries.length > 0) {
+        const filesFromEntries = await Promise.all(entries.map((entry) => readEntryFiles(entry)));
+        const flattenedFiles = filesFromEntries.flat();
+        if (flattenedFiles.length > 0) return flattenedFiles;
+      }
+    }
+
+    return Array.from(dataTransfer?.files || []);
+  }, [readEntryFiles]);
+
+  const preventDragDefaults = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+  };
+
+  const onMainDrop = async (event) => {
+    preventDragDefaults(event);
+    setIsMainDragOver(false);
+
+    const droppedFiles = await getDroppedFiles(event.dataTransfer);
+    const imageFiles = droppedFiles.filter(isImageFile);
+    if (!imageFiles.length) return;
+
+    handleImageUpload({ target: { files: [imageFiles[0]] } });
+  };
+
+  const onGalleryDrop = async (event) => {
+    preventDragDefaults(event);
+    setIsGalleryDragOver(false);
+
+    const droppedFiles = await getDroppedFiles(event.dataTransfer);
+    const imageFiles = droppedFiles.filter(isImageFile);
+    if (!imageFiles.length) return;
+
+    handleGaleriaImageUpload({ target: { files: imageFiles } });
+  };
   
   // Determinar a fonte da imagem principal
   const mainImageSrc = useMemo(() => {
@@ -49,7 +141,26 @@ const ProdutoTabImagens = ({
         <CardContent>
             <div>
                 <Label htmlFor="imagem_principalUpload">Imagem Principal <span className="text-red-500">*</span></Label>
-                <div className="mt-1 flex flex-col items-center justify-center px-6 pt-5 pb-6 border-2 border-gray-300 dark:border-gray-600 border-dashed rounded-md">
+                <div
+                    className={`mt-1 flex flex-col items-center justify-center px-6 pt-5 pb-6 border-2 border-dashed rounded-md transition-colors ${
+                        isMainDragOver
+                            ? 'border-primary bg-primary/5'
+                            : 'border-gray-300 dark:border-gray-600'
+                    }`}
+                    onDragEnter={(event) => {
+                        preventDragDefaults(event);
+                        setIsMainDragOver(true);
+                    }}
+                    onDragOver={(event) => {
+                        preventDragDefaults(event);
+                        setIsMainDragOver(true);
+                    }}
+                    onDragLeave={(event) => {
+                        preventDragDefaults(event);
+                        setIsMainDragOver(false);
+                    }}
+                    onDrop={onMainDrop}
+                >
                     {mainImageSrc ? (
                         <img src={mainImageSrc} alt="Preview Principal" className="mx-auto h-40 w-auto object-contain rounded-md mb-4" />
                     ) : (
@@ -65,7 +176,7 @@ const ProdutoTabImagens = ({
                             <input id="imagem_principalUpload" name="imagem_principalUpload" type="file" className="sr-only" onChange={handleImageUpload} accept="image/*" />
                         </label>
                         </div>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">PNG, JPG, GIF</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">PNG, JPG, GIF ou arraste aqui</p>
                     </div>
                 </div>
             </div>
@@ -74,10 +185,27 @@ const ProdutoTabImagens = ({
                 <div className="mt-1">
                     <label
                         htmlFor="galeria_imagensUpload"
-                        className="flex justify-center w-full px-6 py-3 border-2 border-gray-300 dark:border-gray-600 border-dashed rounded-md cursor-pointer hover:border-primary"
+                        className={`flex justify-center w-full px-6 py-3 border-2 border-dashed rounded-md cursor-pointer transition-colors ${
+                            isGalleryDragOver
+                                ? 'border-primary bg-primary/5'
+                                : 'border-gray-300 dark:border-gray-600 hover:border-primary'
+                        }`}
+                        onDragEnter={(event) => {
+                            preventDragDefaults(event);
+                            setIsGalleryDragOver(true);
+                        }}
+                        onDragOver={(event) => {
+                            preventDragDefaults(event);
+                            setIsGalleryDragOver(true);
+                        }}
+                        onDragLeave={(event) => {
+                            preventDragDefaults(event);
+                            setIsGalleryDragOver(false);
+                        }}
+                        onDrop={onGalleryDrop}
                     >
                         <ImagePlus className="h-8 w-8 text-gray-400 mr-2" />
-                        <span className="text-sm text-gray-600 dark:text-gray-400 self-center">Adicionar imagens à galeria</span>
+                        <span className="text-sm text-gray-600 dark:text-gray-400 self-center">Adicionar imagens à galeria ou arrastar aqui</span>
                         <input id="galeria_imagensUpload" name="galeria_imagensUpload" type="file" className="sr-only" onChange={handleGaleriaImageUpload} accept="image/*" multiple />
                     </label>
                 </div>

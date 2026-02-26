@@ -284,13 +284,9 @@ const ProdutoForm = ({ isOpen, onClose, onSave, produtoEmEdicao, showSaveAndNewB
                 setImagemPreview('');
             }
             
-            // Configurar previews da galeria
-            if (produtoEmEdicao.galeria_urls && produtoEmEdicao.galeria_urls.length > 0) {
-                const galeriaPreviews = produtoEmEdicao.galeria_urls.map(url => getImageUrl(url));
-                setGaleriaPreviews(galeriaPreviews);
-            } else {
-                setGaleriaPreviews([]);
-            }
+            // Previews devem conter apenas uploads locais temporários
+            // (não duplicar imagens já salvas em galeria_urls)
+            setGaleriaPreviews([]);
         } else if (!produtoEmEdicao && isOpen) {
             // Se não há produto em edição, resetar o formulário
             resetForm();
@@ -654,9 +650,9 @@ const ProdutoForm = ({ isOpen, onClose, onSave, produtoEmEdicao, showSaveAndNewB
         const files = Array.from(e.target.files);
         
         if (files.length > 0) {
+            const localPreviews = files.map(file => URL.createObjectURL(file));
             try {
                 // Mostrar previews locais para melhor UX
-                const localPreviews = files.map(file => URL.createObjectURL(file));
                 setGaleriaPreviews(prev => [...prev, ...localPreviews]);
                 
                 // Criar FormData para debug
@@ -673,8 +669,11 @@ const ProdutoForm = ({ isOpen, onClose, onSave, produtoEmEdicao, showSaveAndNewB
                     const novasUrls = response.data.urls || [];
                     setCurrentProduto(prev => ({
                         ...prev,
-                        galeria_urls: [...(prev.galeria_urls || []), ...novasUrls]
+                        galeria_urls: Array.from(new Set([...(prev.galeria_urls || []), ...novasUrls]))
                     }));
+
+                    // Remove previews temporários para não duplicar com as URLs salvas
+                    setGaleriaPreviews(prev => prev.filter(preview => !localPreviews.includes(preview)));
                     
                     toast({ title: "Sucesso", description: "Imagens da galeria enviadas com sucesso!" });
                 } else {
