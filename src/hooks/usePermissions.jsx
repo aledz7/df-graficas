@@ -49,6 +49,7 @@ export const routePermissions = {
   '/configuracoes/aparencia': ['config_aparencia'],
   '/configuracoes/produtos-estoque': ['gerenciar_produtos'],
   '/configuracoes/pontos': ['config_sistema'],
+  '/configuracoes/dashboard': ['config_sistema'],
   '/operacional/gerador-etiquetas': ['gerar_etiquetas'],
   '/ferramentas/lixeira': ['gerenciar_lixeira'],
   '/ferramentas/auditoria': ['ver_auditoria'],

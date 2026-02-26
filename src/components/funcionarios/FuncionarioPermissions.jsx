@@ -45,6 +45,9 @@ const permissionGroups = [
           { id: 'dashboard_ver_os', label: 'Visualizar resumo de OS' },
           { id: 'dashboard_ver_financeiro', label: 'Visualizar resumo financeiro' },
           { id: 'dashboard_ver_graficos', label: 'Visualizar gráficos' },
+          { id: 'agenda_ver', label: 'Visualizar resumo da agenda' },
+          { id: 'agenda_criar', label: 'Criar novos compromissos' },
+          { id: 'envelopamento_ver', label: 'Visualizar resumo de envelopamento' },
         ]
       },
     ]
@@ -111,6 +114,7 @@ const permissionGroups = [
           { id: 'clientes_desconto', label: 'Conceder desconto personalizado' },
           { id: 'clientes_excluir', label: 'Excluir cadastro de cliente' },
           { id: 'clientes_logar_como', label: 'Logar como o cliente no painel' },
+          { id: 'clientes_exportar', label: 'Exportar lista de clientes' },
         ]
       },
       { 

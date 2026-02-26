@@ -18,7 +18,8 @@ import {
   CalendarClock,
   Users,
   Archive,
-  Settings2
+  Settings2,
+  Plus
 } from 'lucide-react';
 import { parseISO, isToday, format, isFuture, differenceInDays, isValid, startOfDay, endOfDay } from 'date-fns';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -28,10 +29,14 @@ import { vendaService, dashboardService } from '@/services/api';
 import api, { aparenciaService } from '@/services/api';
 import { buscarProdutosEstoqueBaixo } from '@/utils/estoqueBaixoUtils';
 import { useToast } from '@/components/ui/use-toast';
+import { usePermissions } from '@/hooks/usePermissions';
+import PermissionGate from '@/components/PermissionGate';
+import AppointmentModal from '@/components/agenda/AppointmentModal';
 
 const DashboardPage = ({ theme }) => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { hasPermission, isOwner } = usePermissions();
   
   // Estados para widgets dinâmicos
   const [widgetsConfig, setWidgetsConfig] = useState(null);
@@ -51,6 +56,7 @@ const DashboardPage = ({ theme }) => {
   const [proximosCompromissos, setProximosCompromissos] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isEstoqueBaixoModalOpen, setIsEstoqueBaixoModalOpen] = useState(false);
+  const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
   const [dashboardColors, setDashboardColors] = useState({
     vendasDia: 'green',
     osAberto: 'indigo',
@@ -68,15 +74,24 @@ const DashboardPage = ({ theme }) => {
         ]);
 
         if (configResponse.success && widgetsResponse.success) {
-          setWidgetsConfig(configResponse.data);
-          setWidgetsDisponiveis(widgetsResponse.data || []);
-          setUsarWidgetsDinamicos(true);
+          const configData = configResponse.data || {};
+          const widgetsData = widgetsResponse.data || [];
           
-          // Carregar dados dos widgets visíveis
-          const widgetsVisiveis = configResponse.data?.widgets_visiveis || [];
-          if (widgetsVisiveis.length > 0) {
+          setWidgetsConfig(configData);
+          setWidgetsDisponiveis(widgetsData);
+          
+          // Só usar widgets dinâmicos se houver widgets disponíveis E widgets visíveis configurados
+          const widgetsVisiveis = configData?.widgets_visiveis || [];
+          if (widgetsData.length > 0 && widgetsVisiveis.length > 0) {
+            setUsarWidgetsDinamicos(true);
             loadWidgetsData(widgetsVisiveis);
+          } else {
+            console.log('Usando dashboard legado - widgets não configurados:', { widgetsData: widgetsData.length, widgetsVisiveis: widgetsVisiveis.length });
+            setUsarWidgetsDinamicos(false);
           }
+        } else {
+          console.log('Erro ao carregar widgets, usando dashboard legado');
+          setUsarWidgetsDinamicos(false);
         }
       } catch (error) {
         console.error('Erro ao carregar configuração de widgets:', error);
@@ -224,28 +239,31 @@ const DashboardPage = ({ theme }) => {
     loadDashboardData();
   }, []);
 
-  // Stats legados (para compatibilidade)
+  // Stats legados (para compatibilidade) - filtrados por permissões
   const stats = [
     {
       title: 'Vendas do Dia (Qtd)',
       value: dashboardStats.vendasDiaQtd,
       icon: ShoppingCart,
       color: dashboardColors.vendasDia,
-      action: () => navigate('/operacional/pdv-historico', { state: { filterDate: { from: startOfDay(new Date()), to: endOfDay(new Date()) } } })
+      action: () => navigate('/operacional/pdv-historico', { state: { filterDate: { from: startOfDay(new Date()), to: endOfDay(new Date()) } } }),
+      permission: 'dashboard_ver_vendas'
     },
     {
       title: 'OS em Aberto',
       value: dashboardStats.osAberto,
       icon: ClipboardList,
       color: dashboardColors.osAberto,
-      action: () => navigate('/operacional/os-historico', { state: { filterStatus: ['Orçamento', 'Orçamento Salvo', 'Orçamento Salvo (Editado)'] } })
+      action: () => navigate('/operacional/os-historico', { state: { filterStatus: ['Orçamento', 'Orçamento Salvo', 'Orçamento Salvo (Editado)'] } }),
+      permission: 'dashboard_ver_os'
     },
     {
       title: 'Orç. Envelopamento',
       value: dashboardStats.envelopamentosOrcados,
       icon: Palette,
       color: dashboardColors.orcEnvelopamento,
-      action: () => navigate('/operacional/orcamentos-envelopamento', { state: { filterStatus: ['Orçamento Salvo', 'Rascunho'] } })
+      action: () => navigate('/operacional/orcamentos-envelopamento', { state: { filterStatus: ['Orçamento Salvo', 'Rascunho'] } }),
+      permission: 'dashboard_ver_os'
     },
     {
       title: 'Estoque Baixo',
@@ -253,9 +271,10 @@ const DashboardPage = ({ theme }) => {
       icon: Archive, 
       color: dashboardColors.estoqueBaixo,
       subtext: 'Itens abaixo do mínimo',
-      action: () => setIsEstoqueBaixoModalOpen(true)
+      action: () => setIsEstoqueBaixoModalOpen(true),
+      permission: 'dashboard_ver_graficos'
     }
-  ];
+  ].filter(stat => isOwner || !stat.permission || hasPermission(stat.permission));
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -279,13 +298,105 @@ const DashboardPage = ({ theme }) => {
     }
   };
 
+  // Mapeamento de widgets para permissões
+  const getWidgetPermission = (widgetCodigo, categoria, tipo) => {
+    // Widgets do tipo gráfico precisam de permissão específica
+    if (tipo === 'grafico' || tipo === 'chart') {
+      return 'dashboard_ver_graficos';
+    }
+    
+    // Mapear widgets por categoria para permissões
+    if (categoria === 'vendas' || widgetCodigo?.includes('venda')) {
+      return 'dashboard_ver_vendas';
+    }
+    if (categoria === 'operacional' || widgetCodigo?.includes('os') || widgetCodigo?.includes('envelopamento')) {
+      return 'dashboard_ver_os';
+    }
+    if (categoria === 'financeiro' || widgetCodigo?.includes('receber') || widgetCodigo?.includes('pagar') || widgetCodigo?.includes('financeiro')) {
+      return 'dashboard_ver_financeiro';
+    }
+    if (categoria === 'producao' || widgetCodigo?.includes('producao')) {
+      return 'dashboard_ver_os';
+    }
+    // Widgets gerais podem ser vistos se tiver permissão de dashboard
+    return null;
+  };
+
   // Renderizar widgets dinâmicos
   const renderWidgetsDinamicos = () => {
+    // Se não há configuração ou widgets disponíveis, mostrar cards legados
     if (!widgetsConfig || !widgetsDisponiveis.length) {
-      return null;
+      console.warn('Widgets dinâmicos não disponíveis, usando cards legados');
+      return (
+        <motion.section
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6"
+        >
+          {stats.map((stat) => (
+            <motion.div variants={itemVariants} key={stat.title} className="h-full cursor-pointer" onClick={stat.action}>
+                <StatCard {...stat} />
+            </motion.div>
+          ))}
+        </motion.section>
+      );
     }
 
     const widgetsVisiveis = widgetsConfig.widgets_visiveis || [];
+    
+    // Se não há widgets visíveis configurados, mostrar cards legados
+    if (widgetsVisiveis.length === 0) {
+      console.warn('Nenhum widget visível configurado, usando cards legados');
+      return (
+        <motion.section
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6"
+        >
+          {stats.map((stat) => (
+            <motion.div variants={itemVariants} key={stat.title} className="h-full cursor-pointer" onClick={stat.action}>
+                <StatCard {...stat} />
+            </motion.div>
+          ))}
+        </motion.section>
+      );
+    }
+    
+    // Filtrar widgets baseado nas permissões do usuário
+    const widgetsPermitidos = widgetsVisiveis.filter((codigo) => {
+      const widget = widgetsDisponiveis.find(w => w.codigo === codigo);
+      if (!widget) return false;
+      
+      // Se for owner, pode ver tudo
+      if (isOwner) return true;
+      
+      // Verificar permissão específica do widget
+      const permission = getWidgetPermission(widget.codigo, widget.categoria, widget.tipo);
+      if (!permission) return true; // Widgets sem permissão específica são visíveis
+      
+      return hasPermission(permission);
+    });
+    
+    // Se não há widgets permitidos, mostrar cards legados
+    if (widgetsPermitidos.length === 0) {
+      console.warn('Nenhum widget permitido, usando cards legados');
+      return (
+        <motion.section
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6"
+        >
+          {stats.map((stat) => (
+            <motion.div variants={itemVariants} key={stat.title} className="h-full cursor-pointer" onClick={stat.action}>
+                <StatCard {...stat} />
+            </motion.div>
+          ))}
+        </motion.section>
+      );
+    }
     
     return (
       <motion.section
@@ -294,7 +405,7 @@ const DashboardPage = ({ theme }) => {
         animate="visible"
         className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6"
       >
-        {widgetsVisiveis.map((codigo) => {
+        {widgetsPermitidos.map((codigo) => {
           const widget = widgetsDisponiveis.find(w => w.codigo === codigo);
           if (!widget) return null;
 
@@ -326,14 +437,16 @@ const DashboardPage = ({ theme }) => {
           <h1 className="text-2xl font-bold">Dashboard</h1>
           <p className="text-muted-foreground">Visão geral do seu negócio</p>
         </div>
-        <Button
-          variant="outline"
-          onClick={() => navigate('/configuracoes/dashboard')}
-          className="flex items-center gap-2"
-        >
-          <Settings2 className="h-4 w-4" />
-          Configurar Dashboard
-        </Button>
+        <PermissionGate permission="config_sistema">
+          <Button
+            variant="outline"
+            onClick={() => navigate('/configuracoes/dashboard')}
+            className="flex items-center gap-2"
+          >
+            <Settings2 className="h-4 w-4" />
+            Configurar Dashboard
+          </Button>
+        </PermissionGate>
       </div>
       
       {/* Widgets dinâmicos ou legados */}
@@ -364,12 +477,27 @@ const DashboardPage = ({ theme }) => {
         <motion.div variants={itemVariants} className="lg:col-span-1 h-auto lg:h-[calc(100vh-var(--header-height)-12rem)]">
           <QuickActions />
         </motion.div>
-        <motion.div variants={itemVariants} className="lg:col-span-1 h-auto lg:h-[calc(100vh-var(--header-height)-12rem)]">
-          <Card className="h-full flex flex-col shadow-lg border-border">
-              <CardHeader>
-                  <CardTitle className="flex items-center"><CalendarClock size={20} className="mr-2 text-primary"/>Resumo da Agenda</CardTitle>
-                  <CardDescription>Compromissos de hoje e próximos.</CardDescription>
-              </CardHeader>
+        <PermissionGate permission="agenda_ver">
+          <motion.div variants={itemVariants} className="lg:col-span-1 h-auto lg:h-[calc(100vh-var(--header-height)-12rem)]">
+            <Card className="h-full flex flex-col shadow-lg border-border">
+                <CardHeader>
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <CardTitle className="flex items-center"><CalendarClock size={20} className="mr-2 text-primary"/>Resumo da Agenda</CardTitle>
+                            <CardDescription>Compromissos de hoje e próximos.</CardDescription>
+                        </div>
+                        <PermissionGate permission="agenda_criar">
+                            <Button 
+                                size="sm" 
+                                onClick={() => setIsAppointmentModalOpen(true)}
+                                className="ml-2"
+                            >
+                                <Plus className="h-4 w-4 mr-1" />
+                                Novo
+                            </Button>
+                        </PermissionGate>
+                    </div>
+                </CardHeader>
               <CardContent className="flex-grow overflow-hidden p-4">
                 <ScrollArea className="h-full">
                   {isLoading ? (
@@ -436,28 +564,75 @@ const DashboardPage = ({ theme }) => {
               </CardContent>
           </Card>
         </motion.div>
-        <motion.div variants={itemVariants} className="lg:col-span-1 h-auto lg:h-[calc(100vh-var(--header-height)-12rem)]">
-          <VendasFeed />
-        </motion.div>
+        </PermissionGate>
+        <PermissionGate permission="dashboard_ver_vendas">
+          <motion.div variants={itemVariants} className="lg:col-span-1 h-auto lg:h-[calc(100vh-var(--header-height)-12rem)]">
+            <VendasFeed />
+          </motion.div>
+        </PermissionGate>
       </motion.section>
 
-      <motion.section
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-        className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6"
-      >
-        <motion.div variants={itemVariants} className="h-auto lg:h-[calc(100vh-var(--header-height)-12rem)]">
-          <OSFeed />
-        </motion.div>
-        <motion.div variants={itemVariants} className="h-auto lg:h-[calc(100vh-var(--header-height)-12rem)]">
-          <EnvelopamentoFeed />
-        </motion.div>
-      </motion.section>
+      <PermissionGate permission={['dashboard_ver_os', 'dashboard_ver_financeiro']} requireAny>
+        <motion.section
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6"
+        >
+          <PermissionGate permission="dashboard_ver_os">
+            <motion.div variants={itemVariants} className="h-auto lg:h-[calc(100vh-var(--header-height)-12rem)]">
+              <OSFeed />
+            </motion.div>
+          </PermissionGate>
+          <PermissionGate permission="envelopamento_ver">
+            <motion.div variants={itemVariants} className="h-auto lg:h-[calc(100vh-var(--header-height)-12rem)]">
+              <EnvelopamentoFeed />
+            </motion.div>
+          </PermissionGate>
+        </motion.section>
+      </PermissionGate>
 
       <EstoqueBaixoModal 
         isOpen={isEstoqueBaixoModalOpen} 
         onClose={() => setIsEstoqueBaixoModalOpen(false)} 
+      />
+      
+      {/* Modal de Novo Compromisso */}
+      <AppointmentModal
+        isOpen={isAppointmentModalOpen}
+        onClose={() => setIsAppointmentModalOpen(false)}
+        onSave={async (newAppointment) => {
+          // Recarregar compromissos após salvar
+          try {
+            const compromissosResponse = await loadData('compromissos');
+            const compromissos = compromissosResponse || [];
+            const hoje = startOfDay(new Date());
+            
+            const compromissosHoje = compromissos.filter(c => {
+              const data = parseToDate(c.data_compromisso || c.data);
+              return data && isToday(data);
+            });
+            
+            const proximosCompromissosFiltrados = compromissos
+              .filter(c => {
+                const data = parseToDate(c.data_compromisso || c.data);
+                return data && isFuture(data) && !isToday(data);
+              })
+              .sort((a, b) => {
+                const dataA = parseToDate(a.data_compromisso || a.data);
+                const dataB = parseToDate(b.data_compromisso || b.data);
+                return dataA - dataB;
+              })
+              .slice(0, 5);
+            
+            setAgendaHoje(compromissosHoje);
+            setProximosCompromissos(proximosCompromissosFiltrados);
+          } catch (error) {
+            console.error('Erro ao recarregar compromissos:', error);
+          }
+          setIsAppointmentModalOpen(false);
+        }}
+        selectedDate={new Date()}
       />
     </div>
   );

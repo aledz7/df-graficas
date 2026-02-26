@@ -1,18 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { 
-  ShoppingCart, 
-  PackagePlus, 
-  FilePlus2, 
-  Palette, 
-  UserPlus, 
-  BarChartHorizontalBig,
-  LayoutGrid
-} from 'lucide-react';
+import { LayoutGrid } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/components/ui/use-toast';
-import { aparenciaService } from '@/services/api';
+import { aparenciaService, quickActionService } from '@/services/api';
+import * as Icons from 'lucide-react';
 
 // Mapeamento de cores para classes Tailwind
 const colorClassMap = {
@@ -56,17 +49,29 @@ const QuickActions = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  // Estado para cores personalizadas
-  const [colors, setColors] = useState({
-    novoPdv: 'blue',
-    novoProduto: 'green',
-    novaOs: 'orange',
-    novoEnvelopamento: 'purple',
-    novoCliente: 'indigo',
-    relatorios: 'red',
-  });
+  const [actions, setActions] = useState([]);
+  const [colors, setColors] = useState({});
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Carregar cores do backend
+  // Carregar ações rápidas do backend
+  const loadActions = async () => {
+    try {
+      setIsLoading(true);
+      const response = await quickActionService.getActionsDisponiveis();
+      if (response.success && response.data) {
+        setActions(Array.isArray(response.data) ? response.data : []);
+      } else {
+        setActions([]);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar ações rápidas:', error);
+      setActions([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Carregar cores personalizadas
   const loadColors = async () => {
     try {
       const response = await aparenciaService.getQuickActionsColors();
@@ -79,51 +84,86 @@ const QuickActions = () => {
   };
 
   useEffect(() => {
+    loadActions();
     loadColors();
     
-    // Escutar evento de atualização de cores
-    const handleColorsUpdated = () => {
+    // Escutar evento de atualização
+    const handleUpdated = () => {
+      loadActions();
       loadColors();
     };
     
-    window.addEventListener('quickActionsColorsUpdated', handleColorsUpdated);
+    window.addEventListener('quickActionsUpdated', handleUpdated);
     
     return () => {
-      window.removeEventListener('quickActionsColorsUpdated', handleColorsUpdated);
+      window.removeEventListener('quickActionsUpdated', handleUpdated);
     };
   }, []);
 
-  const handleActionClick = (path, moduleName, state = {}) => {
-    if (path) {
-      navigate(path, { state });
+  const handleActionClick = (action) => {
+    if (action.rota) {
+      navigate(action.rota, { state: action.estado || {} });
     } else {
       toast({
         title: "Em Construção!",
-        description: `O módulo de ${moduleName} será implementado em breve.`,
+        description: `O módulo de ${action.nome} será implementado em breve.`,
       });
     }
   };
-  
-  const actions = [
-    { icon: ShoppingCart, label: 'Novo PDV', colorKey: 'novoPdv', path: '/operacional/pdv', module: 'PDV' },
-    { icon: PackagePlus, label: 'Novo Produto', colorKey: 'novoProduto', path: '/cadastros/novo-produto', module: 'Produtos' },
-    { icon: FilePlus2, label: 'Nova OS', colorKey: 'novaOs', path: '/operacional/ordens-servico', module: 'Ordens de Serviço' },
-    { icon: Palette, label: 'Novo Envelopamento', colorKey: 'novoEnvelopamento', path: '/operacional/envelopamento', module: 'Envelopamentos' },
-    { icon: UserPlus, label: 'Novo Cliente', colorKey: 'novoCliente', path: '/cadastros/clientes', module: 'Clientes', state: { openNewClientModal: true } },
-    { icon: BarChartHorizontalBig, label: 'Relatórios', colorKey: 'relatorios', path: '/relatorios', module: 'Relatórios' }
-  ];
+
+  if (isLoading) {
+    return (
+      <Card className="h-full shadow-lg border-border">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-foreground flex items-center">
+            <LayoutGrid size={20} className="mr-2 text-primary"/>Ações Rápidas
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-4">
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (actions.length === 0) {
+    return (
+      <Card className="h-full shadow-lg border-border">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-foreground flex items-center">
+            <LayoutGrid size={20} className="mr-2 text-primary"/>Ações Rápidas
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-4">
+          <div className="text-center py-8 text-muted-foreground">
+            <p>Nenhuma ação rápida disponível.</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="h-full shadow-lg border-border">
       <CardHeader className="pb-2">
-        <CardTitle className="text-foreground flex items-center"><LayoutGrid size={20} className="mr-2 text-primary"/>Ações Rápidas</CardTitle>
+        <CardTitle className="text-foreground flex items-center">
+          <LayoutGrid size={20} className="mr-2 text-primary"/>Ações Rápidas
+        </CardTitle>
       </CardHeader>
       <CardContent className="p-4">
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {actions.map((action, index) => {
-            const colorValue = colors[action.colorKey] || 'gray';
+            const colorKey = action.codigo;
+            const colorValue = colors[colorKey] || action.cor_padrao || 'gray';
             const isCustomHex = isHexColor(colorValue);
             const colorClass = !isCustomHex ? (colorClassMap[colorValue] || colorClassMap.gray) : '';
+            
+            // Obter ícone
+            const IconComponent = action.icone && Icons[action.icone] 
+              ? Icons[action.icone] 
+              : Icons.LayoutGrid;
             
             // Estilo inline para cores hex personalizadas
             const customStyle = isCustomHex ? {
@@ -133,13 +173,13 @@ const QuickActions = () => {
             
             return (
               <motion.button
-                key={action.label}
+                key={action.codigo}
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.3, delay: index * 0.05 }}
                 whileHover={{ scale: 1.05, y: -2 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => handleActionClick(action.path, action.module, action.state)}
+                onClick={() => handleActionClick(action)}
                 className={`${colorClass} text-white p-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex flex-col items-center justify-center space-y-1.5 text-center aspect-square`}
                 style={customStyle}
                 onMouseEnter={(e) => {
@@ -153,8 +193,8 @@ const QuickActions = () => {
                   }
                 }}
               >
-                <action.icon className="h-6 w-6 sm:h-7 sm:w-7" />
-                <span className="text-xs sm:text-sm font-medium">{action.label}</span>
+                <IconComponent className="h-6 w-6 sm:h-7 sm:w-7" />
+                <span className="text-xs sm:text-sm font-medium">{action.nome}</span>
               </motion.button>
             );
           })}

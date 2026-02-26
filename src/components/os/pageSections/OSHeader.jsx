@@ -3,9 +3,9 @@ import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/ca
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { motion } from 'framer-motion';
-import { Eye, Edit, EyeOff } from 'lucide-react';
+import { Eye, Edit, EyeOff, Share2 } from 'lucide-react';
 
-const OSHeader = ({ ordemServicoId, viewOnly, toggleViewMode }) => {
+const OSHeader = ({ ordemServicoId, viewOnly, toggleViewMode, onCompartilhar }) => {
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
       <Card className="shadow-lg">
@@ -16,6 +16,17 @@ const OSHeader = ({ ordemServicoId, viewOnly, toggleViewMode }) => {
                 Ordem de Serviço / Orçamento 
                 {ordemServicoId && !ordemServicoId.toString().includes('OS-') && !ordemServicoId.toString().includes('Date') ? ` #${String(ordemServicoId)}` : ''}
               </CardTitle>
+              {onCompartilhar && ordemServicoId && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onCompartilhar(ordemServicoId)}
+                  title="Compartilhar OS"
+                >
+                  <Share2 className="h-4 w-4 mr-1" />
+                  Compartilhar
+                </Button>
+              )}
               {/* {viewOnly && (
                 <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
                   <Eye className="mr-1 h-3 w-3" />

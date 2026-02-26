@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Eye, Trash2, Search, FileText, Printer, CircleDollarSign, CheckCircle2, PackageCheck, AlertTriangle, FilePlus, History, CalendarDays, CalendarClock, Loader2, FileEdit, ChevronLeft, ChevronRight, Play, Calculator, Info, Receipt, ChevronDown } from 'lucide-react';
+import { Eye, Trash2, Search, FileText, Printer, CircleDollarSign, CheckCircle2, PackageCheck, AlertTriangle, FilePlus, History, CalendarDays, CalendarClock, Loader2, FileEdit, ChevronLeft, ChevronRight, Play, Calculator, Info, Receipt, ChevronDown, Share2 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { safeJsonParse, cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
@@ -31,6 +31,8 @@ import { format, parseISO, startOfDay, endOfDay, isBefore, isValid, startOfToday
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { formatarDadosConsumoMaterialParaDescricao } from '@/utils/consumoMaterialUtils';
 import { useActionPermissions } from '@/components/PermissionGate';
+import CompartilharModal from '@/components/shared/CompartilharModal';
+import api from '@/services/api';
 
 const OSHistoricoPage = ({ vendedorAtual }) => {
   const navigate = useNavigate();
@@ -651,6 +653,12 @@ const OSHistoricoPage = ({ vendedorAtual }) => {
     navigate(`/operacional/ordens-servico/${os.id_os}?viewOnly=true`);
   };
 
+  const handleCompartilharOS = (os) => {
+    const osId = os.id || os.id_os;
+    setOsIdParaCompartilhar(osId);
+    setIsCompartilharModalOpen(true);
+  };
+
   const handleFinalizeOS = (os) => {
     // Usar id se existir, senão usar id_os
     const osId = os.id || os.id_os;
@@ -1209,6 +1217,15 @@ const OSHistoricoPage = ({ vendedorAtual }) => {
                           <Eye className="mr-1 h-4 w-4" />
                           Ver
                         </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => handleCompartilharOS(os)} 
+                          className="flex-1"
+                        >
+                          <Share2 className="mr-1 h-4 w-4" />
+                          Compartilhar
+                        </Button>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button 
@@ -1749,6 +1766,41 @@ const OSHistoricoPage = ({ vendedorAtual }) => {
           })()}
         </DialogContent>
       </Dialog>
+
+      {/* Modal de Compartilhamento */}
+      <CompartilharModal
+        isOpen={isCompartilharModalOpen}
+        onClose={() => {
+          setIsCompartilharModalOpen(false);
+          setOsIdParaCompartilhar(null);
+        }}
+        tipo="os"
+        id={osIdParaCompartilhar}
+        onCompartilhar={async (osId) => {
+          try {
+            // Buscar o ID numérico da OS se necessário
+            let osIdNumerico = osId;
+            if (typeof osId === 'string' && !osId.match(/^\d+$/)) {
+              // Se for id_os, buscar o ID numérico
+              const response = await api.get('/api/ordens-servico', {
+                params: { id_os: osId }
+              });
+              const osData = response.data?.data || response.data;
+              if (Array.isArray(osData) && osData.length > 0) {
+                osIdNumerico = osData[0].id;
+              } else if (osData?.id) {
+                osIdNumerico = osData.id;
+              }
+            }
+            
+            const response = await api.post(`/api/ordens-servico/${osIdNumerico}/compartilhar`);
+            return response.data;
+          } catch (error) {
+            console.error('Erro ao compartilhar OS:', error);
+            throw error;
+          }
+        }}
+      />
     </motion.div>
   );
 };

@@ -4,7 +4,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+
+const CMYK_OPTIONS = [
+  { value: '1x0', label: '1x0', descricao: 'Impressão de Cor Única' },
+  { value: '4x0', label: '4x0', descricao: 'Frente Colorido' },
+  { value: '4x4', label: '4x4', descricao: 'Frente & Verso Colorido' },
+];
 
 const ProdutoTabDadosGerais = ({ currentProduto, handleInputChange }) => {
   return (
@@ -36,37 +43,34 @@ const ProdutoTabDadosGerais = ({ currentProduto, handleInputChange }) => {
             </p>
           </div>
 
-          <RadioGroup 
-            value={currentProduto.tipo_visualizacao || 'vendas'} 
-            onValueChange={(value) => {
-              handleInputChange({
-                target: {
-                  name: 'tipo_visualizacao',
-                  value: value,
-                  type: 'text'
-                }
-              });
-              // Atualizar checkboxes de visibilidade baseado no tipo
-              if (value === 'vendas') {
-                handleInputChange({ target: { name: 'venda_pdv', checked: true, type: 'checkbox' } });
-                handleInputChange({ target: { name: 'venda_marketplace', checked: true, type: 'checkbox' } });
-                handleInputChange({ target: { name: 'uso_interno', checked: false, type: 'checkbox' } });
-              } else if (value === 'catalogo_publico') {
-                handleInputChange({ target: { name: 'venda_pdv', checked: false, type: 'checkbox' } });
-                handleInputChange({ target: { name: 'venda_marketplace', checked: true, type: 'checkbox' } });
-                handleInputChange({ target: { name: 'uso_interno', checked: false, type: 'checkbox' } });
-              } else if (value === 'consumo_interno') {
-                handleInputChange({ target: { name: 'venda_pdv', checked: false, type: 'checkbox' } });
-                handleInputChange({ target: { name: 'venda_marketplace', checked: false, type: 'checkbox' } });
-                handleInputChange({ target: { name: 'uso_interno', checked: true, type: 'checkbox' } });
-              }
-            }}
-            className="space-y-3"
-          >
+          <div className="space-y-3">
             <div className="flex items-start space-x-3 p-3 border rounded-md hover:bg-gray-50 dark:hover:bg-gray-800">
-              <RadioGroupItem value="vendas" id="tipo_vendas" className="mt-1" />
+              <Checkbox
+                id="venda_pdv"
+                checked={currentProduto.venda_pdv !== undefined ? currentProduto.venda_pdv : true}
+                onCheckedChange={(checked) => {
+                  handleInputChange({
+                    target: {
+                      name: 'venda_pdv',
+                      checked: checked,
+                      type: 'checkbox'
+                    }
+                  });
+                  // Se marcar Vendas/Comercial, desmarcar Consumo Interno
+                  if (checked) {
+                    handleInputChange({
+                      target: {
+                        name: 'uso_interno',
+                        checked: false,
+                        type: 'checkbox'
+                      }
+                    });
+                  }
+                }}
+                className="mt-1"
+              />
               <div className="flex-1">
-                <Label htmlFor="tipo_vendas" className="text-sm font-medium cursor-pointer">
+                <Label htmlFor="venda_pdv" className="text-sm font-medium cursor-pointer">
                   Vendas / Comercial
                 </Label>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -76,9 +80,32 @@ const ProdutoTabDadosGerais = ({ currentProduto, handleInputChange }) => {
             </div>
 
             <div className="flex items-start space-x-3 p-3 border rounded-md hover:bg-gray-50 dark:hover:bg-gray-800">
-              <RadioGroupItem value="catalogo_publico" id="tipo_catalogo" className="mt-1" />
+              <Checkbox
+                id="venda_marketplace"
+                checked={currentProduto.venda_marketplace !== undefined ? currentProduto.venda_marketplace : true}
+                onCheckedChange={(checked) => {
+                  handleInputChange({
+                    target: {
+                      name: 'venda_marketplace',
+                      checked: checked,
+                      type: 'checkbox'
+                    }
+                  });
+                  // Se marcar Catálogo Público, desmarcar Consumo Interno
+                  if (checked) {
+                    handleInputChange({
+                      target: {
+                        name: 'uso_interno',
+                        checked: false,
+                        type: 'checkbox'
+                      }
+                    });
+                  }
+                }}
+                className="mt-1"
+              />
               <div className="flex-1">
-                <Label htmlFor="tipo_catalogo" className="text-sm font-medium cursor-pointer">
+                <Label htmlFor="venda_marketplace" className="text-sm font-medium cursor-pointer">
                   Catálogo Público
                 </Label>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -88,9 +115,39 @@ const ProdutoTabDadosGerais = ({ currentProduto, handleInputChange }) => {
             </div>
 
             <div className="flex items-start space-x-3 p-3 border rounded-md hover:bg-gray-50 dark:hover:bg-gray-800">
-              <RadioGroupItem value="consumo_interno" id="tipo_consumo" className="mt-1" />
+              <Checkbox
+                id="uso_interno"
+                checked={currentProduto.uso_interno || false}
+                onCheckedChange={(checked) => {
+                  handleInputChange({
+                    target: {
+                      name: 'uso_interno',
+                      checked: checked,
+                      type: 'checkbox'
+                    }
+                  });
+                  // Se marcar Consumo Interno, desmarcar as outras duas
+                  if (checked) {
+                    handleInputChange({
+                      target: {
+                        name: 'venda_pdv',
+                        checked: false,
+                        type: 'checkbox'
+                      }
+                    });
+                    handleInputChange({
+                      target: {
+                        name: 'venda_marketplace',
+                        checked: false,
+                        type: 'checkbox'
+                      }
+                    });
+                  }
+                }}
+                className="mt-1"
+              />
               <div className="flex-1">
-                <Label htmlFor="tipo_consumo" className="text-sm font-medium cursor-pointer">
+                <Label htmlFor="uso_interno" className="text-sm font-medium cursor-pointer">
                   Consumo Interno
                 </Label>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -98,7 +155,7 @@ const ProdutoTabDadosGerais = ({ currentProduto, handleInputChange }) => {
                 </p>
               </div>
             </div>
-          </RadioGroup>
+          </div>
 
           {/* Campos de Prazo */}
           <Separator />
@@ -111,7 +168,7 @@ const ProdutoTabDadosGerais = ({ currentProduto, handleInputChange }) => {
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="is_digital"
-                checked={currentProduto.is_digital ?? false}
+                checked={currentProduto.is_digital !== undefined ? currentProduto.is_digital : true}
                 onCheckedChange={(checked) => {
                   handleInputChange({
                     target: {
@@ -157,6 +214,223 @@ const ProdutoTabDadosGerais = ({ currentProduto, handleInputChange }) => {
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                 Tempo necessário para criação da arte do produto
               </p>
+            </div>
+          </div>
+        </div>
+
+        {/* ============================================
+            ESPECIFICAÇÕES TÉCNICAS DE IMPRESSÃO
+        ============================================ */}
+        <Separator />
+        <div className="space-y-5">
+          <div>
+            <h3 className="text-lg font-semibold mb-1">🖨️ Especificações Técnicas de Impressão</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Defina as especificações técnicas do produto: material, dimensões, acabamentos e configuração de cor.
+            </p>
+          </div>
+
+          {/* MATERIAL */}
+          <div>
+            <Label htmlFor="material" className="font-semibold">
+              Material
+            </Label>
+            <Input
+              id="material"
+              name="material"
+              value={currentProduto.material || ''}
+              onChange={handleInputChange}
+              placeholder="Ex: Papel Couchê 115g, Lona 540g, PVC Adesivo, Papel Offset 75g..."
+              className="mt-1"
+            />
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Insumo ou tipo de material utilizado para produzir o item.
+            </p>
+          </div>
+
+          {/* TAMANHO + SANGRIA */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* TAMANHO */}
+            <div className="space-y-3">
+              <div>
+                <Label className="font-semibold">Tamanho Final (cm)</Label>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  Dimensões finais do produto acabado.
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label htmlFor="tamanho_largura" className="text-xs text-gray-600 dark:text-gray-400">
+                    Largura (cm)
+                  </Label>
+                  <Input
+                    id="tamanho_largura"
+                    name="tamanho_largura"
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    value={currentProduto.tamanho_largura || ''}
+                    onChange={handleInputChange}
+                    placeholder="0,0"
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="tamanho_altura" className="text-xs text-gray-600 dark:text-gray-400">
+                    Altura (cm)
+                  </Label>
+                  <Input
+                    id="tamanho_altura"
+                    name="tamanho_altura"
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    value={currentProduto.tamanho_altura || ''}
+                    onChange={handleInputChange}
+                    placeholder="0,0"
+                    className="mt-1"
+                  />
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="tamanho_profundidade" className="text-xs text-gray-600 dark:text-gray-400">
+                  Profundidade (cm) <span className="text-gray-400 font-normal">— opcional</span>
+                </Label>
+                <Input
+                  id="tamanho_profundidade"
+                  name="tamanho_profundidade"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  value={currentProduto.tamanho_profundidade || ''}
+                  onChange={handleInputChange}
+                  placeholder="0,0"
+                  className="mt-1"
+                />
+              </div>
+            </div>
+
+            {/* SANGRIA */}
+            <div className="space-y-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Label className="font-semibold">Sangria (cm)</Label>
+                  <Badge variant="secondary" className="text-xs font-normal">
+                    +3mm automático
+                  </Badge>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  Calculado automaticamente somando 3mm ao tamanho. Editável se necessário.
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label htmlFor="sangria_largura" className="text-xs text-gray-600 dark:text-gray-400">
+                    Largura c/ sangria (cm)
+                  </Label>
+                  <Input
+                    id="sangria_largura"
+                    name="sangria_largura"
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    value={currentProduto.sangria_largura || ''}
+                    onChange={handleInputChange}
+                    placeholder="0,0"
+                    className="mt-1 bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="sangria_altura" className="text-xs text-gray-600 dark:text-gray-400">
+                    Altura c/ sangria (cm)
+                  </Label>
+                  <Input
+                    id="sangria_altura"
+                    name="sangria_altura"
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    value={currentProduto.sangria_altura || ''}
+                    onChange={handleInputChange}
+                    placeholder="0,0"
+                    className="mt-1 bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800"
+                  />
+                </div>
+              </div>
+              {/* Preview visual */}
+              {(currentProduto.tamanho_largura || currentProduto.tamanho_altura) && (currentProduto.sangria_largura || currentProduto.sangria_altura) && (
+                <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded text-xs text-gray-600 dark:text-gray-400">
+                  <span className="font-medium">Tamanho:</span>{' '}
+                  {currentProduto.tamanho_largura || '—'}cm × {currentProduto.tamanho_altura || '—'}cm
+                  {' '}→{' '}
+                  <span className="font-medium text-blue-600 dark:text-blue-400">Sangria:</span>{' '}
+                  {currentProduto.sangria_largura || '—'}cm × {currentProduto.sangria_altura || '—'}cm
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ACABAMENTO */}
+          <div>
+            <Label htmlFor="acabamento" className="font-semibold">
+              Acabamento
+            </Label>
+            <Textarea
+              id="acabamento"
+              name="acabamento"
+              value={currentProduto.acabamento || ''}
+              onChange={handleInputChange}
+              placeholder="Ex: Laminação Fosca, Verniz Localizado, Corte Especial, Vinco, Dobra, Hot Stamping..."
+              className="mt-1 min-h-[70px] resize-none"
+              rows={2}
+            />
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Descreva os tipos de acabamentos utilizados neste produto.
+            </p>
+          </div>
+
+          {/* CMYK */}
+          <div>
+            <Label className="font-semibold">CMYK — Configuração de Cor</Label>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 mb-3">
+              Defina a configuração de impressão de cores do produto.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3">
+              {CMYK_OPTIONS.map((opt) => {
+                const isSelected = (currentProduto.cmyk || '4x0') === opt.value;
+                return (
+                  <label
+                    key={opt.value}
+                    className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer flex-1 transition-all duration-150
+                      ${isSelected
+                        ? 'border-primary bg-primary/5 dark:bg-primary/10'
+                        : 'border-border bg-card hover:border-gray-400 dark:hover:border-gray-500'
+                      }`}
+                  >
+                    <input
+                      type="radio"
+                      name="cmyk"
+                      value={opt.value}
+                      checked={isSelected}
+                      onChange={handleInputChange}
+                      className="accent-primary h-4 w-4 shrink-0"
+                    />
+                    <div className="flex flex-col">
+                      <span className={`font-bold text-sm ${isSelected ? 'text-primary' : 'text-foreground'}`}>
+                        {opt.label}
+                      </span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400 leading-tight">
+                        {opt.descricao}
+                      </span>
+                    </div>
+                    {opt.value === '4x0' && (
+                      <Badge variant="secondary" className="ml-auto text-xs shrink-0">
+                        Padrão
+                      </Badge>
+                    )}
+                  </label>
+                );
+              })}
             </div>
           </div>
         </div>

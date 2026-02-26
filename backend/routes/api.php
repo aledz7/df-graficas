@@ -72,6 +72,7 @@ use App\Http\Controllers\Api\TermometroController;
 use App\Http\Controllers\Api\PosVendaController;
 use App\Http\Controllers\Api\RelatorioProducaoController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\QuickActionController;
 use App\Http\Controllers\Api\KanbanController;
 use App\Http\Controllers\Api\ChatController;
 
@@ -87,6 +88,8 @@ use App\Http\Controllers\Api\ChatController;
 */
 
 // Public routes
+use App\Http\Controllers\Public\SharedOSController;
+use App\Http\Controllers\Public\SharedVendaController;
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/complete-two-factor-login', [AuthController::class, 'completeTwoFactorLogin']);
@@ -131,6 +134,8 @@ Route::get('/storage/{path}', function ($path) {
 Route::prefix('public')->group(function () {
     Route::get('produtos/tenant/{tenantId}', [PublicProdutoController::class, 'getByTenant']);
     Route::get('produtos/{id}', [PublicProdutoController::class, 'getById']);
+    Route::get('os/{token}', [SharedOSController::class, 'show']);
+    Route::get('venda/{token}', [SharedVendaController::class, 'show']);
     Route::get('categorias/tenant/{tenantId}', [CategoriaController::class, 'getByTenant']);
     Route::get('product-categories/tenant/{tenantId}', [ProductCategoryController::class, 'getByTenant']);
     Route::get('configuracoes/empresa/tenant/{tenantId}', [ConfiguracaoController::class, 'getEmpresaByTenant']);
@@ -214,6 +219,8 @@ Route::middleware(['api.auth'])->group(function () {
         Route::get('relatorio-com-metas', [VendaController::class, 'relatorioComMetas']);
         Route::post('{id}/cancelar', [VendaController::class, 'cancelar']);
         Route::post('{id}/estornar', [VendaController::class, 'estornar']);
+        Route::post('{id}/compartilhar', [VendaController::class, 'compartilhar']);
+        Route::delete('{id}/compartilhar', [VendaController::class, 'desabilitarCompartilhamento']);
     });
     
     // Metas de Vendas
@@ -596,6 +603,7 @@ Route::middleware(['api.auth'])->group(function () {
     
     // Contas a Receber
     Route::prefix('contas-receber')->group(function () {
+        Route::get('totais-pendentes', [ContaReceberController::class, 'totaisPendentes']);
         Route::get('recebimentos-clientes', [ContaReceberController::class, 'recebimentosClientes']);
         Route::get('contas-para-aplicar-juros', [ContaReceberController::class, 'contasParaAplicarJuros']);
         Route::post('aplicar-juros-em-lote', [ContaReceberController::class, 'aplicarJurosEmLote']);
@@ -669,6 +677,8 @@ Route::middleware(['api.auth'])->group(function () {
         Route::get('{id}/anexos', [OrdemServicoController::class, 'getAnexos']);
         Route::get('verificar-758', [OrdemServicoController::class, 'verificarOS758']);
         Route::post('corrigir-758', [OrdemServicoController::class, 'corrigirOS758']);
+        Route::post('{id}/compartilhar', [OrdemServicoController::class, 'compartilhar']);
+        Route::delete('{id}/compartilhar', [OrdemServicoController::class, 'desabilitarCompartilhamento']);
     });
     Route::apiResource('ordens-servico', OrdemServicoController::class);
 
@@ -682,6 +692,15 @@ Route::middleware(['api.auth'])->group(function () {
         Route::post('configuracao', [DashboardController::class, 'salvarConfiguracao']);
         Route::get('widget/{widgetCodigo}', [DashboardController::class, 'getDadosWidget']);
         Route::post('widgets', [DashboardController::class, 'getDadosWidgets']);
+    });
+
+    // Quick Actions
+    Route::prefix('quick-actions')->group(function () {
+        Route::get('disponiveis', [QuickActionController::class, 'getActionsDisponiveis']);
+        Route::get('todas', [QuickActionController::class, 'getAllActions']);
+        Route::post('criar', [QuickActionController::class, 'criarAction']);
+        Route::put('{id}', [QuickActionController::class, 'atualizarAction']);
+        Route::delete('{id}', [QuickActionController::class, 'deletarAction']);
     });
 
     // Kanban

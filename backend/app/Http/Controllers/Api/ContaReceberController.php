@@ -1666,4 +1666,35 @@ class ContaReceberController extends BaseController
             return $this->error('Erro ao buscar recebimentos: ' . $e->getMessage());
         }
     }
+
+    /**
+     * Retorna o total de valores pendentes a receber (independente de período).
+     * Utilizado para calcular a Projeção de Saldo no Fluxo de Caixa.
+     */
+    public function totaisPendentes()
+    {
+        try {
+            $tenantId = auth()->user()->tenant_id ?? null;
+
+            $query = ContaReceber::whereIn('status', ['pendente', 'vencido']);
+
+            if ($tenantId) {
+                $query->where('tenant_id', $tenantId);
+            } else {
+                $query->where('user_id', auth()->id());
+            }
+
+            $totalAReceber     = $query->sum('valor_pendente');
+            $totalVencido      = (clone $query)->where('status', 'vencido')->sum('valor_pendente');
+            $quantidadePendente = (clone $query)->count();
+
+            return $this->success([
+                'total_a_receber'      => round((float) $totalAReceber, 2),
+                'total_vencido'        => round((float) $totalVencido, 2),
+                'quantidade_pendente'  => (int) $quantidadePendente,
+            ]);
+        } catch (\Exception $e) {
+            return $this->error('Erro ao buscar totais pendentes: ' . $e->getMessage());
+        }
+    }
 } 

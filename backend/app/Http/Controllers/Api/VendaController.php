@@ -8,6 +8,7 @@ use App\Models\Produto;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Carbon\Carbon;
 
 class VendaController extends ResourceController
@@ -2599,6 +2600,96 @@ class VendaController extends ResourceController
                 'venda_id' => $venda->id,
                 'erro' => $e->getMessage()
             ]);
+        }
+    }
+
+    /**
+     * Gerar link de compartilhamento para a Venda
+     */
+    public function compartilhar(Request $request, $id)
+    {
+        try {
+            $venda = Venda::find($id);
+            
+            if (!$venda) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Venda não encontrada'
+                ], 404);
+            }
+
+            // Gerar token único se não existir
+            if (!$venda->share_token) {
+                $venda->share_token = Str::random(64);
+            }
+
+            // Ativar compartilhamento
+            $venda->share_enabled = true;
+            
+            // Definir expiração se fornecida (opcional)
+            if ($request->has('expires_at')) {
+                $venda->share_expires_at = $request->input('expires_at');
+            }
+            
+            $venda->save();
+
+            // Gerar URL pública
+            $shareUrl = url("/public/venda/{$venda->share_token}");
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'share_token' => $venda->share_token,
+                    'share_url' => $shareUrl,
+                    'share_enabled' => $venda->share_enabled,
+                    'share_expires_at' => $venda->share_expires_at
+                ]
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Erro ao compartilhar Venda:', [
+                'venda_id' => $id,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erro ao gerar link de compartilhamento'
+            ], 500);
+        }
+    }
+
+    /**
+     * Desabilitar compartilhamento da Venda
+     */
+    public function desabilitarCompartilhamento($id)
+    {
+        try {
+            $venda = Venda::find($id);
+            
+            if (!$venda) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Venda não encontrada'
+                ], 404);
+            }
+
+            $venda->share_enabled = false;
+            $venda->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Compartilhamento desabilitado com sucesso'
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Erro ao desabilitar compartilhamento da Venda:', [
+                'venda_id' => $id,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erro ao desabilitar compartilhamento'
+            ], 500);
         }
     }
 }

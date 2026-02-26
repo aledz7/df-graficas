@@ -16,6 +16,13 @@ class User extends Authenticatable
     use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
 
     /**
+     * Atributos calculados a serem incluídos na serialização JSON.
+     *
+     * @var list<string>
+     */
+    protected $appends = ['is_owner'];
+
+    /**
      * The attributes that are mass assignable.
      *
      * @var list<string>
@@ -357,6 +364,24 @@ class User extends Authenticatable
             ->sum('valor_comissao');
     }
     
+    /**
+     * Verificar se o usuário é o dono/proprietário da empresa (tenant).
+     * Um owner é o primeiro usuário de um tenant com config_sistema ativo.
+     *
+     * @return bool
+     */
+    public function getIsOwnerAttribute(): bool
+    {
+        $permissions = $this->permissions;
+        if (!is_array($permissions)) {
+            return false;
+        }
+        // Owner tem config_sistema AND acessar_dashboard AND gerenciar_clientes
+        return !empty($permissions['config_sistema']) 
+            && !empty($permissions['acessar_dashboard'])
+            && !empty($permissions['gerenciar_clientes']);
+    }
+
     /**
      * Verificar se o usuário é um super administrador.
      *

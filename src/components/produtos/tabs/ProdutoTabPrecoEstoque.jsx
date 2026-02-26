@@ -22,6 +22,9 @@ const ProdutoTabPrecoEstoque = ({ currentProduto, handleInputChange }) => {
   const isDigital = Boolean(currentProduto.is_digital);
   const deveControlarEstoque = !currentProduto.isComposto && !isDigital;
   const controlarEstoqueManual = currentProduto.controlar_estoque_manual ?? false;
+  // Verificar se é produto m² por tipo de precificação
+  const tipoPrecificacao = currentProduto.tipo_precificacao || 'unidade';
+  const isProdutoM2 = tipoPrecificacao === 'm2_cm2' || tipoPrecificacao === 'm2_cm2_tabelado';
   
   // Handler customizado para cálculo bidirecional de margem de lucro
   const handlePrecoChange = (e) => {
@@ -85,9 +88,6 @@ const ProdutoTabPrecoEstoque = ({ currentProduto, handleInputChange }) => {
   });
   const [quantidadeChapas, setQuantidadeChapas] = React.useState('1');
   const quantidadeInicializadaRef = React.useRef(false);
-
-  // Tipo de precificação selecionado
-  const tipoPrecificacao = currentProduto.tipo_precificacao || 'unidade';
 
   // Tabela de preços para quantidade definida e faixas
   const tabelaPrecos = currentProduto.tabela_precos || [];
@@ -816,7 +816,7 @@ const ProdutoTabPrecoEstoque = ({ currentProduto, handleInputChange }) => {
             <div>
                 <Label htmlFor="estoque">
                   Estoque Atual {isUnidadeMetroQuadrado ? '(m²)' : ''}
-                  {controlarEstoqueManual && !isUnidadeMetroQuadrado && <span className="text-red-500"> *</span>}
+                  {controlarEstoqueManual && !isUnidadeMetroQuadrado && !isProdutoM2 && <span className="text-red-500"> *</span>}
                 </Label>
                 <Input
                   id="estoque"
@@ -826,15 +826,17 @@ const ProdutoTabPrecoEstoque = ({ currentProduto, handleInputChange }) => {
                   value={currentProduto.estoque}
                   onChange={handleInputChange}
                   placeholder="0"
-                  required={controlarEstoqueManual && !isUnidadeMetroQuadrado}
+                  required={controlarEstoqueManual && !isUnidadeMetroQuadrado && !isProdutoM2}
                   readOnly={isUnidadeMetroQuadrado}
-                  disabled={isDigital || (!controlarEstoqueManual && !isUnidadeMetroQuadrado && deveControlarEstoque)}
-                  className={isUnidadeMetroQuadrado || isDigital ? "bg-gray-100 cursor-not-allowed" : (!controlarEstoqueManual && !isUnidadeMetroQuadrado ? "bg-gray-100 cursor-not-allowed" : "")}
+                  disabled={isDigital || isProdutoM2 || (!controlarEstoqueManual && !isUnidadeMetroQuadrado && deveControlarEstoque)}
+                  className={isUnidadeMetroQuadrado || isDigital || isProdutoM2 ? "bg-gray-100 cursor-not-allowed" : (!controlarEstoqueManual && !isUnidadeMetroQuadrado ? "bg-gray-100 cursor-not-allowed" : "")}
                 />
                 {isUnidadeMetroQuadrado ? (
                   <p className="text-xs text-gray-500 mt-1">
                     Calculado automaticamente: (Largura × Altura) × Quantidade de Chapas = {currentProduto.estoque || '0'} m²
                   </p>
+                ) : isProdutoM2 ? (
+                  <p className="text-xs text-gray-500 mt-1">Produtos por m² (bobinas, tecidos, etc.) não utilizam controle de estoque por quantidade.</p>
                 ) : isDigital ? (
                   <p className="text-xs text-gray-500 mt-1">Produto digital não utiliza estoque.</p>
                 ) : !deveControlarEstoque ? (
@@ -850,7 +852,7 @@ const ProdutoTabPrecoEstoque = ({ currentProduto, handleInputChange }) => {
             <div>
                 <Label htmlFor="estoque_minimo">
                   Estoque Mínimo
-                  {controlarEstoqueManual && !isUnidadeMetroQuadrado && <span className="text-red-500"> *</span>}
+                  {controlarEstoqueManual && !isUnidadeMetroQuadrado && !isProdutoM2 && <span className="text-red-500"> *</span>}
                 </Label>
                 <Input 
                   id="estoque_minimo" 
@@ -860,25 +862,38 @@ const ProdutoTabPrecoEstoque = ({ currentProduto, handleInputChange }) => {
                   value={currentProduto.estoque_minimo} 
                   onChange={handleInputChange} 
                   placeholder="1"
-                  required={controlarEstoqueManual && !isUnidadeMetroQuadrado}
-                  disabled={isDigital || (!controlarEstoqueManual && !isUnidadeMetroQuadrado)}
-                  className={isDigital || (!controlarEstoqueManual && !isUnidadeMetroQuadrado) ? "bg-gray-100 cursor-not-allowed" : ""}
+                  required={controlarEstoqueManual && !isUnidadeMetroQuadrado && !isProdutoM2}
+                  disabled={isDigital || isProdutoM2 || (!controlarEstoqueManual && !isUnidadeMetroQuadrado)}
+                  className={isDigital || isProdutoM2 || (!controlarEstoqueManual && !isUnidadeMetroQuadrado) ? "bg-gray-100 cursor-not-allowed" : ""}
                 />
                 <p className="text-xs text-gray-500 mt-1">Aceita valores fracionados (ex: 1.5, 5.25)</p>
             </div>
             )}
             <div>
-                <Label htmlFor="valor_minimo">Valor Mínimo de Venda (R$)</Label>
+                <Label htmlFor="valor_minimo_cliente_final">Valor Mínimo - Cliente Final (R$)</Label>
                 <Input 
-                  id="valor_minimo" 
-                  name="valor_minimo" 
+                  id="valor_minimo_cliente_final" 
+                  name="valor_minimo_cliente_final" 
                   type="number" 
                   step="0.01" 
-                  value={currentProduto.valor_minimo || ''} 
+                  value={currentProduto.valor_minimo_cliente_final || ''} 
                   onChange={handleInputChange} 
                   placeholder="0.00"
                 />
-                <p className="text-xs text-gray-500 mt-1">Valor mínimo aplicado quando cálculo for menor (ex: área {"<"} 0,50m²)</p>
+                <p className="text-xs text-gray-500 mt-1">Valor mínimo aplicado para cliente final quando cálculo for menor (ex: área {"<"} 0,50m²)</p>
+            </div>
+            <div>
+                <Label htmlFor="valor_minimo_terceirizados">Valor Mínimo - Terceirizados (R$)</Label>
+                <Input 
+                  id="valor_minimo_terceirizados" 
+                  name="valor_minimo_terceirizados" 
+                  type="number" 
+                  step="0.01" 
+                  value={currentProduto.valor_minimo_terceirizados || ''} 
+                  onChange={handleInputChange} 
+                  placeholder="0.00"
+                />
+                <p className="text-xs text-gray-500 mt-1">Valor mínimo aplicado para terceirizados/revenda quando cálculo for menor</p>
             </div>
         </div>
         {/* Alerta de estoque baixo para produto sem variações */}

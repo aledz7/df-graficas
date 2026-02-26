@@ -637,7 +637,31 @@ const NovoTreinamentoPage = () => {
                                 <X className="h-4 w-4" />
                               </Button>
                             </div>
-                            <video src={formData.video_arquivo_url} controls className="w-full rounded-lg" />
+                            <video 
+                              src={formData.video_arquivo_url} 
+                              controls 
+                              className="w-full rounded-lg"
+                              disablePictureInPicture
+                              onLoadedMetadata={(e) => {
+                                // Prevenir erro do MediaSession com enterpictureinpicture
+                                try {
+                                  if (navigator.mediaSession && e.target) {
+                                    const validActions = ['play', 'pause', 'seekbackward', 'seekforward', 'previoustrack', 'nexttrack', 'skipad', 'stop', 'seekto'];
+                                    validActions.forEach(action => {
+                                      try {
+                                        if (navigator.mediaSession.setActionHandler) {
+                                          navigator.mediaSession.setActionHandler(action, null);
+                                        }
+                                      } catch (err) {
+                                        // Ignorar erros
+                                      }
+                                    });
+                                  }
+                                } catch (err) {
+                                  console.warn('Erro ao configurar MediaSession:', err);
+                                }
+                              }}
+                            />
                           </div>
                         ) : (
                           <div className="mt-2">

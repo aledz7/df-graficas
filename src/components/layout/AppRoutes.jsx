@@ -44,6 +44,7 @@ const EntregadoresPage = lazy(() => import('@/pages/EntregadoresPage'));
 const RelatorioFretesPage = lazy(() => import('@/pages/RelatorioFretesPage'));
 const RelatorioProducaoPage = lazy(() => import('@/pages/RelatorioProducaoPage'));
 const DashboardConfigPage = lazy(() => import('@/pages/DashboardConfigPage'));
+const QuickActionsConfigPage = lazy(() => import('@/pages/QuickActionsConfigPage'));
 const MontarRomaneioPage = lazy(() => import('@/pages/MontarRomaneioPage'));
 const RomaneiosPage = lazy(() => import('@/pages/RomaneiosPage'));
 const PDVHistoricoPage = lazy(() => import('@/pages/PDVHistoricoPage'));
@@ -97,6 +98,10 @@ const DividasClientesPage = lazy(() => import('@/components/relatorios/gerenciai
 const RelatorioRecebimentosClientesPage = lazy(() => import('@/components/relatorios/gerenciais/RelatorioRecebimentosClientes'));
 const RelatorioAnaliticoPage = lazy(() => import('@/pages/RelatorioAnaliticoPage'));
 const RelatorioVendasComMetasPage = lazy(() => import('@/pages/RelatorioVendasComMetasPage'));
+
+// Páginas públicas (sem autenticação)
+const SharedOSPage = lazy(() => import('@/pages/Public/SharedOSPage'));
+const SharedVendaPage = lazy(() => import('@/pages/Public/SharedVendaPage'));
 const RelatorioAniversariantesPage = lazy(() => import('@/pages/RelatorioAniversariantesPage'));
 const RelatorioClientesQueMaisCompraramPage = lazy(() => import('@/pages/RelatorioClientesQueMaisCompraramPage'));
 const RankingVendedoresPage = lazy(() => import('@/pages/RankingVendedoresPage'));
@@ -124,6 +129,10 @@ const PosVendaPage = lazy(() => import('@/pages/PosVendaPage'));
 const AppRoutes = ({ logoUrl, nomeEmpresa, vendedorAtual, theme, setTheme, setAppLogoUrl, setAppNomeEmpresa, setAppNomeSistema }) => {
   return (
     <Routes>
+      {/* Rotas públicas (sem autenticação) */}
+      <Route path="/public/os/:token" element={<SharedOSPage />} />
+      <Route path="/public/venda/:token" element={<SharedVendaPage />} />
+      
       <Route path="/" element={<RedirectToFirstAllowedRoute />} />
       <Route path="/dashboard" element={<DashboardPage vendedorAtual={vendedorAtual} />} />
       <Route path="/termometro-empresa" element={<TermometroEmpresaPage />} />
@@ -261,6 +270,7 @@ const AppRoutes = ({ logoUrl, nomeEmpresa, vendedorAtual, theme, setTheme, setAp
       <Route path="/configuracoes/pontos" element={<ConfiguracaoPontosPage />} />
       <Route path="/configuracoes/nota-fiscal" element={<NfeSettingsPage />} />
       <Route path="/configuracoes/dashboard" element={<DashboardConfigPage />} />
+      <Route path="/configuracoes/acoes-rapidas" element={<QuickActionsConfigPage />} />
       <Route path="/configuracoes/modelos" element={<AdminSettingsPage section="modelos" />} />
       <Route path="/configuracoes/taxas" element={<AdminSettingsPage section="taxas" />} />
       <Route path="/configuracoes/impressao" element={<AdminSettingsPage section="impressao" />} />

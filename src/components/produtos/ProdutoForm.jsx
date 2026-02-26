@@ -42,12 +42,24 @@ const defaultProduto = {
     percentual_comissao: '0',
     estoque: '0',
     estoque_minimo: '1',
+    valor_minimo_cliente_final: '',
+    valor_minimo_terceirizados: '',
     variacoes_ativa: false,
     variacao_obrigatoria: true,
     variacoes_usa_preco_base: true,
     variacoes: [],
     isComposto: false,
     composicao: [],
+    is_digital: true,
+    // Especificações técnicas de impressão
+    material: '',
+    tamanho_largura: '',
+    tamanho_altura: '',
+    tamanho_profundidade: '',
+    acabamento: '',
+    sangria_largura: '',
+    sangria_altura: '',
+    cmyk: '4x0',
 };
 
 // Função utilitária para formatar datas para yyyy-mm-dd
@@ -186,6 +198,8 @@ const ProdutoForm = ({ isOpen, onClose, onSave, produtoEmEdicao, showSaveAndNewB
                 venda_pdv: produtoEmEdicao.venda_pdv !== undefined ? (produtoEmEdicao.venda_pdv === true || produtoEmEdicao.venda_pdv === 1 || produtoEmEdicao.venda_pdv === '1') : true,
                 venda_marketplace: produtoEmEdicao.venda_marketplace !== undefined ? (produtoEmEdicao.venda_marketplace === true || produtoEmEdicao.venda_marketplace === 1 || produtoEmEdicao.venda_marketplace === '1') : true,
                 uso_interno: produtoEmEdicao.uso_interno === true || produtoEmEdicao.uso_interno === 1 || produtoEmEdicao.uso_interno === '1',
+                // Campo is_digital (padrão: true)
+                is_digital: produtoEmEdicao.is_digital !== undefined ? (produtoEmEdicao.is_digital === true || produtoEmEdicao.is_digital === 1 || produtoEmEdicao.is_digital === '1') : true,
                 // Garantir que campos numéricos sejam strings para os inputs
                 preco_custo: String(produtoEmEdicao.preco_custo || '0'),
                 preco_m2: String(produtoEmEdicao.preco_m2 || '0'),
@@ -198,6 +212,17 @@ const ProdutoForm = ({ isOpen, onClose, onSave, produtoEmEdicao, showSaveAndNewB
                 percentual_comissao: String(produtoEmEdicao.percentual_comissao || '0'),
                 estoque: String(produtoEmEdicao.estoque || '0'),
                 estoque_minimo: String(produtoEmEdicao.estoque_minimo || '1'),
+                valor_minimo_cliente_final: String(produtoEmEdicao.valor_minimo_cliente_final || ''),
+                valor_minimo_terceirizados: String(produtoEmEdicao.valor_minimo_terceirizados || ''),
+                // Especificações técnicas de impressão
+                material: produtoEmEdicao.material || '',
+                tamanho_largura: produtoEmEdicao.tamanho_largura ? String(produtoEmEdicao.tamanho_largura) : '',
+                tamanho_altura: produtoEmEdicao.tamanho_altura ? String(produtoEmEdicao.tamanho_altura) : '',
+                tamanho_profundidade: produtoEmEdicao.tamanho_profundidade ? String(produtoEmEdicao.tamanho_profundidade) : '',
+                acabamento: produtoEmEdicao.acabamento || '',
+                sangria_largura: produtoEmEdicao.sangria_largura ? String(produtoEmEdicao.sangria_largura) : '',
+                sangria_altura: produtoEmEdicao.sangria_altura ? String(produtoEmEdicao.sangria_altura) : '',
+                cmyk: produtoEmEdicao.cmyk || '4x0',
                 variacao_obrigatoria:
                     typeof produtoEmEdicao.variacao_obrigatoria === 'boolean'
                         ? produtoEmEdicao.variacao_obrigatoria
@@ -228,7 +253,14 @@ const ProdutoForm = ({ isOpen, onClose, onSave, produtoEmEdicao, showSaveAndNewB
                         // Configurar preview da imagem da variação se existir
                         imagem_url_preview: variacao.imagem_url ? getImageUrl(variacao.imagem_url) : null,
                         // Garantir código de barras único
-                        codigo_barras: codigoBarras
+                        codigo_barras: codigoBarras,
+                        // Campos de precificação (com valores padrão se não existirem)
+                        tipo_precificacao: variacao.tipo_precificacao || 'unidade',
+                        tabela_precos: Array.isArray(variacao.tabela_precos) ? variacao.tabela_precos : [],
+                        preco_custo_var: variacao.preco_custo_var || '',
+                        preco_venda_var: variacao.preco_venda_var || '',
+                        preco_m2_var: variacao.preco_m2_var || '',
+                        preco_metro_linear_var: variacao.preco_metro_linear_var || ''
                     };
                 }),
                 composicao: composicaoArr.map(comp => ({
@@ -424,6 +456,21 @@ const ProdutoForm = ({ isOpen, onClose, onSave, produtoEmEdicao, showSaveAndNewB
                 const precoVenda = precoCusto + (precoCusto * margemLucro / 100);
                 updatedProduto.preco_venda = precoVenda.toFixed(2);
             }
+
+            // Auto-calcular sangria (+3mm = +0.3cm) ao alterar tamanho
+            if (name === 'tamanho_largura') {
+                const largura = parseFloat(val);
+                updatedProduto.sangria_largura = (!isNaN(largura) && largura > 0)
+                    ? (largura + 0.3).toFixed(1)
+                    : '';
+            }
+            if (name === 'tamanho_altura') {
+                const altura = parseFloat(val);
+                updatedProduto.sangria_altura = (!isNaN(altura) && altura > 0)
+                    ? (altura + 0.3).toFixed(1)
+                    : '';
+            }
+
             return updatedProduto;
         });
     };
@@ -560,6 +607,13 @@ const ProdutoForm = ({ isOpen, onClose, onSave, produtoEmEdicao, showSaveAndNewB
                 preco_var: '',
                 imagem_url: '',
                 imagem_url_preview: preview,
+                // Campos de precificação padrão
+                tipo_precificacao: 'unidade',
+                tabela_precos: [],
+                preco_custo_var: '',
+                preco_venda_var: '',
+                preco_m2_var: '',
+                preco_metro_linear_var: ''
             };
         });
 
@@ -683,7 +737,14 @@ const ProdutoForm = ({ isOpen, onClose, onSave, produtoEmEdicao, showSaveAndNewB
             estoque_var: '', 
             preco_var: '', 
             imagem_url: '',
-            codigo_barras: codigoBarrasVariacao
+            codigo_barras: codigoBarrasVariacao,
+            // Campos de precificação padrão
+            tipo_precificacao: 'unidade',
+            tabela_precos: [],
+            preco_custo_var: '',
+            preco_venda_var: '',
+            preco_m2_var: '',
+            preco_metro_linear_var: ''
         }];
         
         // Calcular o novo estoque total
@@ -874,6 +935,17 @@ const ProdutoForm = ({ isOpen, onClose, onSave, produtoEmEdicao, showSaveAndNewB
             percentual_comissao: parseFloat(rest.percentual_comissao) || 0,
             estoque: parseFloat(rest.estoque) || 0,
             estoque_minimo: parseFloat(rest.estoque_minimo) || 0,  // Aceita valores fracionados
+            valor_minimo_cliente_final: parseFloatOrNull(rest.valor_minimo_cliente_final),
+            valor_minimo_terceirizados: parseFloatOrNull(rest.valor_minimo_terceirizados),
+            // Especificações técnicas de impressão
+            material: rest.material || null,
+            tamanho_largura: parseFloatOrNull(rest.tamanho_largura),
+            tamanho_altura: parseFloatOrNull(rest.tamanho_altura),
+            tamanho_profundidade: parseFloatOrNull(rest.tamanho_profundidade),
+            acabamento: rest.acabamento || null,
+            sangria_largura: parseFloatOrNull(rest.sangria_largura),
+            sangria_altura: parseFloatOrNull(rest.sangria_altura),
+            cmyk: rest.cmyk || '4x0',
             variacao_obrigatoria: Boolean(rest.variacao_obrigatoria),
             variacoes_usa_preco_base: Boolean(rest.variacoes_usa_preco_base !== false),
             tipo_visualizacao: rest.tipo_visualizacao || 'vendas',
@@ -891,7 +963,14 @@ const ProdutoForm = ({ isOpen, onClose, onSave, produtoEmEdicao, showSaveAndNewB
                 tamanho_tipo: v.tamanho_tipo || 'padrao',
                 tamanhos_personalizados: Array.isArray(v.tamanhos_personalizados)
                     ? v.tamanhos_personalizados.map((tamanho) => String(tamanho || '').trim()).filter(Boolean)
-                    : []
+                    : [],
+                // Campos de precificação da variação
+                tipo_precificacao: v.tipo_precificacao || null,
+                tabela_precos: Array.isArray(v.tabela_precos) ? v.tabela_precos : [],
+                preco_custo_var: v.preco_custo_var ? parseFloat(v.preco_custo_var) : null,
+                preco_venda_var: v.preco_venda_var ? parseFloat(v.preco_venda_var) : null,
+                preco_m2_var: v.preco_m2_var ? parseFloat(v.preco_m2_var) : null,
+                preco_metro_linear_var: v.preco_metro_linear_var ? parseFloat(v.preco_metro_linear_var) : null,
             })),
             composicao: (rest.composicao || []).map(c => ({
                 ...c,

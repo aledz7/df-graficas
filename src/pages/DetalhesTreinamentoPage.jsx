@@ -338,9 +338,31 @@ const DetalhesTreinamentoPage = () => {
                     src={curso.video_arquivo_url}
                     controls
                     className="w-full rounded-lg"
+                    disablePictureInPicture
                     onPlay={() => {
                       if (!progresso?.iniciado) {
                         iniciarTreinamento();
+                      }
+                    }}
+                    onLoadedMetadata={(e) => {
+                      // Prevenir erro do MediaSession com enterpictureinpicture
+                      try {
+                        if (navigator.mediaSession && e.target) {
+                          // Remover qualquer handler inválido que possa ter sido adicionado
+                          const validActions = ['play', 'pause', 'seekbackward', 'seekforward', 'previoustrack', 'nexttrack', 'skipad', 'stop', 'seekto'];
+                          validActions.forEach(action => {
+                            try {
+                              if (navigator.mediaSession.setActionHandler) {
+                                navigator.mediaSession.setActionHandler(action, null);
+                              }
+                            } catch (err) {
+                              // Ignorar erros ao limpar handlers
+                            }
+                          });
+                        }
+                      } catch (err) {
+                        // Ignorar erros do MediaSession
+                        console.warn('Erro ao configurar MediaSession:', err);
                       }
                     }}
                   />

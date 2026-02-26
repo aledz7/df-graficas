@@ -571,19 +571,21 @@ const ClientesPage = ({ vendedorAtual }) => {
             )}
             Atualizar
           </Button>
-          <Button 
-            onClick={handleExportExcel} 
-            variant="outline" 
-            className="ml-2"
-            disabled={isLoading || clientes.length === 0}
-          >
-            {isLoading ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Download className="mr-2 h-4 w-4" />
-            )}
-            Exportar
-          </Button>
+          <PermissionGate permission="clientes_exportar">
+            <Button 
+              onClick={handleExportExcel} 
+              variant="outline" 
+              className="ml-2"
+              disabled={isLoading || clientes.length === 0}
+            >
+              {isLoading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="mr-2 h-4 w-4" />
+              )}
+              Exportar
+            </Button>
+          </PermissionGate>
           <Button 
             onClick={handleImprimirClientes} 
             variant="outline" 

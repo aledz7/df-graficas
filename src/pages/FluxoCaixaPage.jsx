@@ -13,7 +13,7 @@ import RelatorioFluxoCaixa from '@/components/fluxo-caixa/RelatorioFluxoCaixa';
 import SenhaMasterModal from '@/components/SenhaMasterModal';
 import { safeJsonParse } from '@/lib/utils';
 import { apiDataManager } from '@/lib/apiDataManager';
-import { lancamentoCaixaService } from '@/services/api';
+import { lancamentoCaixaService, contaReceberService, contaPagarService } from '@/services/api';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
@@ -29,6 +29,15 @@ const FluxoCaixaPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSenhaMasterModalOpen, setIsSenhaMasterModalOpen] = useState(false);
   const [pendingEditLancamento, setPendingEditLancamento] = useState(null);
+
+  // Projeção de Saldo
+  const [saldoAtual, setSaldoAtual] = useState(() => {
+    const saved = localStorage.getItem('fluxocaixa_saldo_atual');
+    return saved !== null ? parseFloat(saved) : 0;
+  });
+  const [totalAReceber, setTotalAReceber] = useState(0);
+  const [totalAPagar, setTotalAPagar] = useState(0);
+  const [isLoadingProjecao, setIsLoadingProjecao] = useState(false);
 
   const today = new Date();
   const [dataSelecionada, setDataSelecionada] = useState(today);
@@ -84,6 +93,38 @@ const FluxoCaixaPage = () => {
     }
   };
 
+  // Buscar totais pendentes para projeção de saldo (independente de período)
+  const buscarTotaisPendentes = async () => {
+    try {
+      setIsLoadingProjecao(true);
+      const [receber, pagar] = await Promise.all([
+        contaReceberService.totaisPendentes(),
+        contaPagarService.estatisticas(),
+      ]);
+
+      const totalReceber = receber?.data?.data?.total_a_receber
+        ?? receber?.data?.total_a_receber
+        ?? 0;
+
+      const totalPagar = pagar?.data?.data?.total_pendente
+        ?? pagar?.data?.total_pendente
+        ?? 0;
+
+      setTotalAReceber(parseFloat(totalReceber) || 0);
+      setTotalAPagar(parseFloat(totalPagar) || 0);
+    } catch (error) {
+      console.error('Erro ao buscar totais pendentes para projeção:', error);
+    } finally {
+      setIsLoadingProjecao(false);
+    }
+  };
+
+  const handleSaldoAtualChange = (novoSaldo) => {
+    const valor = parseFloat(novoSaldo) || 0;
+    setSaldoAtual(valor);
+    localStorage.setItem('fluxocaixa_saldo_atual', String(valor));
+  };
+
   // Carregar dados iniciais
   useEffect(() => {
     const loadData = async () => {
@@ -120,6 +161,8 @@ const FluxoCaixaPage = () => {
         setLogoUrl(storedLogoUrl);
         
         setIsInitialized(true);
+        // Buscar totais pendentes para projeção
+        buscarTotaisPendentes();
       } catch (error) {
         console.error('Erro ao carregar dados do fluxo de caixa:', error);
         toast({ 
@@ -399,6 +442,12 @@ const FluxoCaixaPage = () => {
         totaisDoDia={totaisDoDia}
         totaisPorFormaPagamento={totaisPorFormaPagamento}
         totaisPorConta={totaisPorConta}
+        saldoAtual={saldoAtual}
+        onSaldoAtualChange={handleSaldoAtualChange}
+        totalAReceber={totalAReceber}
+        totalAPagar={totalAPagar}
+        isLoadingProjecao={isLoadingProjecao}
+        onRefreshProjecao={buscarTotaisPendentes}
       />
       
       <FluxoCaixaTable 

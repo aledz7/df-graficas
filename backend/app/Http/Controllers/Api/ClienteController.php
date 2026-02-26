@@ -320,16 +320,59 @@ class ClienteController extends ResourceController
     {
         // Filtrar por termo de busca
         if ($request->has('search')) {
-            $search = $request->input('search');
-            $query->where(function($q) use ($search) {
-                $q->where('nome', 'like', "%{$search}%")
-                  ->orWhere('cpf_cnpj', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%")
-                  ->orWhere('apelido_fantasia', 'like', "%{$search}%")
-                  ->orWhere('telefone_principal', 'like', "%{$search}%")
-                  ->orWhere('whatsapp', 'like', "%{$search}%")
-                  ->orWhere('nome_completo', 'like', "%{$search}%");
-            });
+            $search = trim($request->input('search'));
+            
+            if (!empty($search)) {
+                // Remover pontuação do termo de busca para normalizar CPF/CNPJ e telefones
+                $searchNormalized = preg_replace('/[^0-9a-zA-Z]/', '', $search);
+                
+                // Extrair apenas números do termo de busca
+                $searchNumbers = preg_replace('/[^0-9]/', '', $search);
+                
+                $query->where(function($q) use ($search, $searchNormalized, $searchNumbers) {
+                    // Busca em campos de texto (nome, email, código, etc.) - com o termo original
+                    $q->where('nome', 'like', "%{$search}%")
+                      ->orWhere('email', 'like', "%{$search}%")
+                      ->orWhere('apelido_fantasia', 'like', "%{$search}%")
+                      ->orWhere('nome_completo', 'like', "%{$search}%")
+                      ->orWhere('codigo_cliente', 'like', "%{$search}%");
+                    
+                    // Busca em CPF/CNPJ - com e sem pontuação
+                    // Busca pelo termo original (pode ter pontuação)
+                    $q->orWhere('cpf_cnpj', 'like', "%{$search}%");
+                    
+                    // Se o termo contém apenas números ou foi normalizado, buscar também sem pontuação
+                    if (!empty($searchNumbers)) {
+                        // Buscar CPF/CNPJ sem pontuação usando REPLACE para remover caracteres não numéricos
+                        $q->orWhereRaw("REPLACE(REPLACE(REPLACE(REPLACE(cpf_cnpj, '.', ''), '/', ''), '-', ''), ' ', '') LIKE ?", ["%{$searchNumbers}%"]);
+                        
+                        // Buscar pelos últimos dígitos (últimos 4 números)
+                        if (strlen($searchNumbers) >= 4) {
+                            $lastFour = substr($searchNumbers, -4);
+                            $q->orWhereRaw("REPLACE(REPLACE(REPLACE(REPLACE(cpf_cnpj, '.', ''), '/', ''), '-', ''), ' ', '') LIKE ?", ["%{$lastFour}"]);
+                        }
+                    }
+                    
+                    // Busca em telefones - com e sem formatação
+                    // Busca pelo termo original
+                    $q->orWhere('telefone_principal', 'like', "%{$search}%")
+                      ->orWhere('whatsapp', 'like', "%{$search}%");
+                    
+                    // Se o termo contém apenas números, buscar também sem formatação
+                    if (!empty($searchNumbers)) {
+                        // Buscar telefones sem formatação
+                        $q->orWhereRaw("REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(telefone_principal, '(', ''), ')', ''), '-', ''), ' ', ''), '.', '') LIKE ?", ["%{$searchNumbers}%"])
+                          ->orWhereRaw("REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(whatsapp, '(', ''), ')', ''), '-', ''), ' ', ''), '.', '') LIKE ?", ["%{$searchNumbers}%"]);
+                        
+                        // Buscar pelos últimos 4 dígitos do telefone
+                        if (strlen($searchNumbers) >= 4) {
+                            $lastFour = substr($searchNumbers, -4);
+                            $q->orWhereRaw("REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(telefone_principal, '(', ''), ')', ''), '-', ''), ' ', ''), '.', '') LIKE ?", ["%{$lastFour}"])
+                              ->orWhereRaw("REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(whatsapp, '(', ''), ')', ''), '-', ''), ' ', ''), '.', '') LIKE ?", ["%{$lastFour}"]);
+                        }
+                    }
+                });
+            }
         }
 
         // Filtrar por tipo (física/jurídica)

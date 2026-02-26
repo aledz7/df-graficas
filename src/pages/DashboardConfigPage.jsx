@@ -11,15 +11,23 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Save, RotateCcw, Eye, EyeOff, Settings2, Grid3x3 } from 'lucide-react';
 import { dashboardService } from '@/services/api';
 import * as Icons from 'lucide-react';
+import { usePermissions } from '@/hooks/usePermissions';
+import { Navigate } from 'react-router-dom';
 
 const DashboardConfigPage = () => {
   const { toast } = useToast();
+  const { hasPermission, isOwner } = usePermissions();
   const [widgetsDisponiveis, setWidgetsDisponiveis] = useState([]);
   const [configuracao, setConfiguracao] = useState(null);
   const [widgetsVisiveis, setWidgetsVisiveis] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [categoriaFiltro, setCategoriaFiltro] = useState('todas');
+
+  // Proteger página - apenas admins podem configurar dashboard
+  if (!isOwner && !hasPermission('config_sistema')) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   useEffect(() => {
     loadData();

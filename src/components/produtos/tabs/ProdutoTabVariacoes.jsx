@@ -5,9 +5,19 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Trash2, Upload, ImagePlus, Settings, X, RefreshCw } from 'lucide-react';
+import { PlusCircle, Trash2, Upload, ImagePlus, Settings, X, RefreshCw, Plus, Edit, Info } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Separator } from '@/components/ui/separator';
+import AdicionarQuantidadeValorModal from '../modals/AdicionarQuantidadeValorModal';
+
+const TIPOS_PRECIFICACAO = [
+  { value: 'unidade', label: 'Por Unidade', descricao: 'Preço fixo por unidade vendida' },
+  { value: 'quantidade_definida', label: 'Por Quantidade Definidas', descricao: 'Preços específicos para quantidades exatas' },
+  { value: 'm2_cm2', label: 'Por M²/CM²', descricao: 'Preço calculado pela área em metros ou centímetros quadrados' },
+  { value: 'm2_cm2_tabelado', label: 'Por M²/CM² Tabelado', descricao: 'Tabela de preços por faixas de área' },
+  { value: 'metro_linear', label: 'Por Metro Linear', descricao: 'Preço calculado pelo comprimento em metros' },
+  { value: 'faixa_quantidade', label: 'Por Faixa de Quantidades', descricao: 'Preços escalonados por intervalos de quantidade' },
+];
 
 const ProdutoTabVariacoes = ({
   currentProduto,
@@ -24,6 +34,7 @@ const ProdutoTabVariacoes = ({
   const [bulkPreco, setBulkPreco] = useState('');
   const [bulkEstoque, setBulkEstoque] = useState('');
   const [novoTamanhoPersonalizado, setNovoTamanhoPersonalizado] = useState({});
+  const [modalTabelaPrecos, setModalTabelaPrecos] = useState({ isOpen: false, variacaoIndex: null, itemEditando: null });
   const SIZE_MODE_DEFAULT = 'padrao';
   const SIZE_MODE_CUSTOM = 'personalizado';
   const sizeModeOptions = useMemo(() => ([
@@ -116,6 +127,206 @@ const ProdutoTabVariacoes = ({
     const randomSuffix = Math.random().toString(36).substr(2, 6).toUpperCase();
     const codigoBarrasVariacao = `${currentProduto.codigo_produto || 'VAR'}-${timestamp}-${index}-${randomSuffix}`;
     updateVariacao(index, 'codigo_barras', codigoBarrasVariacao);
+  };
+
+  // Funções para gerenciar tabela de preços da variação
+  const handleAddFaixaVariacao = (variacaoIndex) => {
+    setModalTabelaPrecos({ isOpen: true, variacaoIndex, itemEditando: null });
+  };
+
+  const handleEditFaixaVariacao = (variacaoIndex, faixaIndex) => {
+    const variacao = currentProduto.variacoes[variacaoIndex];
+    const tabelaPrecos = variacao.tabela_precos || [];
+    setModalTabelaPrecos({ isOpen: true, variacaoIndex, itemEditando: { ...tabelaPrecos[faixaIndex], _index: faixaIndex } });
+  };
+
+  const handleSaveModalVariacao = (dados) => {
+    const { variacaoIndex, itemEditando } = modalTabelaPrecos;
+    const variacao = currentProduto.variacoes[variacaoIndex];
+    let novaTabela = [...(variacao.tabela_precos || [])];
+    
+    const { _index, index, ...dadosLimpos } = dados;
+    const indiceEdicao = itemEditando?._index ?? itemEditando?.index;
+    
+    if (indiceEdicao !== undefined && indiceEdicao !== null) {
+      novaTabela[indiceEdicao] = dadosLimpos;
+    } else {
+      novaTabela.push(dadosLimpos);
+    }
+    
+    updateVariacao(variacaoIndex, 'tabela_precos', novaTabela);
+    setModalTabelaPrecos({ isOpen: false, variacaoIndex: null, itemEditando: null });
+  };
+
+  const handleRemoveFaixaVariacao = (variacaoIndex, faixaIndex) => {
+    const variacao = currentProduto.variacoes[variacaoIndex];
+    const novaTabela = (variacao.tabela_precos || []).filter((_, i) => i !== faixaIndex);
+    updateVariacao(variacaoIndex, 'tabela_precos', novaTabela);
+  };
+
+  // Função para renderizar campos de precificação específicos da variação
+  const renderCamposPrecificacaoVariacao = (variacao, index) => {
+    // Sempre usar 'unidade' como padrão se não estiver definido
+    const tipoPrecificacao = variacao.tipo_precificacao || 'unidade';
+    const tabelaPrecos = Array.isArray(variacao.tabela_precos) ? variacao.tabela_precos : [];
+
+    switch (tipoPrecificacao) {
+      case 'unidade':
+        return (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <Label htmlFor={`var-preco-custo-${index}`}>Preço de Custo (R$)</Label>
+              <Input
+                id={`var-preco-custo-${index}`}
+                type="number"
+                step="0.01"
+                value={variacao.preco_custo_var || ''}
+                onChange={(e) => updateVariacao(index, 'preco_custo_var', e.target.value)}
+                placeholder="0.00"
+              />
+            </div>
+            <div>
+              <Label htmlFor={`var-preco-venda-${index}`}>Preço de Venda (R$)</Label>
+              <Input
+                id={`var-preco-venda-${index}`}
+                type="number"
+                step="0.01"
+                value={variacao.preco_venda_var || variacao.preco_var || ''}
+                onChange={(e) => {
+                  updateVariacao(index, 'preco_venda_var', e.target.value);
+                  updateVariacao(index, 'preco_var', e.target.value);
+                }}
+                placeholder="0.00"
+              />
+            </div>
+          </div>
+        );
+
+      case 'm2_cm2':
+        return (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <Label htmlFor={`var-preco-custo-m2-${index}`}>Preço de Custo por m² (R$)</Label>
+              <Input
+                id={`var-preco-custo-m2-${index}`}
+                type="number"
+                step="0.01"
+                value={variacao.preco_custo_var || ''}
+                onChange={(e) => updateVariacao(index, 'preco_custo_var', e.target.value)}
+                placeholder="0.00"
+              />
+            </div>
+            <div>
+              <Label htmlFor={`var-preco-m2-${index}`}>Preço de Venda por m² (R$)</Label>
+              <Input
+                id={`var-preco-m2-${index}`}
+                type="number"
+                step="0.01"
+                value={variacao.preco_m2_var || ''}
+                onChange={(e) => updateVariacao(index, 'preco_m2_var', e.target.value)}
+                placeholder="0.00"
+              />
+            </div>
+          </div>
+        );
+
+      case 'metro_linear':
+        return (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <Label htmlFor={`var-preco-custo-metro-${index}`}>Preço de Custo por Metro (R$)</Label>
+              <Input
+                id={`var-preco-custo-metro-${index}`}
+                type="number"
+                step="0.01"
+                value={variacao.preco_custo_var || ''}
+                onChange={(e) => updateVariacao(index, 'preco_custo_var', e.target.value)}
+                placeholder="0.00"
+              />
+            </div>
+            <div>
+              <Label htmlFor={`var-preco-metro-${index}`}>Preço de Venda por Metro (R$)</Label>
+              <Input
+                id={`var-preco-metro-${index}`}
+                type="number"
+                step="0.01"
+                value={variacao.preco_metro_linear_var || ''}
+                onChange={(e) => updateVariacao(index, 'preco_metro_linear_var', e.target.value)}
+                placeholder="0.00"
+              />
+            </div>
+          </div>
+        );
+
+      case 'quantidade_definida':
+      case 'm2_cm2_tabelado':
+      case 'faixa_quantidade':
+        return (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-semibold">Tabela de Preços</Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => handleAddFaixaVariacao(index)}
+                className="border-blue-300 text-blue-700 hover:bg-blue-100"
+              >
+                <Plus size={16} className="mr-1" /> Adicionar
+              </Button>
+            </div>
+            {tabelaPrecos.length === 0 ? (
+              <p className="text-xs text-muted-foreground italic">Nenhuma entrada na tabela. Clique em "Adicionar" para começar.</p>
+            ) : (
+              <div className="space-y-2 max-h-40 overflow-y-auto">
+                {tabelaPrecos.map((faixa, faixaIndex) => (
+                  <div key={faixaIndex} className="flex items-center justify-between p-2 bg-muted rounded-md text-xs">
+                    <div className="flex-1">
+                      {tipoPrecificacao === 'quantidade_definida' && (
+                        <span className="font-medium">{faixa.quantidade || '-'} unid.</span>
+                      )}
+                      {tipoPrecificacao === 'm2_cm2_tabelado' && (
+                        <span className="font-medium">{faixa.area_min || '0'} - {faixa.area_max || '0'} m²</span>
+                      )}
+                      {tipoPrecificacao === 'faixa_quantidade' && (
+                        <span className="font-medium">{faixa.quantidade_min || '1'} - {faixa.quantidade_max || '∞'}</span>
+                      )}
+                      <span className="ml-2 text-muted-foreground">
+                        R$ {parseFloat(faixa.valor_cliente_final || faixa.preco || 0).toFixed(2).replace('.', ',')}
+                      </span>
+                    </div>
+                    <div className="flex gap-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleEditFaixaVariacao(index, faixaIndex)}
+                        className="h-6 w-6 text-blue-500"
+                        title="Editar"
+                      >
+                        <Edit size={12} />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleRemoveFaixaVariacao(index, faixaIndex)}
+                        className="h-6 w-6 text-red-500"
+                        title="Excluir"
+                      >
+                        <Trash2 size={12} />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+
+      default:
+        return null;
+    }
   };
 
   return (
@@ -477,7 +688,8 @@ const ProdutoTabVariacoes = ({
                                     <Label htmlFor={`var-estoque_var-${index}`}>Estoque (opcional)</Label>
                                     <Input id={`var-estoque_var-${index}`} type="number" value={variacao.estoque_var} onChange={(e) => updateVariacao(index, 'estoque_var', e.target.value)} placeholder="0"/>
                                 </div>
-                                {!currentProduto.variacoes_usa_preco_base && (
+                                {/* Mostrar campos de preço simples apenas se não tiver tipo de precificação definido */}
+                                {!variacao.tipo_precificacao && !currentProduto.variacoes_usa_preco_base && (
                                     <div>
                                         <Label htmlFor={`var-preco_var-${index}`}>Preço Específico (R$)</Label>
                                         <Input 
@@ -493,7 +705,7 @@ const ProdutoTabVariacoes = ({
                                         </p>
                                     </div>
                                 )}
-                                {currentProduto.variacoes_usa_preco_base && (
+                                {!variacao.tipo_precificacao && currentProduto.variacoes_usa_preco_base && (
                                     <div>
                                         <Label htmlFor={`var-preco_var-${index}`}>Preço (R$)</Label>
                                         <Input 
@@ -509,12 +721,64 @@ const ProdutoTabVariacoes = ({
                                     </div>
                                 )}
                             </div>
+
+                            {/* Campo de Tipo de Precificação */}
+                            <Separator className="my-3" />
+                            <div className="space-y-3">
+                                <div>
+                                    <Label htmlFor={`var-tipo-precificacao-${index}`} className="text-sm font-semibold">Tipo de Precificação</Label>
+                                    <p className="text-xs text-muted-foreground mb-2">
+                                        Escolha como o preço desta variação será calculado
+                                    </p>
+                                    <Select
+                                        value={variacao.tipo_precificacao || 'unidade'}
+                                        onValueChange={(value) => {
+                                            updateVariacao(index, 'tipo_precificacao', value);
+                                            // Limpar tabela de preços ao mudar o tipo (exceto se voltar para unidade)
+                                            if (value && value !== 'unidade') {
+                                                updateVariacao(index, 'tabela_precos', []);
+                                            }
+                                        }}
+                                    >
+                                        <SelectTrigger id={`var-tipo-precificacao-${index}`}>
+                                            <SelectValue placeholder="Selecione o tipo" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {TIPOS_PRECIFICACAO.map((tipo) => (
+                                                <SelectItem key={tipo.value} value={tipo.value}>
+                                                    {tipo.label}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <div className="flex items-start gap-2 text-xs text-muted-foreground bg-muted/50 p-2 rounded-md mt-2">
+                                        <Info size={14} className="mt-0.5 flex-shrink-0" />
+                                        <p>{TIPOS_PRECIFICACAO.find(t => t.value === (variacao.tipo_precificacao || 'unidade'))?.descricao}</p>
+                                    </div>
+                                </div>
+
+                                {/* Campos dinâmicos baseados no tipo de precificação - sempre visível com padrão 'unidade' */}
+                                <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-3 bg-slate-50 dark:bg-slate-900/50">
+                                    {renderCamposPrecificacaoVariacao(variacao, index)}
+                                </div>
+                            </div>
                         </motion.div>
                     ))}
                     <Button type="button" variant="outline" onClick={addVariacao} className="w-full mb-4">
                         <PlusCircle size={16} className="mr-2"/> Adicionar Variação
                     </Button>
                 </div>
+            )}
+
+            {/* Modal para gerenciar tabela de preços da variação */}
+            {modalTabelaPrecos.isOpen && modalTabelaPrecos.variacaoIndex !== null && (
+                <AdicionarQuantidadeValorModal
+                    isOpen={modalTabelaPrecos.isOpen}
+                    onClose={() => setModalTabelaPrecos({ isOpen: false, variacaoIndex: null, itemEditando: null })}
+                    onSave={handleSaveModalVariacao}
+                    tipoPrecificacao={currentProduto.variacoes[modalTabelaPrecos.variacaoIndex]?.tipo_precificacao || 'unidade'}
+                    itemExistente={modalTabelaPrecos.itemEditando}
+                />
             )}
         </CardContent>
     </Card>

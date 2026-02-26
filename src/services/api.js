@@ -995,6 +995,7 @@ export const contaReceberService = {
   contasComJurosConfigurados: () => api.get('/api/contas-receber/contas-com-juros-configurados'),
   contasParceladas: () => api.get('/api/contas-receber/contas-parceladas'),
   recebimentosClientes: (params = {}) => api.get('/api/contas-receber/recebimentos-clientes', { params }),
+  totaisPendentes: () => api.get('/api/contas-receber/totais-pendentes'),
 };
 
 // Serviços para contas a pagar
@@ -1022,6 +1023,7 @@ export const contaPagarService = {
   contasComJurosConfigurados: () => api.get('/api/contas-pagar/contas-com-juros-configurados'),
   contasParceladas: () => api.get('/api/contas-pagar/contas-parceladas'),
   pagamentosFornecedores: (params = {}) => api.get('/api/contas-pagar/pagamentos-fornecedores', { params }),
+  estatisticas: () => api.get('/api/contas-pagar/estatisticas'),
 };
 
 // Serviços para acabamentos
@@ -1927,6 +1929,58 @@ export const dashboardService = {
       return response.data;
     } catch (error) {
       console.error('Erro ao buscar dados dos widgets:', error);
+      throw error;
+    }
+  },
+};
+
+export const quickActionService = {
+  getActionsDisponiveis: async () => {
+    try {
+      const response = await api.get('/api/quick-actions/disponiveis');
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao buscar ações rápidas disponíveis:', error);
+      throw error;
+    }
+  },
+  
+  getAllActions: async () => {
+    try {
+      const response = await api.get('/api/quick-actions/todas');
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao buscar todas as ações rápidas:', error);
+      throw error;
+    }
+  },
+  
+  criarAction: async (dados) => {
+    try {
+      const response = await api.post('/api/quick-actions/criar', dados);
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao criar ação rápida:', error);
+      throw error;
+    }
+  },
+  
+  atualizarAction: async (id, dados) => {
+    try {
+      const response = await api.put(`/api/quick-actions/${id}`, dados);
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao atualizar ação rápida:', error);
+      throw error;
+    }
+  },
+  
+  deletarAction: async (id) => {
+    try {
+      const response = await api.delete(`/api/quick-actions/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao deletar ação rápida:', error);
       throw error;
     }
   },

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Eye, Search, FileText, Printer, ShoppingCart, Trash2, CircleDollarSign, FileQuestion, CheckCircle2, AlertTriangle, CalendarDays, CalendarClock, Edit, RotateCcw, DollarSign, Banknote, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Eye, Search, FileText, Printer, ShoppingCart, Trash2, CircleDollarSign, FileQuestion, CheckCircle2, AlertTriangle, CalendarDays, CalendarClock, Edit, RotateCcw, DollarSign, Banknote, Loader2, ChevronLeft, ChevronRight, Share2 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { safeJsonParse, cn, formatCurrency } from '@/lib/utils';
 import { motion } from 'framer-motion';
@@ -19,6 +19,7 @@ import { apiDataManager } from '@/lib/apiDataManager';
 import { vendaService } from '@/services/api';
 import { produtoService } from '@/services/api';
 import api from '@/services/api';
+import CompartilharModal from '@/components/shared/CompartilharModal';
 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -47,6 +48,8 @@ const PDVHistoricoPage = ({ logoUrl, nomeEmpresa, vendedorAtual }) => {
   const [produtos, setProdutos] = useState([]);
   const [isPagamentoModalOpen, setIsPagamentoModalOpen] = useState(false);
   const [vendaParaPagamento, setVendaParaPagamento] = useState(null);
+  const [isCompartilharModalOpen, setIsCompartilharModalOpen] = useState(false);
+  const [vendaIdParaCompartilhar, setVendaIdParaCompartilhar] = useState(null);
 
   // Refs para acessar valores atuais dentro de callbacks sem criar dependências
   const searchTimerRef = useRef(null);
@@ -1156,6 +1159,17 @@ const PDVHistoricoPage = ({ logoUrl, nomeEmpresa, vendedorAtual }) => {
                         <Button variant="ghost" size="icon" onClick={() => handleViewRecibo(doc)} title="Visualizar Recibo/Orçamento">
                           <Eye className="h-4 w-4" />
                         </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => {
+                            setVendaIdParaCompartilhar(doc.id);
+                            setIsCompartilharModalOpen(true);
+                          }} 
+                          title="Compartilhar Venda"
+                        >
+                          <Share2 className="h-4 w-4" />
+                        </Button>
                         {(doc.tipo === 'Venda PDV' || doc.tipo === 'Pré-venda Catálogo') && doc.status === 'pre_venda' && (
                           <Button 
                             variant="ghost" 
@@ -1389,6 +1403,26 @@ const PDVHistoricoPage = ({ logoUrl, nomeEmpresa, vendedorAtual }) => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Modal de Compartilhamento */}
+      <CompartilharModal
+        isOpen={isCompartilharModalOpen}
+        onClose={() => {
+          setIsCompartilharModalOpen(false);
+          setVendaIdParaCompartilhar(null);
+        }}
+        tipo="venda"
+        id={vendaIdParaCompartilhar}
+        onCompartilhar={async (vendaId) => {
+          try {
+            const response = await api.post(`/api/vendas/${vendaId}/compartilhar`);
+            return response.data;
+          } catch (error) {
+            console.error('Erro ao compartilhar venda:', error);
+            throw error;
+          }
+        }}
+      />
       
     </motion.div>
   );

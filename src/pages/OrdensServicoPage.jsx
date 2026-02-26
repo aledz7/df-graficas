@@ -20,6 +20,8 @@ import { useToast } from "@/components/ui/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
+import CompartilharModal from '@/components/shared/CompartilharModal';
+import api from '@/services/api';
 
 const OrdensServicoPage = ({ vendedorAtual }) => {
     const location = useLocation();
@@ -32,6 +34,10 @@ const OrdensServicoPage = ({ vendedorAtual }) => {
     // Estado para modal obrigatório de finalização
     const [isFinalizacaoObrigatoriaModalOpen, setIsFinalizacaoObrigatoriaModalOpen] = useState(false);
     const [dadosFinalizacao, setDadosFinalizacao] = useState(null);
+    
+    // Estado para compartilhamento
+    const [isCompartilharModalOpen, setIsCompartilharModalOpen] = useState(false);
+    const [osIdParaCompartilhar, setOsIdParaCompartilhar] = useState(null);
     
     // Debug logs removidos para evitar loop infinito
     const processedCalculadoraRef = useRef(false);
@@ -358,6 +364,7 @@ const OrdensServicoPage = ({ vendedorAtual }) => {
                     ordemServicoId={ordemServico.id || ordemServico.id_os} 
                     viewOnly={viewOnly}
                     toggleViewMode={toggleViewMode}
+                    onCompartilhar={handleCompartilharOS}
                 />
                 
                 <OSClienteSection 
@@ -500,6 +507,41 @@ const OrdensServicoPage = ({ vendedorAtual }) => {
                 onClose={handleCloseNovoClienteModal}
                 onSave={handleSaveNovoCliente}
                 clienteEmEdicao={null}
+            />
+
+            {/* Modal de Compartilhamento */}
+            <CompartilharModal
+                isOpen={isCompartilharModalOpen}
+                onClose={() => {
+                    setIsCompartilharModalOpen(false);
+                    setOsIdParaCompartilhar(null);
+                }}
+                tipo="os"
+                id={osIdParaCompartilhar}
+                onCompartilhar={async (osId) => {
+                    try {
+                        // Buscar o ID numérico da OS se necessário
+                        let osIdNumerico = osId;
+                        if (typeof osId === 'string' && !osId.match(/^\d+$/)) {
+                            // Se for id_os, buscar o ID numérico
+                            const response = await api.get('/api/ordens-servico', {
+                                params: { id_os: osId }
+                            });
+                            const osData = response.data?.data || response.data;
+                            if (Array.isArray(osData) && osData.length > 0) {
+                                osIdNumerico = osData[0].id;
+                            } else if (osData?.id) {
+                                osIdNumerico = osData.id;
+                            }
+                        }
+                        
+                        const response = await api.post(`/api/ordens-servico/${osIdNumerico}/compartilhar`);
+                        return response.data;
+                    } catch (error) {
+                        console.error('Erro ao compartilhar OS:', error);
+                        throw error;
+                    }
+                }}
             />
 
             {/* Modal de Recuperação de Rascunho */}

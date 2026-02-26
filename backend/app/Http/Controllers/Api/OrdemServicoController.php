@@ -3105,4 +3105,94 @@ class OrdemServicoController extends Controller
             // Não lançar exceção para não quebrar o fluxo de finalização
         }
     }
+
+    /**
+     * Gerar link de compartilhamento para a OS
+     */
+    public function compartilhar(Request $request, $id)
+    {
+        try {
+            $os = OrdemServico::find($id);
+            
+            if (!$os) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ordem de serviço não encontrada'
+                ], 404);
+            }
+
+            // Gerar token único se não existir
+            if (!$os->share_token) {
+                $os->share_token = Str::random(64);
+            }
+
+            // Ativar compartilhamento
+            $os->share_enabled = true;
+            
+            // Definir expiração se fornecida (opcional)
+            if ($request->has('expires_at')) {
+                $os->share_expires_at = $request->input('expires_at');
+            }
+            
+            $os->save();
+
+            // Gerar URL pública
+            $shareUrl = url("/public/os/{$os->share_token}");
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'share_token' => $os->share_token,
+                    'share_url' => $shareUrl,
+                    'share_enabled' => $os->share_enabled,
+                    'share_expires_at' => $os->share_expires_at
+                ]
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Erro ao compartilhar OS:', [
+                'os_id' => $id,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erro ao gerar link de compartilhamento'
+            ], 500);
+        }
+    }
+
+    /**
+     * Desabilitar compartilhamento da OS
+     */
+    public function desabilitarCompartilhamento($id)
+    {
+        try {
+            $os = OrdemServico::find($id);
+            
+            if (!$os) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ordem de serviço não encontrada'
+                ], 404);
+            }
+
+            $os->share_enabled = false;
+            $os->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Compartilhamento desabilitado com sucesso'
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Erro ao desabilitar compartilhamento da OS:', [
+                'os_id' => $id,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erro ao desabilitar compartilhamento'
+            ], 500);
+        }
+    }
 }

@@ -2,18 +2,21 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Settings, Building, Palette, Package, CreditCard, Barcode, Trash2, SlidersHorizontal, Download, Upload, ShieldAlert, Loader2, Star, Receipt, LayoutDashboard } from 'lucide-react';
+import { Settings, Building, Palette, Package, CreditCard, Barcode, Trash2, SlidersHorizontal, Download, Upload, ShieldAlert, Loader2, Star, Receipt, LayoutDashboard, Zap } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useToast } from "@/components/ui/use-toast";
 import { safeJsonParse } from '@/lib/utils';
 import { criarBackup, restaurarBackup, criarBackupLocal, restaurarBackupLocal } from '@/services/backupService';
 import { carregarConfiguracoesEmpresa } from '@/services/configService';
+import { usePermissions } from '@/hooks/usePermissions';
+import PermissionGate from '@/components/PermissionGate';
 
 const settingsOptionsBase = [
   { id: 'empresa', title: 'Dados da Empresa', description: 'Configure nome, CNPJ, endereço e logo.', icon: Building, path: '/configuracoes/empresa' },
   { id: 'aparencia', title: 'Aparência e Tema', description: 'Personalize cores e temas do sistema.', icon: Palette, path: '/configuracoes/aparencia' },
   { id: 'personalizacoes', title: 'Personalizações', description: 'Defina comportamentos padrão do sistema.', icon: SlidersHorizontal, path: '/configuracoes/personalizacoes' },
   { id: 'dashboard', title: 'Dashboard', description: 'Configure widgets e layout do dashboard.', icon: LayoutDashboard, path: '/configuracoes/dashboard' },
+  { id: 'acoes_rapidas', title: 'Ações Rápidas', description: 'Configure as ações rápidas do dashboard.', icon: Zap, path: '/configuracoes/acoes-rapidas' },
   { id: 'produtos_conf', title: 'Produtos e Estoque (Conf.)', description: 'Defina padrões para produtos e estoque.', icon: Package, path: '/configuracoes/produtos-estoque' },
   { id: 'financeiro_conf', title: 'Financeiro (Conf.)', description: 'Contas bancárias, formas de pagamento.', icon: CreditCard, path: '/configuracoes/financeiro' },
   { id: 'pontos', title: 'Programa de Pontos', description: 'Configure o programa de fidelidade e pontos.', icon: Star, path: '/configuracoes/pontos' },
@@ -27,7 +30,18 @@ const settingsOptionsBase = [
 const ConfiguracoesPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { hasPermission, isOwner } = usePermissions();
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Filtrar opções baseado em permissões
+  const settingsOptions = settingsOptionsBase.filter(option => {
+    // Dashboard e Ações Rápidas só para quem tem permissão de config_sistema
+    if (option.id === 'dashboard' || option.id === 'acoes_rapidas') {
+      return isOwner || hasPermission('config_sistema');
+    }
+    // Outras opções podem ter suas próprias verificações no futuro
+    return true;
+  });
 
   const handleNavigation = (path) => {
     const knownPaths = settingsOptionsBase.map(opt => opt.path);
@@ -175,7 +189,7 @@ const ConfiguracoesPage = () => {
       </Card>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
-        {settingsOptionsBase.map((option, index) => (
+        {settingsOptions.map((option, index) => (
           <motion.div
             key={option.id}
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
