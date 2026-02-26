@@ -61,12 +61,12 @@ export const initializeAppData = async ({
   setLogoUrl(savedLogo);
   
   const defaultEmpresaSettings = {
-    nomeFantasia: 'JET-IMPRE SOLUCOES GRAFICAS LTDA',
-    razaoSocial: 'JET-IMPRE SOLUCOES GRAFICAS LTDA',
+    nomeFantasia: 'SOLUCOES GRAFICAS LTDA',
+    razaoSocial: 'SOLUCOES GRAFICAS LTDA',
     cnpj: '22.273.827/0001-19',
     telefone: '(91) 3226-6102',
     whatsapp: '(91) 98333-3853',
-    email: 'JETIMPREBELEM@GMAIL.COM',
+    email: 'alessandro@dfinformatica.com.br',
     enderecoCompleto: 'TRAVESSA SAO PEDRO 566, BAIRRO: CAMPINA, BELEM-PA, CEP: 66023-570',
     instagram: '',
     site: '',
@@ -131,7 +131,7 @@ export const initializeAppData = async ({
       nomeBanco: 'Banco do Brasil', 
       agencia: '1234-5', 
       conta: '12345-6', 
-      chavePix: 'jetimprebelem@gmail.com',
+      chavePix: 'alessandro@dfinformatica.com.br',
       qrCodeUrl: ''
     },
     { 

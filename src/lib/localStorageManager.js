@@ -63,13 +63,13 @@ export const initializeAppData = async (setters) => {
   setLogoUrl(savedLogo);
   
   const defaultEmpresaSettings = {
-    nomeFantasia: 'JET-IMPRE SOLUCOES GRAFICAS LTDA',
-    razaoSocial: 'JET-IMPRE SOLUCOES GRAFICAS LTDA',
+    nomeFantasia: 'SOLUCOES GRAFICAS LTDA',
+    razaoSocial: 'SOLUCOES GRAFICAS LTDA',
     cnpj: '22.273.827/0001-19',
-    telefone: '(91) 3226-6102',
-    whatsapp: '(91) 98333-3853',
-    email: 'JETIMPREBELEM@GMAIL.COM',
-    enderecoCompleto: 'TRAVESSA SAO PEDRO 566, BAIRRO: CAMPINA, BELEM-PA, CEP: 66023-570',
+    telefone: '(61) 99999-9999',
+    whatsapp: '(61) 99999-9999',
+    email: 'alessandro@dfinformatica.com.br',
+    enderecoCompleto: 'RUA JOSE MARIA DA SILVA, 123, BAIRRO: CAMPINA, BELEM-PA, CEP: 66023-570',
     instagram: '',
     site: '',
     mensagemPersonalizadaRodape: 'Obrigado pela preferência!',
@@ -178,7 +178,7 @@ export const initializeAppData = async (setters) => {
       nomeBanco: 'Banco do Brasil', 
       agencia: '1234-5', 
       conta: '12345-6', 
-      chavePix: 'jetimprebelem@gmail.com',
+      chavePix: 'alessandro@dfinformatica.com.br',
       qrCodeUrl: ''
     },
     { 
@@ -307,7 +307,7 @@ export const exportAllData = async (toast) => {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `backup_jetimpre_${new Date().toISOString().split('T')[0]}.json`;
+  a.download = `backup_solucoesgraficas_${new Date().toISOString().split('T')[0]}.json`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);

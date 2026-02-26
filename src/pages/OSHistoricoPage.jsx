@@ -95,6 +95,8 @@ const OSHistoricoPage = ({ vendedorAtual }) => {
   const [empresaSettings, setEmpresaSettings] = useState({});
   const [contasBancarias, setContasBancarias] = useState([]);
   const [maquinas, setMaquinas] = useState([]);
+  const [isCompartilharModalOpen, setIsCompartilharModalOpen] = useState(false);
+  const [osIdParaCompartilhar, setOsIdParaCompartilhar] = useState(null);
   const [isConsumoMaterialDetailsModalOpen, setIsConsumoMaterialDetailsModalOpen] = useState(false);
   const [selectedOsForConsumoDetails, setSelectedOsForConsumoDetails] = useState(null);
 
