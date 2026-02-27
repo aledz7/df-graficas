@@ -54,6 +54,12 @@ class EstoqueMinimoService
             return $errors; // Se não há produto, não há validação de estoque
         }
 
+        // Itens sintéticos (ex.: acabamentos "acab_22") não possuem registro em produtos
+        // e não devem bloquear a criação/edição de OS por estoque mínimo.
+        if (!is_numeric($item['produto_id'])) {
+            return $errors;
+        }
+
         $produto = Produto::find($item['produto_id']);
         if (!$produto) {
             $errors[] = "Produto não encontrado";
@@ -96,6 +102,12 @@ class EstoqueMinimoService
 
         if (!isset($item['produto_id']) || !$item['produto_id']) {
             return $errors; // Se não há produto, não há validação de estoque
+        }
+
+        // Itens sintéticos (ex.: acabamentos "acab_22") não possuem registro em produtos
+        // e não devem bloquear a criação/edição de OS por estoque mínimo.
+        if (!is_numeric($item['produto_id'])) {
+            return $errors;
         }
 
         $produto = Produto::find($item['produto_id']);

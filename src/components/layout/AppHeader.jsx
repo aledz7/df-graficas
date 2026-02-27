@@ -101,7 +101,7 @@ const AppHeader = ({
   const handleItensEntreguesClick = () => {
     setItensEntreguesOpen(!itensEntreguesOpen);
     // TODO: Navegar para página de itens entregues ou abrir modal
-    navigate('/operacional/ordens-servico?filtro=entregues');
+    navigate('/operacional/os-entregues');
   };
 
   return (
@@ -249,7 +249,7 @@ const AppHeader = ({
                   className="w-full mt-2"
                   onClick={() => {
                     setItensEntreguesOpen(false);
-                    navigate('/operacional/ordens-servico?filtro=entregues');
+                    navigate('/operacional/os-entregues');
                   }}
                 >
                   Ver Histórico

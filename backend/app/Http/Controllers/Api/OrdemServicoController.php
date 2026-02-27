@@ -523,7 +523,8 @@ class OrdemServicoController extends Controller
                     
                     $osItem = new OrdemServicoItem();
                     $osItem->ordem_servico_id = $os->id;
-                    $osItem->produto_id = $item['produto_id'] ?? null;
+                    $produtoId = $item['produto_id'] ?? null;
+                    $osItem->produto_id = is_numeric($produtoId) ? (int) $produtoId : null;
                     $osItem->nome_servico_produto = $item['nome_servico_produto'] ?? $item['nome_produto'] ?? 'Produto/Serviço';
                     $osItem->tipo_item = $item['tipo_item'] ?? 'unidade';
                     
@@ -1195,7 +1196,8 @@ class OrdemServicoController extends Controller
                 ]);
                 
                 // Atualizar dados do item
-                $osItem->produto_id = $item['produto_id'] ?? null;
+                $produtoId = $item['produto_id'] ?? null;
+                $osItem->produto_id = is_numeric($produtoId) ? (int) $produtoId : null;
                 $osItem->nome_servico_produto = $item['nome_servico_produto'] ?? $item['nome_produto'] ?? 'Produto/Serviço';
                 $osItem->tipo_item = $item['tipo_item'] ?? 'unidade';
                 
