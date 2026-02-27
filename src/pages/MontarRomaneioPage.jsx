@@ -45,6 +45,23 @@ const MontarRomaneioPage = () => {
         loadPedidosDisponiveis();
     }, [filtroData, dataEntrega, bairro, cidade, entregadorId]);
 
+    const extrairArrayDaResposta = (payload) => {
+        if (Array.isArray(payload)) return payload;
+        if (Array.isArray(payload?.data)) return payload.data;
+        if (Array.isArray(payload?.data?.data)) return payload.data.data;
+        return [];
+    };
+
+    const extrairObjetoDaResposta = (payload) => {
+        if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
+            if (payload.data && typeof payload.data === 'object' && !Array.isArray(payload.data)) {
+                return payload.data;
+            }
+            return payload;
+        }
+        return null;
+    };
+
     const loadEntregadores = async () => {
         try {
             const response = await entregadorService.getAtivos();
@@ -87,7 +104,7 @@ const MontarRomaneioPage = () => {
             if (entregadorId) params.entregador_id = entregadorId;
 
             const response = await romaneioService.getPedidosDisponiveis(params);
-            setPedidos(response.data || []);
+            setPedidos(extrairArrayDaResposta(response?.data));
         } catch (error) {
             console.error('Erro ao carregar pedidos:', error);
             toast({
@@ -133,7 +150,7 @@ const MontarRomaneioPage = () => {
                 venda_ids: pedidosSelecionados,
                 endereco_origem: enderecoOrigem,
             });
-            setRotaSugerida(response.data || null);
+            setRotaSugerida(extrairObjetoDaResposta(response?.data));
         } catch (error) {
             console.error('Erro ao calcular rota:', error);
             toast({

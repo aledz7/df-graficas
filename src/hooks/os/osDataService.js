@@ -5,6 +5,22 @@ import { osService, acabamentoService, clienteService } from '@/services/api';
 import { calcularSubtotalItem, garantirIdsItensOS } from './osLogic';
 import { formatDateForBackend } from '@/utils/dateUtils';
 
+const normalizePrevisaoEntregaFields = (osData) => {
+  if (!osData || typeof osData !== 'object') return osData;
+
+  const previsaoEntrega =
+    osData.data_previsao_entrega ||
+    osData.data_prevista_entrega ||
+    osData.previsao_entrega ||
+    null;
+
+  return {
+    ...osData,
+    data_previsao_entrega: previsaoEntrega,
+    data_prevista_entrega: previsaoEntrega
+  };
+};
+
 // Funções exportadas individualmente
 export const loadOSFromAPI = async (osId) => {
   console.log('🔍 [loadOSFromAPI] called with:', osId);
@@ -23,7 +39,7 @@ export const loadOSFromAPI = async (osId) => {
         itens_count: response.itens ? response.itens.length : 0,
         itens: response.itens
       });
-      return response;
+      return normalizePrevisaoEntregaFields(response);
     } else {
       console.log('❌ [loadOSFromAPI] Resposta da API não contém dados válidos da OS');
       return null;
@@ -69,7 +85,7 @@ export const loadOSFromLocalStorage = async (osId) => {
       console.log('❌ [loadOSFromLocalStorage] OS não encontrada no localStorage');
     }
     
-    return osEncontrada;
+    return normalizePrevisaoEntregaFields(osEncontrada);
   } catch (error) {
     console.error('❌ [loadOSFromLocalStorage] Erro ao carregar OS do localStorage:', error);
     return null;
@@ -141,6 +157,8 @@ export const saveOSToAPI = async (osData, options = {}) => {
   let savedOSData; // Declarar no escopo da função
   
   try {
+    osData = normalizePrevisaoEntregaFields(osData);
+
     // Função para converter valores com vírgula para ponto decimal
     const sanitizeNumericValue = (value) => {
       if (typeof value === 'string') {
@@ -774,6 +792,7 @@ export const saveOSToAPI = async (osData, options = {}) => {
     
     // Garantir que estamos retornando o objeto OS correto
     savedOSData = response?.data || response;
+    savedOSData = normalizePrevisaoEntregaFields(savedOSData);
     
     // CRÍTICO: Garantir que o id sempre esteja presente no objeto retornado
     // Se o backend retornou o id diretamente na resposta, usar ele
@@ -853,7 +872,7 @@ export const saveOSToAPI = async (osData, options = {}) => {
     // Disparar evento para atualizar páginas que mostram histórico
     window.dispatchEvent(new CustomEvent('osSalva', { detail: savedOSData }));
     
-    return savedOSData;
+    return normalizePrevisaoEntregaFields(savedOSData);
   } catch (error) {
     console.error('❌ Erro ao salvar OS na API:', error);
     console.error('❌ Detalhes do erro:', {
@@ -1024,7 +1043,7 @@ export const loadInitialOSContext = async (locationState, currentOSId, vendedorA
 
     // Se há um ID específico para carregar
     if (currentOSId) {
-      const osData = await loadOS(currentOSId);
+      const osData = normalizePrevisaoEntregaFields(await loadOS(currentOSId));
       if (osData) {
         console.log('✅ [loadInitialOSContext] OS carregada:', {
           id: osData.id,
@@ -1293,6 +1312,8 @@ export const syncOSWithAPI = async (osData) => {
   console.log('🔄 [syncOSWithAPI] Iniciando sincronização da OS:', osData.id_os);
   
   try {
+    osData = normalizePrevisaoEntregaFields(osData);
+
     // Função para extrair funcionario_id quando cliente é um funcionário
     const extractFuncionarioId = (clienteId, clienteInfo) => {
       // Se o cliente_id começa com "funcionario_", extrair o ID numérico
@@ -1323,7 +1344,7 @@ export const syncOSWithAPI = async (osData) => {
       valor_total_os: parseFloat(osData.valor_total_os || 0),
       observacoes_gerais_os: osData.observacoes_gerais_os || '',
       observacoes_cliente_para_nota: osData.observacoes_cliente_para_nota || '',
-      data_prevista_entrega: osData.data_prevista_entrega || null,
+      data_prevista_entrega: osData.data_prevista_entrega || osData.data_previsao_entrega || null,
       data_validade: osData.data_validade || null,
       desconto_geral_valor: parseFloat(osData.desconto_geral_valor || 0),
       desconto_terceirizado_percentual: parseFloat(osData.desconto_terceirizado_percentual || 0),
@@ -1361,14 +1382,14 @@ export const syncOSWithAPI = async (osData) => {
       });
       
       // Atualizar a OS no localStorage com os dados da API
-      const osAtualizada = {
+      const osAtualizada = normalizePrevisaoEntregaFields({
         ...osData,
         id: response.data.id,
         id_os: response.data.id_os,
         synced: true,
         sync_date: formatDateForBackend(),
         isLocalOnly: false
-      };
+      });
       
       await saveOSToLocalStorage(osAtualizada);
       

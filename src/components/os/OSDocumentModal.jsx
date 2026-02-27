@@ -157,6 +157,21 @@ const OSDocumentModal = ({ isOpen, setIsOpen, documento, logoUrl, nomeEmpresa, o
     // Se não tiver ID do banco, retornar "Novo"
     return 'Novo';
   };
+
+  const getPrevisaoEntregaRaw = (doc) => (
+    doc?.data_previsao_entrega ||
+    doc?.data_prevista_entrega ||
+    doc?.previsao_entrega ||
+    null
+  );
+
+  const formatPrevisaoEntrega = (doc) => {
+    const previsaoRaw = getPrevisaoEntregaRaw(doc);
+    if (!previsaoRaw) return '';
+    const data = new Date(previsaoRaw);
+    if (Number.isNaN(data.getTime())) return '';
+    return format(data, 'dd/MM/yyyy');
+  };
   
   const formaPagamentoIcones = {
     Pix: '📱', Dinheiro: '💵', 'Cartão Débito': '💳', 'Cartão Crédito': '💳', Crediário: '🗓️',
@@ -940,18 +955,101 @@ const OSDocumentModal = ({ isOpen, setIsOpen, documento, logoUrl, nomeEmpresa, o
         margin: 4px 0; 
       }
       @media print { 
+        @page {
+          size: A4;
+          margin: 6mm;
+        }
         body { 
           -webkit-print-color-adjust: exact; 
           print-color-adjust: exact; 
+          margin: 0 !important;
+          padding: 4px !important;
+          font-size: 10px !important;
+          line-height: 1.1 !important;
+          zoom: 0.92;
         } 
+        p, h1, h2, h3, h4 {
+          margin-top: 2px !important;
+          margin-bottom: 2px !important;
+          line-height: 1.1 !important;
+        }
+        .header {
+          padding-bottom: 6px !important;
+          margin-bottom: 6px !important;
+        }
+        .company-name {
+          font-size: 16px !important;
+        }
+        .company-details { 
+          font-size: 10px !important; 
+          line-height: 1.15 !important;
+        }
+        .document-title {
+          font-size: 14px !important;
+          margin-bottom: 6px !important;
+        }
+        .section {
+          margin-bottom: 8px !important;
+        }
+        .section-box {
+          padding: 7px !important;
+          margin-bottom: 8px !important;
+          border-radius: 5px !important;
+        }
+        th,
+        td {
+          padding: 4px 6px !important;
+          font-size: 10px !important;
+        }
+        table {
+          margin-bottom: 8px !important;
+        }
+        .section-title {
+          font-size: 13px !important;
+          margin-bottom: 6px !important;
+          padding-bottom: 3px !important;
+        }
+        .section-title-icon {
+          width: 14px !important;
+          height: 14px !important;
+          margin-right: 4px !important;
+        }
+        .section-title-text {
+          margin-left: 4px !important;
+        }
+        .text-xs { font-size: 9px !important; }
+        .text-sm { font-size: 10px !important; }
+        .text-base { font-size: 11px !important; }
+        .text-lg { font-size: 12px !important; }
+        .text-2xl { font-size: 15px !important; }
+        .space-y-2 > * + * { margin-top: 4px !important; }
+        .space-y-3 > * + * { margin-top: 6px !important; }
+        .mt-1, .mt-2, .mt-3, .mt-4, .mt-6 { margin-top: 4px !important; }
+        .mb-2, .mb-3, .mb-4, .mb-6 { margin-bottom: 6px !important; }
+        .pt-2, .pt-3, .pt-4 { padding-top: 4px !important; }
+        .pb-1, .pb-2, .pb-3 { padding-bottom: 4px !important; }
+        .py-2 { padding-top: 4px !important; padding-bottom: 4px !important; }
+        .px-3 { padding-left: 6px !important; padding-right: 6px !important; }
+        .w-10 { width: 28px !important; }
+        .h-10 { height: 28px !important; }
+        .w-14 { width: 38px !important; }
+        .logo { max-height: 54px !important; max-width: 150px !important; }
+        .footer {
+          margin-top: 8px !important;
+          padding-top: 6px !important;
+          font-size: 9px !important;
+        }
+        .footer p { margin: 1px 0 !important; }
         .print-container { 
           box-shadow: none; 
+          max-width: 100% !important;
         }
       }
     `;
 
     // Conteúdo completo do documento - replicando exatamente o visual do modal
     const os = documento;
+    const previsaoEntregaFormatada = formatPrevisaoEntrega(os);
     const tituloModal = os.status_os === 'Finalizada' ? 'Ordem de Serviço Finalizada' : 'Orçamento de Serviço';
     
     // Calcular subtotais dos itens dinamicamente e pré-carregar imagens
@@ -1113,7 +1211,7 @@ const OSDocumentModal = ({ isOpen, setIsOpen, documento, logoUrl, nomeEmpresa, o
                 // Log removido para evitar problemas de performance
                 return nomeAtendente;
               })()}</span></p>
-              ${os.data_previsao_entrega ? `<p class="text-sm mt-1">Previsão Entrega: <span class="font-medium text-gray-700">${format(new Date(os.data_previsao_entrega), 'dd/MM/yyyy')}</span></p>` : ''}
+              ${previsaoEntregaFormatada ? `<p class="text-sm mt-1">Previsão Entrega: <span class="font-medium text-gray-700">${previsaoEntregaFormatada}</span></p>` : ''}
               ${os.maquina_impressao_id ? `<p class="text-sm mt-1">Máquina: <span class="font-medium text-gray-700">${Array.isArray(maquinas) && maquinas.find(m => m.id === os.maquina_impressao_id)?.nome || 'N/A'}</span></p>` : ''}
             </div>
           </header>
@@ -1383,6 +1481,8 @@ const OSDocumentModal = ({ isOpen, setIsOpen, documento, logoUrl, nomeEmpresa, o
     }
   };
 
+  const previsaoEntregaDocumento = formatPrevisaoEntrega(documento);
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="max-w-3xl p-0">
@@ -1413,7 +1513,7 @@ const OSDocumentModal = ({ isOpen, setIsOpen, documento, logoUrl, nomeEmpresa, o
                   // Log removido para evitar loop infinito
                   return nomeAtendente;
                 })()}</span></p>
-                {documento.data_previsao_entrega && <p className="text-sm mt-1">Previsão Entrega: <span className="font-medium text-gray-700">{format(new Date(documento.data_previsao_entrega), 'dd/MM/yyyy')}</span></p>}
+                {previsaoEntregaDocumento && <p className="text-sm mt-1">Previsão Entrega: <span className="font-medium text-gray-700">{previsaoEntregaDocumento}</span></p>}
                 {documento.maquina_impressao_id && <p className="text-sm mt-1">Máquina: <span className="font-medium text-gray-700">{Array.isArray(maquinas) && maquinas.find(m => m.id === documento.maquina_impressao_id)?.nome || 'N/A'}</span></p>}
               </div>
             </header>
