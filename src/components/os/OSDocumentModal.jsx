@@ -39,28 +39,28 @@ const OSDocumentModal = ({ isOpen, setIsOpen, documento, logoUrl, nomeEmpresa, o
           } catch (err) {
             console.warn('Falha ao carregar acabamentos da API:', err);
           }
-          
+
           // IMPORTANTE: Preservar os valores dos itens do banco quando existirem
           // Não recalcular se já existe um valor válido, para evitar alterações indesejadas
           if (documento.itens && Array.isArray(documento.itens)) {
             documento.itens = documento.itens.map(item => {
               // Preservar o valor_total ou subtotal_item do banco quando existir
               const subtotalDoBanco = parseFloat(item.valor_total || item.subtotal_item || 0);
-              
+
               if (subtotalDoBanco > 0) {
                 // Preservar o valor do banco
-                return { 
-                  ...item, 
+                return {
+                  ...item,
                   subtotal_item: subtotalDoBanco,
                   valor_total: subtotalDoBanco // Garantir que valor_total também está correto
                 };
               }
-              
+
               // Só recalcular se realmente não houver valor válido
               if (!item.subtotal_item || item.subtotal_item === 0) {
                 const subtotalCalculado = calcularSubtotalItem(item, acabamentosConfig);
-                return { 
-                  ...item, 
+                return {
+                  ...item,
                   subtotal_item: subtotalCalculado,
                   valor_total: subtotalCalculado // Garantir que valor_total também está correto
                 };
@@ -68,11 +68,11 @@ const OSDocumentModal = ({ isOpen, setIsOpen, documento, logoUrl, nomeEmpresa, o
               return item;
             });
           }
-          
+
           // Empresa Settings via serviço
           try {
             const resp = await empresaService.get();
-            const data = resp?.data || resp || {};
+            const data = resp?.data?.data || resp?.data || resp || {};
             setEmpresaSettings(data);
           } catch (err) {
             console.warn('Falha ao carregar configurações da empresa:', err);
@@ -111,7 +111,7 @@ const OSDocumentModal = ({ isOpen, setIsOpen, documento, logoUrl, nomeEmpresa, o
             console.error('❌ [OSDocumentModal] Erro ao carregar produtos:', errProdutos?.response?.status, errProdutos?.response?.statusText || errProdutos?.message);
             setProdutosCadastrados([]);
           }
-          
+
           // Configurar conta PIX se necessário
           if (documento.pagamentos && Array.isArray(documento.pagamentos)) {
             const pixPayment = documento.pagamentos.find(p => p.metodo === 'Pix' && p.contaBancariaId);
@@ -129,7 +129,7 @@ const OSDocumentModal = ({ isOpen, setIsOpen, documento, logoUrl, nomeEmpresa, o
         }
       }
     };
-    
+
     loadData();
   }, [isOpen, documento, propsEmpresaSettings, propsContasBancarias, propsMaquinas]);
 
@@ -137,7 +137,7 @@ const OSDocumentModal = ({ isOpen, setIsOpen, documento, logoUrl, nomeEmpresa, o
 
   const isFinalizadaPaga = documento.status_os === 'Finalizada' && documento.status_pagamento === 'Pago';
   const isOrcamento = !documento.status_os || documento.status_os === 'Orçamento Salvo';
-  
+
   let tituloModal = isOrcamento ? 'Orçamento de Serviço' : 'Ordem de Serviço';
   if (isFinalizadaPaga) {
     tituloModal = 'Comprovante de Ordem de Serviço';
@@ -146,14 +146,14 @@ const OSDocumentModal = ({ isOpen, setIsOpen, documento, logoUrl, nomeEmpresa, o
   }
 
   const idLabel = isOrcamento ? 'Orçamento/OS Nº:' : 'OS Nº:';
-  
+
   // Função para obter o ID numérico da OS (campo 'id' da tabela ordens_servico)
   const getDisplayId = (doc) => {
     // Usar apenas o ID numérico do banco (campo 'id') - este é o número sequencial (500, 501, etc)
     if (doc?.id && doc.id !== undefined && doc.id !== 'Novo' && doc.id !== 'N/A' && typeof doc.id === 'number') {
       return doc.id;
     }
-    
+
     // Se não tiver ID do banco, retornar "Novo"
     return 'Novo';
   };
@@ -172,7 +172,7 @@ const OSDocumentModal = ({ isOpen, setIsOpen, documento, logoUrl, nomeEmpresa, o
     if (Number.isNaN(data.getTime())) return '';
     return format(data, 'dd/MM/yyyy');
   };
-  
+
   const formaPagamentoIcones = {
     Pix: '📱', Dinheiro: '💵', 'Cartão Débito': '💳', 'Cartão Crédito': '💳', Crediário: '🗓️',
   };
@@ -193,7 +193,7 @@ const OSDocumentModal = ({ isOpen, setIsOpen, documento, logoUrl, nomeEmpresa, o
       }
     });
   }
-  
+
   const saldoPendente = valorTotalOS - totalPago;
   let troco = 0;
   let exibirTaxas = false;
@@ -209,7 +209,7 @@ const OSDocumentModal = ({ isOpen, setIsOpen, documento, logoUrl, nomeEmpresa, o
   }
 
 
-  
+
   // Função para decodificar sequências unicode escapadas
   const decodeUnicodeEscapes = (text) => {
     if (!text || typeof text !== 'string') return text;
@@ -217,7 +217,7 @@ const OSDocumentModal = ({ isOpen, setIsOpen, documento, logoUrl, nomeEmpresa, o
       return String.fromCharCode(parseInt(code, 16));
     });
   };
-  
+
   // Helper síncrono para obter subtotal do item com fallback seguro
   const getSubtotalItemSafe = (item) => {
     const subtotalItem = parseFloat(item?.subtotal_item);
@@ -356,15 +356,15 @@ const OSDocumentModal = ({ isOpen, setIsOpen, documento, logoUrl, nomeEmpresa, o
     if (item.subtotal_item && parseFloat(item.subtotal_item) > 0) {
       return parseFloat(item.subtotal_item);
     }
-    
+
     // Se temos valor_total no banco, usar ele
     if (item.valor_total && parseFloat(item.valor_total) > 0) {
       return parseFloat(item.valor_total);
     }
-    
+
     // Se não, calcular baseado no tipo de item
     const quantidade = parseFloat(item.quantidade || 1);
-    
+
     // Para itens m², calcular área × quantidade × valor unitário
     if (item.tipo_item === 'm2' && item.largura && item.altura) {
       const largura = parseFloat(item.largura);
@@ -373,7 +373,7 @@ const OSDocumentModal = ({ isOpen, setIsOpen, documento, logoUrl, nomeEmpresa, o
       const valorUnitario = parseFloat(item.valor_unitario_m2 || item.valor_unitario || 0);
       return area * quantidade * valorUnitario;
     }
-    
+
     // Para itens em unidade, multiplicar quantidade × valor unitário
     const valorUnitario = parseFloat(item.valor_unitario || 0);
     return quantidade * valorUnitario;
@@ -383,7 +383,7 @@ const OSDocumentModal = ({ isOpen, setIsOpen, documento, logoUrl, nomeEmpresa, o
   const obterMedidasCorretas = (item) => {
     let alturaExibir = safeParseFloat(item.altura, 0);
     let larguraExibir = safeParseFloat(item.largura, 0);
-    
+
     // Se os valores parecem estar em centímetros (maior que 10), converter
     if (alturaExibir > 10 || larguraExibir > 10) {
       // Verificar se tem dados de consumo para confirmar que está em cm
@@ -394,14 +394,14 @@ const OSDocumentModal = ({ isOpen, setIsOpen, documento, logoUrl, nomeEmpresa, o
         larguraExibir = larguraCm / 100;
       }
     }
-    
+
     return { largura: larguraExibir, altura: alturaExibir };
   };
 
   // Função auxiliar para formatar informações de consumo de material de forma compacta (simplificada)
   const formatarConsumoMaterialParaNotinha = (item) => {
     if (!item) return '';
-    
+
     // Valores de consumo sempre vêm em centímetros quando presentes
     // Se o valor for menor que 1, já está em metros, caso contrário está em centímetros
     const converterParaCm = (valor) => {
@@ -421,41 +421,41 @@ const OSDocumentModal = ({ isOpen, setIsOpen, documento, logoUrl, nomeEmpresa, o
     const consumoQuantidadeSolicitada = Math.max(0, safeParseFloat(item.consumo_quantidade_solicitada || item.quantidade, 0));
     const consumoValorUnitarioChapa = safeParseFloat(item.consumo_valor_unitario_chapa, 0);
     const consumoCustoUnitario = safeParseFloat(item.consumo_custo_unitario, 0);
-    
+
     // Verificar se há dados de consumo de material
     const temConsumoMaterial = (consumoLarguraPeca > 0 && consumoAlturaPeca > 0 && consumoQuantidadeSolicitada > 0);
-    
+
     if (!temConsumoMaterial) {
       return '';
     }
-    
+
     let linhas = [];
-    
+
     // Peça - Largura (cm)
     if (consumoLarguraPeca > 0) {
       linhas.push(`Peça - Largura (cm): ${consumoLarguraPeca.toFixed(2).replace('.', ',')}`);
     }
-    
+
     // Peça - Altura (cm)
     if (consumoAlturaPeca > 0) {
       linhas.push(`Peça - Altura (cm): ${consumoAlturaPeca.toFixed(2).replace('.', ',')}`);
     }
-    
+
     // Quantidade Solicitada
     if (consumoQuantidadeSolicitada > 0) {
       linhas.push(`Quantidade Solicitada: ${consumoQuantidadeSolicitada.toFixed(0)}`);
     }
-    
+
     // Valor por m² (R$)
     if (consumoValorUnitarioChapa > 0) {
       linhas.push(`Valor por m² (R$): ${consumoValorUnitarioChapa.toFixed(2).replace('.', ',')}`);
     }
-    
+
     // Custo unitário por peça
     if (consumoCustoUnitario > 0) {
       linhas.push(`Custo unitário por peça: R$ ${consumoCustoUnitario.toFixed(2).replace('.', ',')}`);
     }
-    
+
     return linhas.length > 0 ? linhas.join('\n') : '';
   };
 
@@ -463,12 +463,12 @@ const OSDocumentModal = ({ isOpen, setIsOpen, documento, logoUrl, nomeEmpresa, o
   const resolveImagemItem = (item) => {
     let imagemUrl = null;
     let imagemProdutoFallback = null;
-    
+
     // 1) Arte final anexada diretamente no item
     if (item?.arquivo_item_url) {
       imagemUrl = item.arquivo_item_url;
     }
-    
+
     // 2) Fallbacks do próprio item e do produto/variação
     imagemProdutoFallback = item?.imagem_url
       || item?.imagem_principal
@@ -489,7 +489,7 @@ const OSDocumentModal = ({ isOpen, setIsOpen, documento, logoUrl, nomeEmpresa, o
     // 3) Caso ainda não tenha, tentar buscar nos produtos cadastrados
     if (!imagemProdutoFallback && Array.isArray(produtosCadastrados) && item?.produto_id) {
       const prod = produtosCadastrados.find(p => String(p.id) === String(item.produto_id));
-      
+
       if (prod) {
         let variacaoImg = null;
         if (item?.variacao_selecionada?.id_variacao && Array.isArray(prod.variacoes)) {
@@ -497,7 +497,7 @@ const OSDocumentModal = ({ isOpen, setIsOpen, documento, logoUrl, nomeEmpresa, o
           variacaoImg = varMatch?.imagem_url || varMatch?.imagem || null;
         }
         imagemProdutoFallback = variacaoImg || prod.imagem_principal || prod.imagem_url || prod.imagem;
-        
+
         if (imagemProdutoFallback) {
           console.log('✅ [OSDocumentModal] Imagem encontrada nos produtos cadastrados:', {
             produto_id: prod.id,
@@ -515,7 +515,7 @@ const OSDocumentModal = ({ isOpen, setIsOpen, documento, logoUrl, nomeEmpresa, o
     if (!imagemUrl && imagemProdutoFallback) {
       imagemUrl = imagemProdutoFallback;
     }
-    
+
     return imagemUrl || null;
   };
 
@@ -537,12 +537,12 @@ const OSDocumentModal = ({ isOpen, setIsOpen, documento, logoUrl, nomeEmpresa, o
     if (item.subtotal_item && parseFloat(item.subtotal_item) > 0) {
       return parseFloat(item.subtotal_item);
     }
-    
+
     // Se não, usar valor_total do banco
     if (item.valor_total && parseFloat(item.valor_total) > 0) {
       return parseFloat(item.valor_total);
     }
-    
+
     // Se não, calcular baseado no valor_unitario
     const quantidade = parseFloat(item.quantidade || 1);
     const valorUnitario = parseFloat(item.valor_unitario_m2 || item.valor_unitario || 0);
@@ -553,7 +553,7 @@ const OSDocumentModal = ({ isOpen, setIsOpen, documento, logoUrl, nomeEmpresa, o
   const subtotalCalculadoItens = Array.isArray(documento.itens)
     ? documento.itens.reduce((acc, item) => acc + getSubtotalItemSafe(item), 0)
     : 0;
-  
+
   // Se não há itens ou o subtotal calculado é 0, usar o valor total da OS
   const valorTotalOSModal = parseFloat(documento.valor_total_os || 0);
   const subtotalModal = subtotalCalculadoItens > 0 ? subtotalCalculadoItens : valorTotalOSModal;
@@ -564,16 +564,16 @@ const OSDocumentModal = ({ isOpen, setIsOpen, documento, logoUrl, nomeEmpresa, o
       (acc, item) => {
         const subtotalItem = getSubtotalItemSafe(item);
         const subtotalAcabamentosItem = getSubtotalAcabamentosSafe(item);
-        
+
         // Se não conseguiu calcular acabamentos, usar uma proporção baseada no valor total
         let baseSemAcabamentos = subtotalItem;
         if (subtotalAcabamentosItem > 0) {
           baseSemAcabamentos = subtotalItem - subtotalAcabamentosItem;
         }
-        
+
         // Garantir que não seja negativo
         baseSemAcabamentos = Math.max(0, baseSemAcabamentos);
-        
+
         if (item?.tipo_item === 'm2') {
           acc.subtotalServicosM2 += baseSemAcabamentos;
         } else if (item?.tipo_item === 'unidade') {
@@ -589,10 +589,10 @@ const OSDocumentModal = ({ isOpen, setIsOpen, documento, logoUrl, nomeEmpresa, o
     );
   } else {
     // Se não há itens, usar o valor total da OS como subtotal de serviços
-    totaisQuebrados = { 
-      subtotalServicosM2: valorTotalOSModal, 
-      subtotalProdutosUnidade: 0, 
-      totalAcabamentos: 0 
+    totaisQuebrados = {
+      subtotalServicosM2: valorTotalOSModal,
+      subtotalProdutosUnidade: 0,
+      totalAcabamentos: 0
     };
   }
   const totalOSSemDescontos =
@@ -614,23 +614,23 @@ const OSDocumentModal = ({ isOpen, setIsOpen, documento, logoUrl, nomeEmpresa, o
         resolve('');
         return;
       }
-      
+
       // Se já for base64, retornar como está
       if (url.startsWith('data:')) {
         resolve(url);
         return;
       }
-      
+
       // Tentar primeiro com fetch (melhor para CORS)
       try {
         const response = await fetch(url);
-        
+
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
-        
+
         const blob = await response.blob();
-        
+
         const reader = new FileReader();
         reader.onloadend = () => {
           resolve(reader.result);
@@ -645,12 +645,12 @@ const OSDocumentModal = ({ isOpen, setIsOpen, documento, logoUrl, nomeEmpresa, o
         console.warn('❌ [Modal] Erro no fetch, tentando método alternativo:', error);
         tryImageMethod();
       }
-      
+
       // Método alternativo usando Image()
       function tryImageMethod() {
         const img = new Image();
         img.crossOrigin = 'anonymous';
-        
+
         img.onload = () => {
           try {
             const canvas = document.createElement('canvas');
@@ -665,12 +665,12 @@ const OSDocumentModal = ({ isOpen, setIsOpen, documento, logoUrl, nomeEmpresa, o
             resolve(''); // Retornar vazio em caso de erro
           }
         };
-        
+
         img.onerror = (error) => {
           console.warn('❌ [Modal] Erro ao carregar imagem via Image():', url, error);
           resolve(''); // Retornar vazio em caso de erro
         };
-        
+
         // Adicionar timestamp para evitar cache
         const urlWithTimestamp = url.includes('?') ? `${url}&_t=${Date.now()}` : `${url}?_t=${Date.now()}`;
         img.src = urlWithTimestamp;
@@ -680,7 +680,7 @@ const OSDocumentModal = ({ isOpen, setIsOpen, documento, logoUrl, nomeEmpresa, o
 
   const handlePrint = async () => {
     setIsPrinting(true);
-    
+
     // Abrir uma nova janela com o conteúdo do documento
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
@@ -1051,15 +1051,15 @@ const OSDocumentModal = ({ isOpen, setIsOpen, documento, logoUrl, nomeEmpresa, o
     const os = documento;
     const previsaoEntregaFormatada = formatPrevisaoEntrega(os);
     const tituloModal = os.status_os === 'Finalizada' ? 'Ordem de Serviço Finalizada' : 'Orçamento de Serviço';
-    
+
     // Calcular subtotais dos itens dinamicamente e pré-carregar imagens
     const itensComSubtotais = [];
     let imagensConvertidas = 0;
     let imagensFalhadas = 0;
-    
+
     for (const item of (os.itens || [])) {
       const subtotalCalculado = await calcularSubtotalItemImpressao(item);
-      
+
       // Pré-carregar e converter imagem para base64
       const imagemResolvida = resolveImagemItem(item);
       let imagemBase64 = '';
@@ -1073,10 +1073,10 @@ const OSDocumentModal = ({ isOpen, setIsOpen, documento, logoUrl, nomeEmpresa, o
           console.warn(`❌ [Modal] Falha ao converter imagem do item (${imagensFalhadas})`);
         }
       }
-      
+
       itensComSubtotais.push({ ...item, subtotalCalculado, imagemBase64 });
     }
-    
+
 
     // Converter logo para base64 também
     let logoBase64 = '';
@@ -1091,7 +1091,7 @@ const OSDocumentModal = ({ isOpen, setIsOpen, documento, logoUrl, nomeEmpresa, o
     } else {
       // Sem logo para converter
     }
-    
+
     const itensHTML = itensComSubtotais.map(item => {
       let selecionados = Array.isArray(item.acabamentos_selecionados) ? item.acabamentos_selecionados : null;
       if (!Array.isArray(selecionados)) {
@@ -1115,18 +1115,18 @@ const OSDocumentModal = ({ isOpen, setIsOpen, documento, logoUrl, nomeEmpresa, o
         }
       }
       const linhaObs = detalhesTexto ? `<div style="font-size: 11px; color: #2563eb; margin-top: 2px; font-style: italic;">Obs: ${detalhesTexto}</div>` : '';
-      
+
       // Informações de consumo de material
       const consumoMaterialTexto = formatarConsumoMaterialParaNotinha(item);
       const linhaConsumoMaterial = consumoMaterialTexto ? `<div style="font-size: 11px; color: #059669; margin-top: 2px; white-space: pre-line;">${consumoMaterialTexto}</div>` : '';
-      
+
       return `
       <tr>
         <td>
-          ${item.imagemBase64 ? 
-            `<img src="${item.imagemBase64}" alt="${item.nome_produto || 'Produto'}" style="width: 40px; height: 40px; object-fit: contain; margin-right: 10px;">` : 
-            ''
-          }
+          ${item.imagemBase64 ?
+          `<img src="${item.imagemBase64}" alt="${item.nome_produto || 'Produto'}" style="width: 40px; height: 40px; object-fit: contain; margin-right: 10px;">` :
+          ''
+        }
           <div><strong>${item.nome_servico_produto || item.nome_produto || 'Item sem nome'}</strong></div>
           ${linhaAcab}
           ${linhaConsumoMaterial}
@@ -1136,7 +1136,8 @@ const OSDocumentModal = ({ isOpen, setIsOpen, documento, logoUrl, nomeEmpresa, o
         <td class="text-right">${formatCurrency(item.valor_unitario_m2 || item.valor_unitario)}</td>
         <td class="text-right">${formatCurrency(item.subtotalCalculado)}</td>
       </tr>
-    `;}).join('');
+    `;
+    }).join('');
 
     const pagamentosHTML = os.pagamentos && Array.isArray(os.pagamentos) ? os.pagamentos.map(pag => `
       <div>
@@ -1148,20 +1149,20 @@ const OSDocumentModal = ({ isOpen, setIsOpen, documento, logoUrl, nomeEmpresa, o
     const valorTotal = parseFloat(os.valor_total_os || 0);
     const valorPago = (os.pagamentos || []).reduce((sum, p) => sum + parseFloat(p.valor || 0), 0);
     const saldoPendente = valorTotal - valorPago;
-    
+
     // Calcular subtotal dos itens (sem descontos) - usando cálculo dinâmico
     const subtotalItens = itensComSubtotais.reduce((sum, item) => sum + item.subtotalCalculado, 0);
-    
+
     // Verificar se há desconto terceirizado
     const descontoTerceirizadoPercentual = parseFloat(os.desconto_terceirizado_percentual || 0);
     const descontoTerceirizadoValor = (subtotalItens * descontoTerceirizadoPercentual) / 100;
     const temDescontoTerceirizado = descontoTerceirizadoPercentual > 0;
-    
+
     // Verificar se há desconto geral
     const descontoGeralTipo = os.desconto_geral_tipo || 'percentual';
     const descontoGeralValor = parseFloat(os.desconto_geral_valor || 0);
     const temDescontoGeral = descontoGeralValor > 0;
-    
+
     // Calcular desconto geral
     let descontoGeralCalculado = 0;
     if (temDescontoGeral) {
@@ -1172,7 +1173,7 @@ const OSDocumentModal = ({ isOpen, setIsOpen, documento, logoUrl, nomeEmpresa, o
         descontoGeralCalculado = descontoGeralValor;
       }
     }
-    
+
     // Verificar se há frete
     const freteValor = parseFloat(os.frete_valor || 0);
     const temFrete = freteValor > 0;
@@ -1197,8 +1198,13 @@ const OSDocumentModal = ({ isOpen, setIsOpen, documento, logoUrl, nomeEmpresa, o
               <h2 class="company-name">${empresaSettings.nome_fantasia || empresaSettings.nomeFantasia || nomeEmpresa}</h2>
               <div class="company-details">
                 ${empresaSettings.razao_social || empresaSettings.razaoSocial ? `<p>${empresaSettings.razao_social || empresaSettings.razaoSocial}</p>` : ''}
-                <p>CNPJ: ${empresaSettings.cnpj}</p>
-                <p>Tel: ${empresaSettings.telefone} | Email: ${empresaSettings.email}</p>
+                ${empresaSettings.cnpj ? `<p>CNPJ: ${empresaSettings.cnpj}</p>` : ''}
+                <p>
+                  ${[
+                    empresaSettings.telefone || empresaSettings.whatsapp ? `Tel/Zap: ${empresaSettings.telefone || empresaSettings.whatsapp}` : null,
+                    empresaSettings.email ? `Email: ${empresaSettings.email}` : null
+                  ].filter(Boolean).join(' | ')}
+                </p>
                 ${empresaSettings.endereco_completo || empresaSettings.enderecoCompleto ? `<p>${empresaSettings.endereco_completo || empresaSettings.enderecoCompleto}</p>` : ''}
               </div>
             </div>
@@ -1207,10 +1213,10 @@ const OSDocumentModal = ({ isOpen, setIsOpen, documento, logoUrl, nomeEmpresa, o
               <p class="text-sm">Data Emissão: ${format(new Date(os.data_criacao), 'dd/MM/yyyy HH:mm')}</p>
               ${os.data_finalizacao_os ? `<p class="text-sm">Data Finalização: ${format(new Date(os.data_finalizacao_os), 'dd/MM/yyyy HH:mm')}</p>` : ''}
               <p class="text-sm mt-1">Atendente: <span class="font-medium text-gray-700">${(() => {
-                const nomeAtendente = os.vendedor_nome || vendedorAtual?.nome || 'Não informado';
-                // Log removido para evitar problemas de performance
-                return nomeAtendente;
-              })()}</span></p>
+        const nomeAtendente = os.vendedor_nome || vendedorAtual?.nome || 'Não informado';
+        // Log removido para evitar problemas de performance
+        return nomeAtendente;
+      })()}</span></p>
               ${previsaoEntregaFormatada ? `<p class="text-sm mt-1">Previsão Entrega: <span class="font-medium text-gray-700">${previsaoEntregaFormatada}</span></p>` : ''}
               ${os.maquina_impressao_id ? `<p class="text-sm mt-1">Máquina: <span class="font-medium text-gray-700">${Array.isArray(maquinas) && maquinas.find(m => m.id === os.maquina_impressao_id)?.nome || 'N/A'}</span></p>` : ''}
             </div>
@@ -1234,10 +1240,10 @@ const OSDocumentModal = ({ isOpen, setIsOpen, documento, logoUrl, nomeEmpresa, o
               <span class="section-title-text">Vendedor/Atendente</span>
             </h3>
             <p class="font-medium text-gray-900 text-lg">${(() => {
-              const nomeVendedor = os.vendedor_nome || vendedorAtual?.nome || 'Não informado';
-              // Log removido para evitar problemas de performance
-              return nomeVendedor;
-            })()}</p>
+        const nomeVendedor = os.vendedor_nome || vendedorAtual?.nome || 'Não informado';
+        // Log removido para evitar problemas de performance
+        return nomeVendedor;
+      })()}</p>
             ${vendedorAtual?.email ? `<p class="text-sm text-gray-600 mt-1">Email: ${vendedorAtual.email}</p>` : ''}
             ${vendedorAtual?.telefone ? `<p class="text-sm text-gray-600">Telefone: ${vendedorAtual.telefone}</p>` : ''}
           </div>
@@ -1259,63 +1265,64 @@ const OSDocumentModal = ({ isOpen, setIsOpen, documento, logoUrl, nomeEmpresa, o
               </thead>
               <tbody>
                 ${itensComSubtotais.map((item, index) => {
-                  // Resolver lista de acabamentos para exibição (aceita \`acabamentos_selecionados\` ou \`acabamentos\` string/array)
-                  let selecionados = Array.isArray(item.acabamentos_selecionados) ? item.acabamentos_selecionados : null;
-                  if (!Array.isArray(selecionados)) {
-                    if (Array.isArray(item.acabamentos)) {
-                      selecionados = item.acabamentos;
-                    } else if (typeof item.acabamentos === 'string') {
-                      try { selecionados = JSON.parse(item.acabamentos); } catch { selecionados = []; }
-                    } else {
-                      selecionados = [];
-                    }
-                  }
-                  const nomesAcab = Array.isArray(selecionados) ? selecionados.map(a => {
-                    if (a?.nome) return a.nome;
-                    const def = Array.isArray(acabamentosConfigState) ? acabamentosConfigState.find(d => String(d.id) === String(a?.id)) : null;
-                    return def?.nome_acabamento || null;
-                  }).filter(Boolean) : [];
-                  return `
+        // Resolver lista de acabamentos para exibição (aceita \`acabamentos_selecionados\` ou \`acabamentos\` string/array)
+        let selecionados = Array.isArray(item.acabamentos_selecionados) ? item.acabamentos_selecionados : null;
+        if (!Array.isArray(selecionados)) {
+          if (Array.isArray(item.acabamentos)) {
+            selecionados = item.acabamentos;
+          } else if (typeof item.acabamentos === 'string') {
+            try { selecionados = JSON.parse(item.acabamentos); } catch { selecionados = []; }
+          } else {
+            selecionados = [];
+          }
+        }
+        const nomesAcab = Array.isArray(selecionados) ? selecionados.map(a => {
+          if (a?.nome) return a.nome;
+          const def = Array.isArray(acabamentosConfigState) ? acabamentosConfigState.find(d => String(d.id) === String(a?.id)) : null;
+          return def?.nome_acabamento || null;
+        }).filter(Boolean) : [];
+        return `
                   <tr class="border-b border-gray-200 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}"}>
                     <td class="py-2 px-3">
-                      ${item.imagemBase64 ? 
-                        `<img src="${item.imagemBase64}" alt="${item.nome_servico_produto || item.nome_produto || 'Produto'}" class="w-10 h-10 object-contain rounded">` : 
-                        '<span class="w-10 h-10 flex items-center justify-center bg-gray-100 rounded">📦</span>'
-                      }
+                      ${item.imagemBase64 ?
+            `<img src="${item.imagemBase64}" alt="${item.nome_servico_produto || item.nome_produto || 'Produto'}" class="w-10 h-10 object-contain rounded">` :
+            '<span class="w-10 h-10 flex items-center justify-center bg-gray-100 rounded">📦</span>'
+          }
                     </td>
                     <td class="py-2 px-3">
                       <span class="font-medium text-gray-800">${item.nome_servico_produto || item.nome_produto}</span>
                       ${item.tipo_item === 'm2' ? (() => {
-                        const medidas = obterMedidasCorretas(item);
-                        return `<span class="text-xs text-gray-500 ml-1">(${medidas.largura.toFixed(2).replace('.',',')}m x ${medidas.altura.toFixed(2).replace('.',',')}m)</span>`;
-                      })() : ''}
+            const medidas = obterMedidasCorretas(item);
+            return `<span class="text-xs text-gray-500 ml-1">(${medidas.largura.toFixed(2).replace('.', ',')}m x ${medidas.altura.toFixed(2).replace('.', ',')}m)</span>`;
+          })() : ''}
                       ${nomesAcab.length > 0 ? `<span class="block text-xs text-gray-500 mt-0.5">Acabamentos: ${nomesAcab.join(', ')}</span>` : ''}
                       ${(() => {
-                        const consumoMaterialTexto = formatarConsumoMaterialParaNotinha(item);
-                        return consumoMaterialTexto ? `<span class="block text-xs text-green-600 mt-0.5" style="white-space: pre-line;">${consumoMaterialTexto}</span>` : '';
-                      })()}
+            const consumoMaterialTexto = formatarConsumoMaterialParaNotinha(item);
+            return consumoMaterialTexto ? `<span class="block text-xs text-green-600 mt-0.5" style="white-space: pre-line;">${consumoMaterialTexto}</span>` : '';
+          })()}
                       ${(() => {
-                        let detalhesTexto = '';
-                        if (item.detalhes) {
-                          if (Array.isArray(item.detalhes)) {
-                            detalhesTexto = item.detalhes.map(d => decodeUnicodeEscapes(d)).join(' ');
-                          } else {
-                            detalhesTexto = decodeUnicodeEscapes(item.detalhes);
-                          }
-                        }
-                        return detalhesTexto ? `<span class="block text-xs text-blue-600 italic mt-0.5">Obs: ${detalhesTexto}</span>` : '';
-                      })()}
+            let detalhesTexto = '';
+            if (item.detalhes) {
+              if (Array.isArray(item.detalhes)) {
+                detalhesTexto = item.detalhes.map(d => decodeUnicodeEscapes(d)).join(' ');
+              } else {
+                detalhesTexto = decodeUnicodeEscapes(item.detalhes);
+              }
+            }
+            return detalhesTexto ? `<span class="block text-xs text-blue-600 italic mt-0.5">Obs: ${detalhesTexto}</span>` : '';
+          })()}
                       ${item.variacao_selecionada?.nome ? `<span class="block text-xs text-gray-500 mt-0.5">Variação: ${item.variacao_selecionada.nome}</span>` : ''}
                     </td>
                     <td class="text-center py-2 px-3">${item.quantidade}${item.tipo_item === 'm2' ? (() => {
-                        const medidas = obterMedidasCorretas(item);
-                        const areaTotal = medidas.altura * medidas.largura * parseInt(item.quantidade || 1);
-                        return ` (${areaTotal.toFixed(2).replace('.',',')}m²)`;
-                      })() : ''}</td>
+            const medidas = obterMedidasCorretas(item);
+            const areaTotal = medidas.altura * medidas.largura * parseInt(item.quantidade || 1);
+            return ` (${areaTotal.toFixed(2).replace('.', ',')}m²)`;
+          })() : ''}</td>
                     <td class="text-right py-2 px-3">${formatCurrency(parseFloat(item.valor_unitario_m2 || item.valor_unitario || 0))}</td>
                     <td class="text-right py-2 px-3 font-medium">${formatCurrency(item.subtotalCalculado)}</td>
                   </tr>
-                `;}).join('')}
+                `;
+      }).join('')}
               </tbody>
             </table>
           </div>
@@ -1370,11 +1377,11 @@ const OSDocumentModal = ({ isOpen, setIsOpen, documento, logoUrl, nomeEmpresa, o
                   ${p.maquinaInfo ? `<p class="text-xs text-gray-500 ml-6">Máquina: ${p.maquinaInfo.nome}</p>` : ''}
                   ${p.taxaInfo ? `
                     <div class="text-xs text-gray-500 ml-6">
-                      <p>Parcelas: ${p.parcelas}x (Taxa: ${parseFloat(p.taxaInfo.valor).toFixed(2).replace('.',',')}%)</p>
+                      <p>Parcelas: ${p.parcelas}x (Taxa: ${parseFloat(p.taxaInfo.valor).toFixed(2).replace('.', ',')}%)</p>
                       <p>Valor Original: ${formatCurrency(p.valorOriginal)} | Taxa: ${formatCurrency(parseFloat(p.valorFinal || p.valor) - parseFloat(p.valorOriginal || 0))}</p>
                     </div>
                   ` : ''}
-                  ${p.metodo === 'Pix' && p.contaBancariaId && contasBancarias.length > 0 ? `<p class="text-xs text-gray-500 ml-6">Conta PIX: ${Array.isArray(contasBancarias) ? contasBancarias.find(c=>c.id === p.contaBancariaId)?.nomeBanco || 'N/A' : 'N/A'} (${Array.isArray(contasBancarias) ? contasBancarias.find(c=>c.id === p.contaBancariaId)?.chavePix || 'N/A' : 'N/A'})</p>` : ''}
+                  ${p.metodo === 'Pix' && p.contaBancariaId && contasBancarias.length > 0 ? `<p class="text-xs text-gray-500 ml-6">Conta PIX: ${Array.isArray(contasBancarias) ? contasBancarias.find(c => c.id === p.contaBancariaId)?.nomeBanco || 'N/A' : 'N/A'} (${Array.isArray(contasBancarias) ? contasBancarias.find(c => c.id === p.contaBancariaId)?.chavePix || 'N/A' : 'N/A'})</p>` : ''}
                 </div>
               `).join('')}
               <div class="mt-3 pt-2 border-t border-gray-300">
@@ -1434,12 +1441,12 @@ const OSDocumentModal = ({ isOpen, setIsOpen, documento, logoUrl, nomeEmpresa, o
     printWindow.document.open();
     printWindow.document.write(printContent);
     printWindow.document.close();
-    
+
     // Quando a impressão for concluída ou cancelada
     printWindow.onafterprint = () => {
       setIsPrinting(false);
     };
-    
+
     // Se algo der errado, garantir que o estado de impressão seja resetado
     setTimeout(() => {
       setIsPrinting(false);
@@ -1459,22 +1466,22 @@ const OSDocumentModal = ({ isOpen, setIsOpen, documento, logoUrl, nomeEmpresa, o
           console.error("Erro ao gerar PDF com html2canvas:", error);
         }
       }
-      
+
       // Se html2canvas falhar ou documentRef não estiver disponível, usar PDF baseado em texto
       // Usar empresaSettings já carregados no estado
-      
+
       await generateTextBasedPdf(documento, empresaSettings, `OS_${documento?.id || 'documento'}.pdf`, logoUrl);
-      toast({ 
-        title: "PDF Gerado (Modo Alternativo)", 
-        description: `O PDF da OS foi baixado usando modo alternativo.` 
+      toast({
+        title: "PDF Gerado (Modo Alternativo)",
+        description: `O PDF da OS foi baixado usando modo alternativo.`
       });
-      
+
     } catch (error) {
       console.error("Erro ao gerar PDF:", error);
-      toast({ 
-        title: "Erro ao Gerar PDF", 
-        description: error.message || "Ocorreu um problema ao tentar gerar o PDF. Tente novamente.", 
-        variant: "destructive" 
+      toast({
+        title: "Erro ao Gerar PDF",
+        description: error.message || "Ocorreu um problema ao tentar gerar o PDF. Tente novamente.",
+        variant: "destructive"
       });
     } finally {
       setIsGeneratingPdf(false);
@@ -1487,21 +1494,27 @@ const OSDocumentModal = ({ isOpen, setIsOpen, documento, logoUrl, nomeEmpresa, o
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="max-w-3xl p-0">
         <DialogHeader className="p-6 pb-0">
-                          <DialogTitle>{tituloModal} - {getDisplayId(documento)}</DialogTitle>
+          <DialogTitle>{tituloModal} - {getDisplayId(documento)}</DialogTitle>
         </DialogHeader>
         <ScrollArea className="max-h-[75vh]">
           <div className="p-8 bg-white text-gray-800 printable-content font-sans" ref={documentRef}>
-            
+
             <header className="flex justify-between items-start mb-6 pb-4 border-b border-gray-300">
               <div className="max-w-[60%]">
-                {logoUrl ? 
+                {logoUrl ?
                   <img src={getImageUrl(logoUrl)} alt="Logo Empresa" className="h-20 mb-3 object-contain" />
                   : <div className="h-20 w-48 bg-gray-200 flex items-center justify-center text-gray-500 mb-3 text-sm">LOGO EMPRESA</div>
                 }
                 <h2 className="text-2xl font-bold text-gray-900">{empresaSettings.nome_fantasia || empresaSettings.nomeFantasia || nomeEmpresa}</h2>
                 <p className="text-xs text-gray-600">{empresaSettings.razao_social || empresaSettings.razaoSocial}</p>
-                <p className="text-xs text-gray-600">CNPJ: {empresaSettings.cnpj}</p>
-                <p className="text-xs text-gray-600">Tel: {empresaSettings.telefone} | Email: {empresaSettings.email}</p>
+                {empresaSettings.cnpj && <p className="text-xs text-gray-600">CNPJ: {empresaSettings.cnpj}</p>}
+                {(empresaSettings.telefone || empresaSettings.email) && (
+                  <p className="text-xs text-gray-600">
+                    {empresaSettings.telefone && `Tel: ${empresaSettings.telefone}`}
+                    {empresaSettings.telefone && empresaSettings.email && ' | '}
+                    {empresaSettings.email && `Email: ${empresaSettings.email}`}
+                  </p>
+                )}
                 <p className="text-xs text-gray-600">{empresaSettings.endereco_completo || empresaSettings.enderecoCompleto}</p>
               </div>
               <div className="text-right">
@@ -1519,14 +1532,14 @@ const OSDocumentModal = ({ isOpen, setIsOpen, documento, logoUrl, nomeEmpresa, o
             </header>
 
             <div className="mb-6 p-4 border border-gray-200 rounded-lg bg-gray-50">
-              <h3 className="font-semibold text-gray-800 mb-2 flex items-center"><UserCircle size={20} className="mr-2 text-primary"/>Dados do Cliente</h3>
+              <h3 className="font-semibold text-gray-800 mb-2 flex items-center"><UserCircle size={20} className="mr-2 text-primary" />Dados do Cliente</h3>
               <p className="font-medium text-gray-900">{documento.cliente?.nome || documento.cliente?.nome_completo || documento.cliente_info?.nome_completo || documento.cliente_info?.nome || documento.cliente_nome_manual}</p>
               <p className="text-sm text-gray-600">CPF/CNPJ: {documento.cliente?.cpf_cnpj || documento.cliente_info?.cpf_cnpj || 'Não informado'}</p>
               <p className="text-sm text-gray-600">Telefone: {documento.cliente?.telefone_principal || documento.cliente?.telefone || documento.cliente_info?.telefone_principal || documento.cliente_info?.telefone || 'Não informado'}</p>
               <p className="text-sm text-gray-600">Email: {documento.cliente?.email || documento.cliente_info?.email || 'Não informado'}</p>
               {parseFloat(documento.desconto_terceirizado_percentual || 0) > 0 && (
                 <p className="text-sm text-blue-600 font-semibold mt-2 flex items-center">
-                  🏢 Cliente Terceirizado - Desconto de {parseFloat(documento.desconto_terceirizado_percentual || 0).toFixed(2).replace('.',',')}% aplicado
+                  🏢 Cliente Terceirizado - Desconto de {parseFloat(documento.desconto_terceirizado_percentual || 0).toFixed(2).replace('.', ',')}% aplicado
                 </p>
               )}
             </div>
@@ -1534,7 +1547,7 @@ const OSDocumentModal = ({ isOpen, setIsOpen, documento, logoUrl, nomeEmpresa, o
             {/* Card do Vendedor */}
             <div className="mb-6 p-4 border border-gray-200 rounded-lg bg-blue-50">
               <h3 className="font-semibold text-gray-800 mb-2 flex items-center">
-                <UserCircle size={20} className="mr-2 text-blue-600"/>
+                <UserCircle size={20} className="mr-2 text-blue-600" />
                 Vendedor/Atendente
               </h3>
               <p className="font-medium text-gray-900 text-lg">
@@ -1553,7 +1566,7 @@ const OSDocumentModal = ({ isOpen, setIsOpen, documento, logoUrl, nomeEmpresa, o
             </div>
 
             <div className="mb-6">
-              <h3 className="font-semibold text-gray-800 mb-2 pb-1 border-b border-gray-300 flex items-center"><ShoppingBag size={20} className="mr-2 text-primary"/>Itens do Serviço/Pedido</h3>
+              <h3 className="font-semibold text-gray-800 mb-2 pb-1 border-b border-gray-300 flex items-center"><ShoppingBag size={20} className="mr-2 text-primary" />Itens do Serviço/Pedido</h3>
               <table className="w-full text-sm mb-4">
                 <thead className="bg-gray-100">
                   <tr className="border-b border-gray-300">
@@ -1567,10 +1580,10 @@ const OSDocumentModal = ({ isOpen, setIsOpen, documento, logoUrl, nomeEmpresa, o
                 <tbody>
                   {documento.itens && Array.isArray(documento.itens) && documento.itens.map((item, index) => (
                     <tr key={item.id_item_os || index} className={`border-b border-gray-200 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}`}>
-                       <td className="py-2 px-3">
+                      <td className="py-2 px-3">
                         {(() => {
                           const imgPath = imagensItensResolvidas[index];
-                          if (!imgPath) return <PackageIcon size={24} className="text-gray-400 mx-auto"/>;
+                          if (!imgPath) return <PackageIcon size={24} className="text-gray-400 mx-auto" />;
                           const imgSrc = getImageUrl(imgPath);
                           return (
                             <img
@@ -1589,75 +1602,75 @@ const OSDocumentModal = ({ isOpen, setIsOpen, documento, logoUrl, nomeEmpresa, o
                         })()}
                       </td>
                       <td className="py-2 px-3">
-                          <span className="font-medium text-gray-800">{item.nome_servico_produto || item.nome_produto}</span>
-                          {item.tipo_item === 'm2' && (() => {
-                            // Se tem dados de consumo, usar os valores convertidos corretamente
-                            // Caso contrário, usar os valores diretos (já em metros)
-                            let alturaExibir = safeParseFloat(item.altura, 0);
-                            let larguraExibir = safeParseFloat(item.largura, 0);
-                            
-                            // Se os valores parecem estar em centímetros (maior que 10), converter
-                            if (alturaExibir > 10 || larguraExibir > 10) {
-                              // Verificar se tem dados de consumo para confirmar que está em cm
-                              if (item.consumo_largura_peca || item.consumo_altura_peca) {
-                                const alturaCm = safeParseFloat(item.consumo_altura_peca || item.altura, 0);
-                                const larguraCm = safeParseFloat(item.consumo_largura_peca || item.largura, 0);
-                                alturaExibir = alturaCm / 100;
-                                larguraExibir = larguraCm / 100;
-                              }
+                        <span className="font-medium text-gray-800">{item.nome_servico_produto || item.nome_produto}</span>
+                        {item.tipo_item === 'm2' && (() => {
+                          // Se tem dados de consumo, usar os valores convertidos corretamente
+                          // Caso contrário, usar os valores diretos (já em metros)
+                          let alturaExibir = safeParseFloat(item.altura, 0);
+                          let larguraExibir = safeParseFloat(item.largura, 0);
+
+                          // Se os valores parecem estar em centímetros (maior que 10), converter
+                          if (alturaExibir > 10 || larguraExibir > 10) {
+                            // Verificar se tem dados de consumo para confirmar que está em cm
+                            if (item.consumo_largura_peca || item.consumo_altura_peca) {
+                              const alturaCm = safeParseFloat(item.consumo_altura_peca || item.altura, 0);
+                              const larguraCm = safeParseFloat(item.consumo_largura_peca || item.largura, 0);
+                              alturaExibir = alturaCm / 100;
+                              larguraExibir = larguraCm / 100;
                             }
-                            
-                            return <span className="text-xs text-gray-500 ml-1">({larguraExibir.toFixed(2).replace('.',',')}m x {alturaExibir.toFixed(2).replace('.',',')}m)</span>;
-                          })()}
-                          {(() => {
-                            // Resolver lista de acabamentos para exibição (aceita `acabamentos_selecionados` ou `acabamentos` string/array)
-                            let selecionados = Array.isArray(item.acabamentos_selecionados) ? item.acabamentos_selecionados : null;
-                            if (!Array.isArray(selecionados)) {
-                              if (Array.isArray(item.acabamentos)) {
-                                selecionados = item.acabamentos;
-                              } else if (typeof item.acabamentos === 'string') {
-                                try { selecionados = JSON.parse(item.acabamentos); } catch { selecionados = []; }
-                              } else {
-                                selecionados = [];
-                              }
+                          }
+
+                          return <span className="text-xs text-gray-500 ml-1">({larguraExibir.toFixed(2).replace('.', ',')}m x {alturaExibir.toFixed(2).replace('.', ',')}m)</span>;
+                        })()}
+                        {(() => {
+                          // Resolver lista de acabamentos para exibição (aceita `acabamentos_selecionados` ou `acabamentos` string/array)
+                          let selecionados = Array.isArray(item.acabamentos_selecionados) ? item.acabamentos_selecionados : null;
+                          if (!Array.isArray(selecionados)) {
+                            if (Array.isArray(item.acabamentos)) {
+                              selecionados = item.acabamentos;
+                            } else if (typeof item.acabamentos === 'string') {
+                              try { selecionados = JSON.parse(item.acabamentos); } catch { selecionados = []; }
+                            } else {
+                              selecionados = [];
                             }
-                            const nomesAcab = Array.isArray(selecionados) ? selecionados.map(a => {
-                              if (a?.nome) return a.nome;
-                              const def = Array.isArray(acabamentosConfigState) ? acabamentosConfigState.find(d => String(d.id) === String(a?.id)) : null;
-                              return def?.nome_acabamento || null;
-                            }).filter(Boolean) : [];
-                            return nomesAcab.length > 0 ? (
-                              <span className="block text-xs text-gray-500 mt-0.5">Acabamentos: {nomesAcab.join(', ')}</span>
-                            ) : null;
-                          })()}
-                          {(() => {
-                            const consumoMaterialTexto = formatarConsumoMaterialParaNotinha(item);
-                            return consumoMaterialTexto ? (
-                              <span className="block text-xs text-green-600 mt-0.5 whitespace-pre-line">{consumoMaterialTexto}</span>
-                            ) : null;
-                          })()}
-                          {(() => {
-                            let detalhesTexto = '';
-                            if (item.detalhes) {
-                              if (Array.isArray(item.detalhes)) {
-                                detalhesTexto = item.detalhes.map(d => decodeUnicodeEscapes(d)).join(' ');
-                              } else {
-                                detalhesTexto = decodeUnicodeEscapes(item.detalhes);
-                              }
+                          }
+                          const nomesAcab = Array.isArray(selecionados) ? selecionados.map(a => {
+                            if (a?.nome) return a.nome;
+                            const def = Array.isArray(acabamentosConfigState) ? acabamentosConfigState.find(d => String(d.id) === String(a?.id)) : null;
+                            return def?.nome_acabamento || null;
+                          }).filter(Boolean) : [];
+                          return nomesAcab.length > 0 ? (
+                            <span className="block text-xs text-gray-500 mt-0.5">Acabamentos: {nomesAcab.join(', ')}</span>
+                          ) : null;
+                        })()}
+                        {(() => {
+                          const consumoMaterialTexto = formatarConsumoMaterialParaNotinha(item);
+                          return consumoMaterialTexto ? (
+                            <span className="block text-xs text-green-600 mt-0.5 whitespace-pre-line">{consumoMaterialTexto}</span>
+                          ) : null;
+                        })()}
+                        {(() => {
+                          let detalhesTexto = '';
+                          if (item.detalhes) {
+                            if (Array.isArray(item.detalhes)) {
+                              detalhesTexto = item.detalhes.map(d => decodeUnicodeEscapes(d)).join(' ');
+                            } else {
+                              detalhesTexto = decodeUnicodeEscapes(item.detalhes);
                             }
-                            return detalhesTexto ? (
-                              <span className="block text-xs text-blue-600 italic mt-0.5">Obs: {detalhesTexto}</span>
-                            ) : null;
-                          })()}
-                           {item.variacao_selecionada?.nome && (
-                            <span className="block text-xs text-gray-500 mt-0.5">Variação: {item.variacao_selecionada.nome}</span>
-                          )}
+                          }
+                          return detalhesTexto ? (
+                            <span className="block text-xs text-blue-600 italic mt-0.5">Obs: {detalhesTexto}</span>
+                          ) : null;
+                        })()}
+                        {item.variacao_selecionada?.nome && (
+                          <span className="block text-xs text-gray-500 mt-0.5">Variação: {item.variacao_selecionada.nome}</span>
+                        )}
                       </td>
                       <td className="text-center py-2 px-3">{item.quantidade}{item.tipo_item === 'm2' ? (() => {
                         // Calcular área usando os mesmos valores corrigidos
                         let alturaArea = safeParseFloat(item.altura, 0);
                         let larguraArea = safeParseFloat(item.largura, 0);
-                        
+
                         // Se os valores parecem estar em centímetros (maior que 10), converter
                         if (alturaArea > 10 || larguraArea > 10) {
                           if (item.consumo_largura_peca || item.consumo_altura_peca) {
@@ -1667,9 +1680,9 @@ const OSDocumentModal = ({ isOpen, setIsOpen, documento, logoUrl, nomeEmpresa, o
                             larguraArea = larguraCm / 100;
                           }
                         }
-                        
+
                         const areaTotal = alturaArea * larguraArea * parseInt(item.quantidade || 1);
-                        return ` (${areaTotal.toFixed(2).replace('.',',')}m²)`;
+                        return ` (${areaTotal.toFixed(2).replace('.', ',')}m²)`;
                       })() : ''}</td>
                       {/* <td className="text-right py-2 px-3">{formatCurrency(parseFloat(item.valor_unitario_m2 || item.valor_unitario || 0))}</td> */}
                       <td className="text-right py-2 px-3 font-medium">{formatCurrency(getSubtotalItemSafe(item))}</td>
@@ -1680,128 +1693,128 @@ const OSDocumentModal = ({ isOpen, setIsOpen, documento, logoUrl, nomeEmpresa, o
             </div>
 
             <div className="mb-6 p-4 border border-gray-200 rounded-lg bg-gray-50">
-                <h3 className="font-semibold text-gray-800 mb-3 flex items-center"><Percent size={20} className="mr-2 text-primary"/>Resumo Financeiro</h3>
-                <div className="space-y-2">
-                    <div className="flex justify-between text-gray-700">
-                        <span>Subtotal Serviços (m²):</span>
-                        <span className="font-medium">{formatCurrency(totaisQuebrados.subtotalServicosM2)}</span>
-                    </div>
-                    <div className="flex justify-between text-gray-700">
-                        <span>Subtotal Produtos (Un):</span>
-                        <span className="font-medium">{formatCurrency(totaisQuebrados.subtotalProdutosUnidade)}</span>
-                    </div>
-                    <div className="flex justify-between text-gray-700">
-                        <span>Total Acabamentos:</span>
-                        <span className="font-medium">{formatCurrency(totaisQuebrados.totalAcabamentos)}</span>
-                    </div>
-                    <div className="flex justify-between text-gray-700">
-                        <span>Total OS (sem desc.):</span>
-                        <span className="font-semibold">{formatCurrency(totalOSSemDescontos)}</span>
-                    </div>
-                    <div className="flex justify-between text-green-600">
-                        <span className="flex items-center"><span className="mr-2">🚚</span>Frete:</span>
-                        <span className="font-medium">{formatCurrency(freteModal)}</span>
-                    </div>
-                    <div className="flex justify-between text-red-600">
-                        <span className="flex items-center"><span className="mr-2">🏷️</span>Desconto Geral {documento.desconto_geral_tipo === 'percentual' ? `(${(parseFloat(documento.desconto_geral_valor || 0) || 0).toFixed(2).replace('.',',')}%)` : '(Valor Fixo)'}:</span>
-                        <span className="font-medium">- {formatCurrency(descGeralCalculadoModal)}</span>
-                    </div>
-                    {parseFloat(documento.desconto_terceirizado_percentual || 0) > 0 && (
-                      <div className="flex justify-between text-blue-600">
-                        <span className="flex items-center"><span className="mr-2">🏢</span>Desconto Terceirizado ({parseFloat(documento.desconto_terceirizado_percentual || 0).toFixed(2).replace('.',',')}%):</span>
-                        <span className="font-medium">- {formatCurrency(descTerceirizadoValorModal)}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between text-base font-bold border-t border-gray-300 pt-2 mt-2 text-gray-900">
-                        <span>TOTAL FINAL:</span>
-                        <span>{formatCurrency(totalFinalModal)}</span>
-                    </div>
-                    {!isOrcamento && (
-                      <div className="mt-3 pt-2 border-t border-gray-300">
-                        <div className="flex justify-between text-sm font-medium text-gray-700">
-                          <span>Total Pago:</span>
-                          <span>{formatCurrency(totalPago)}</span>
-                        </div>
-                        {exibirTaxas && totalTaxasCartao > 0.009 && (
-                          <div className="flex justify-between text-sm font-medium text-blue-600 mt-1">
-                            <span>Taxas de Cartão:</span>
-                            <span>{formatCurrency(totalTaxasCartao)}</span>
-                          </div>
-                        )}
-                        {saldoPendente > 0.009 && (
-                          <div className="flex justify-between text-sm font-bold text-red-600 mt-1">
-                            <span>Valor Pendente:</span>
-                            <span>{formatCurrency(saldoPendente)}</span>
-                          </div>
-                        )}
-                        {troco > 0.009 && (
-                          <div className="flex justify-between text-sm font-bold text-green-600 mt-1">
-                            <span>Troco:</span>
-                            <span>{formatCurrency(troco)}</span>
-                          </div>
-                        )}
-                      </div>
-                    )}
+              <h3 className="font-semibold text-gray-800 mb-3 flex items-center"><Percent size={20} className="mr-2 text-primary" />Resumo Financeiro</h3>
+              <div className="space-y-2">
+                <div className="flex justify-between text-gray-700">
+                  <span>Subtotal Serviços (m²):</span>
+                  <span className="font-medium">{formatCurrency(totaisQuebrados.subtotalServicosM2)}</span>
                 </div>
+                <div className="flex justify-between text-gray-700">
+                  <span>Subtotal Produtos (Un):</span>
+                  <span className="font-medium">{formatCurrency(totaisQuebrados.subtotalProdutosUnidade)}</span>
+                </div>
+                <div className="flex justify-between text-gray-700">
+                  <span>Total Acabamentos:</span>
+                  <span className="font-medium">{formatCurrency(totaisQuebrados.totalAcabamentos)}</span>
+                </div>
+                <div className="flex justify-between text-gray-700">
+                  <span>Total OS (sem desc.):</span>
+                  <span className="font-semibold">{formatCurrency(totalOSSemDescontos)}</span>
+                </div>
+                <div className="flex justify-between text-green-600">
+                  <span className="flex items-center"><span className="mr-2">🚚</span>Frete:</span>
+                  <span className="font-medium">{formatCurrency(freteModal)}</span>
+                </div>
+                <div className="flex justify-between text-red-600">
+                  <span className="flex items-center"><span className="mr-2">🏷️</span>Desconto Geral {documento.desconto_geral_tipo === 'percentual' ? `(${(parseFloat(documento.desconto_geral_valor || 0) || 0).toFixed(2).replace('.', ',')}%)` : '(Valor Fixo)'}:</span>
+                  <span className="font-medium">- {formatCurrency(descGeralCalculadoModal)}</span>
+                </div>
+                {parseFloat(documento.desconto_terceirizado_percentual || 0) > 0 && (
+                  <div className="flex justify-between text-blue-600">
+                    <span className="flex items-center"><span className="mr-2">🏢</span>Desconto Terceirizado ({parseFloat(documento.desconto_terceirizado_percentual || 0).toFixed(2).replace('.', ',')}%):</span>
+                    <span className="font-medium">- {formatCurrency(descTerceirizadoValorModal)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-base font-bold border-t border-gray-300 pt-2 mt-2 text-gray-900">
+                  <span>TOTAL FINAL:</span>
+                  <span>{formatCurrency(totalFinalModal)}</span>
+                </div>
+                {!isOrcamento && (
+                  <div className="mt-3 pt-2 border-t border-gray-300">
+                    <div className="flex justify-between text-sm font-medium text-gray-700">
+                      <span>Total Pago:</span>
+                      <span>{formatCurrency(totalPago)}</span>
+                    </div>
+                    {exibirTaxas && totalTaxasCartao > 0.009 && (
+                      <div className="flex justify-between text-sm font-medium text-blue-600 mt-1">
+                        <span>Taxas de Cartão:</span>
+                        <span>{formatCurrency(totalTaxasCartao)}</span>
+                      </div>
+                    )}
+                    {saldoPendente > 0.009 && (
+                      <div className="flex justify-between text-sm font-bold text-red-600 mt-1">
+                        <span>Valor Pendente:</span>
+                        <span>{formatCurrency(saldoPendente)}</span>
+                      </div>
+                    )}
+                    {troco > 0.009 && (
+                      <div className="flex justify-between text-sm font-bold text-green-600 mt-1">
+                        <span>Troco:</span>
+                        <span>{formatCurrency(troco)}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
 
             {!isOrcamento && documento.pagamentos && documento.pagamentos.length > 0 && (
               <div className="mb-6 p-4 border border-gray-200 rounded-lg bg-gray-50">
-                <h3 className="font-semibold text-gray-800 mb-3 flex items-center"><Wallet size={20} className="mr-2 text-primary"/>Detalhes do Pagamento</h3>
+                <h3 className="font-semibold text-gray-800 mb-3 flex items-center"><Wallet size={20} className="mr-2 text-primary" />Detalhes do Pagamento</h3>
                 {documento.pagamentos.map((p, i) => (
                   <div key={i} className="text-sm mb-2 pb-2 border-b border-gray-200 last:border-b-0 last:pb-0 last:mb-0">
                     <div className="flex items-center justify-between">
-                        <span className="font-medium flex items-center">{formaPagamentoIcones[p.metodo] || '💸'} {p.metodo}</span>
-                        <span className="font-semibold">{formatCurrency(p.valorFinal || p.valor)}</span>
+                      <span className="font-medium flex items-center">{formaPagamentoIcones[p.metodo] || '💸'} {p.metodo}</span>
+                      <span className="font-semibold">{formatCurrency(p.valorFinal || p.valor)}</span>
                     </div>
                     {p.maquinaInfo && <p className="text-xs text-gray-500 ml-6">Máquina: {p.maquinaInfo.nome}</p>}
                     {p.taxaInfo && (
-                        <div className="text-xs text-gray-500 ml-6">
-                            <p>Parcelas: {p.parcelas}x (Taxa: {parseFloat(p.taxaInfo.valor).toFixed(2).replace('.',',')}%)</p>
-                            <p>Valor Original: {formatCurrency(p.valorOriginal)} | Taxa: {formatCurrency(parseFloat(p.valorFinal || p.valor) - parseFloat(p.valorOriginal || 0))}</p>
-                        </div>
+                      <div className="text-xs text-gray-500 ml-6">
+                        <p>Parcelas: {p.parcelas}x (Taxa: {parseFloat(p.taxaInfo.valor).toFixed(2).replace('.', ',')}%)</p>
+                        <p>Valor Original: {formatCurrency(p.valorOriginal)} | Taxa: {formatCurrency(parseFloat(p.valorFinal || p.valor) - parseFloat(p.valorOriginal || 0))}</p>
+                      </div>
                     )}
                     {p.metodo === 'Pix' && p.contaBancariaId && contasBancarias.length > 0 && (
-                        <p className="text-xs text-gray-500 ml-6">Conta PIX: {Array.isArray(contasBancarias) ? contasBancarias.find(c=>c.id === p.contaBancariaId)?.nomeBanco || 'N/A' : 'N/A'} ({Array.isArray(contasBancarias) ? contasBancarias.find(c=>c.id === p.contaBancariaId)?.chavePix || 'N/A' : 'N/A'})</p>
+                      <p className="text-xs text-gray-500 ml-6">Conta PIX: {Array.isArray(contasBancarias) ? contasBancarias.find(c => c.id === p.contaBancariaId)?.nomeBanco || 'N/A' : 'N/A'} ({Array.isArray(contasBancarias) ? contasBancarias.find(c => c.id === p.contaBancariaId)?.chavePix || 'N/A' : 'N/A'})</p>
                     )}
                   </div>
                 ))}
                 <div className="mt-3 pt-2 border-t border-gray-300">
-                    <div className="flex justify-between text-sm font-medium text-gray-700">
-                        <span>Total Pago:</span>
-                        <span>{formatCurrency(totalPago)}</span>
+                  <div className="flex justify-between text-sm font-medium text-gray-700">
+                    <span>Total Pago:</span>
+                    <span>{formatCurrency(totalPago)}</span>
+                  </div>
+                  {exibirTaxas && totalTaxasCartao > 0.009 && (
+                    <div className="flex justify-between text-sm font-medium text-blue-600 mt-1">
+                      <span>Taxas de Cartão:</span>
+                      <span>{formatCurrency(totalTaxasCartao)}</span>
                     </div>
-                    {exibirTaxas && totalTaxasCartao > 0.009 && (
-                        <div className="flex justify-between text-sm font-medium text-blue-600 mt-1">
-                            <span>Taxas de Cartão:</span>
-                            <span>{formatCurrency(totalTaxasCartao)}</span>
-                        </div>
-                    )}
-                    {saldoPendente > 0.009 && (
-                        <div className="flex justify-between text-sm font-bold text-red-600 mt-1">
-                            <span>VALOR PENDENTE:</span>
-                            <span>{formatCurrency(saldoPendente)}</span>
-                        </div>
-                    )}
-                    {troco > 0.009 && (
-                        <div className="flex justify-between text-sm font-bold text-green-600 mt-1">
-                            <span>TROCO:</span>
-                            <span>{formatCurrency(troco)}</span>
-                        </div>
-                    )}
+                  )}
+                  {saldoPendente > 0.009 && (
+                    <div className="flex justify-between text-sm font-bold text-red-600 mt-1">
+                      <span>VALOR PENDENTE:</span>
+                      <span>{formatCurrency(saldoPendente)}</span>
+                    </div>
+                  )}
+                  {troco > 0.009 && (
+                    <div className="flex justify-between text-sm font-bold text-green-600 mt-1">
+                      <span>TROCO:</span>
+                      <span>{formatCurrency(troco)}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
-            
+
             {documento.observacoes_gerais_os && (
               <div className="mb-4 pt-3 border-t border-gray-300 mt-4">
-                <h3 className="font-semibold text-gray-800 mb-1 flex items-center"><Info size={18} className="mr-2 text-primary"/>Observações da OS:</h3>
+                <h3 className="font-semibold text-gray-800 mb-1 flex items-center"><Info size={18} className="mr-2 text-primary" />Observações da OS:</h3>
                 <p className="text-sm whitespace-pre-wrap text-gray-600">{documento.observacoes_gerais_os}</p>
               </div>
             )}
             {documento.observacoes_cliente_para_nota && (
               <div className="mb-4 pt-3 border-t border-gray-300 mt-4">
-                <h3 className="font-semibold text-gray-800 mb-1 flex items-center"><Info size={18} className="mr-2 text-primary"/>Observações do Cliente (Nota):</h3>
+                <h3 className="font-semibold text-gray-800 mb-1 flex items-center"><Info size={18} className="mr-2 text-primary" />Observações do Cliente (Nota):</h3>
                 <p className="text-sm whitespace-pre-wrap text-gray-600">{documento.observacoes_cliente_para_nota}</p>
               </div>
             )}
@@ -1815,18 +1828,18 @@ const OSDocumentModal = ({ isOpen, setIsOpen, documento, logoUrl, nomeEmpresa, o
                   ) : (
                     <p className="text-sm text-gray-500">QR Code não disponível. Use a chave abaixo:</p>
                   )}
-                   <div className="text-xs text-center text-gray-600">
-                        <p><strong>Banco:</strong> {contaPixSelecionada.nomeBanco}</p>
-                        <p><strong>Chave PIX:</strong> {contaPixSelecionada.chavePix}</p>
-                   </div>
+                  <div className="text-xs text-center text-gray-600">
+                    <p><strong>Banco:</strong> {contaPixSelecionada.nomeBanco}</p>
+                    <p><strong>Chave PIX:</strong> {contaPixSelecionada.chavePix}</p>
+                  </div>
                 </div>
                 <p className="text-sm mt-2">Valor Pendente: <span className="font-bold text-red-600">{formatCurrency(saldoPendente)}</span></p>
               </div>
             )}
-            
+
             <footer className="text-xs text-center mt-8 pt-4 border-t border-gray-300 text-gray-500">
-                <p>{empresaSettings.mensagemPersonalizadaRodape || 'Obrigado pela preferência!'}</p>
-                <p>Gerado em: {format(new Date(), "dd/MM/yyyy 'às' HH:mm:ss")}</p>
+              <p>{empresaSettings.mensagemPersonalizadaRodape || 'Obrigado pela preferência!'}</p>
+              <p>Gerado em: {format(new Date(), "dd/MM/yyyy 'às' HH:mm:ss")}</p>
             </footer>
           </div>
         </ScrollArea>
@@ -1834,22 +1847,22 @@ const OSDocumentModal = ({ isOpen, setIsOpen, documento, logoUrl, nomeEmpresa, o
           <Button variant="outline" onClick={handleGeneratePdf} className="flex items-center" disabled={isPrinting || isGeneratingPdf}>
             {isGeneratingPdf ? (
               <>
-                <Loader2 size={16} className="mr-2 animate-spin"/> Gerando PDF...
+                <Loader2 size={16} className="mr-2 animate-spin" /> Gerando PDF...
               </>
             ) : (
               <>
-                <FileText size={16} className="mr-2"/> Baixar PDF
+                <FileText size={16} className="mr-2" /> Baixar PDF
               </>
             )}
           </Button>
           <Button variant="outline" onClick={handlePrint} className="flex items-center" disabled={isPrinting || isGeneratingPdf}>
             {isPrinting ? (
               <>
-                <Loader2 size={16} className="mr-2 animate-spin"/> Imprimindo...
+                <Loader2 size={16} className="mr-2 animate-spin" /> Imprimindo...
               </>
             ) : (
               <>
-                <Printer size={16} className="mr-2"/> Imprimir
+                <Printer size={16} className="mr-2" /> Imprimir
               </>
             )}
           </Button>
